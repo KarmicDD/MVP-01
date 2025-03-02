@@ -1,8 +1,8 @@
 // src/components/Landing/Navigation.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link as ScrollLink } from 'react-scroll';
 import { colours } from "../../utils/colours";
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useActiveSectionContext } from '../../context/active-section-context';
 import { links } from '../../libs/data';
@@ -10,20 +10,27 @@ import { SectionName } from '../../libs/data';
 
 export const Navigation: React.FC = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [, setActiveLink] = useState('hero');
+    const [scrolled, setScrolled] = useState(false);
     const navigate = useNavigate();
     const { activeSection, setActiveSection, setTimeOfLastClick } = useActiveSectionContext();
+
+    // Handle scroll event to change navbar style
+    useEffect(() => {
+        const handleScroll = () => {
+            setScrolled(window.scrollY > 20);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     // Common scroll settings for consistency
     const scrollSettings = {
         spy: true,
         smooth: true,
         offset: -70,
-        duration: 1000, // Increased duration for smoother scrolling (1 second)
-        easing: 'easeInOutQuart', // Add easing function for more natural movement
+        duration: 800,
+        easing: 'easeInOutQuart',
         onSetActive: (to: string) => {
-            setActiveLink(to);
-            // Also update the context
             const sectionName = links.find(link => link.hash.substring(1) === to)?.name;
             if (sectionName) {
                 setActiveSection(sectionName as SectionName);
@@ -35,79 +42,181 @@ export const Navigation: React.FC = () => {
         navigate('/coming-soon', { state: { from: buttonName } });
     };
 
+    const handleAuth = () => {
+        navigate('/auth');
+    };
+
     return (
         <motion.nav
-            className="p-2 md:p-4 shadow-sm fixed top-0 left-0 w-full z-10"
-            style={{ backgroundColor: colours.white }}
-            initial={{ y: -50 }}
+            className={`py-3 md:py-4 fixed top-0 left-0 w-full z-50 transition-all duration-300 ${scrolled ? 'shadow-md' : ''
+                }`}
+            style={{
+                backgroundColor: scrolled ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.85)',
+                backdropFilter: 'blur(8px)'
+            }}
+            initial={{ y: -70 }}
             animate={{ y: 0 }}
-            transition={{ type: 'spring', stiffness: 100 }}
+            transition={{ type: 'spring', stiffness: 100, damping: 20 }}
         >
             <div className="container mx-auto flex flex-wrap justify-between items-center px-4">
                 <ScrollLink
                     to="hero"
                     {...scrollSettings}
-                    className="font-bold text-xl md:text-2xl cursor-pointer"
-                    style={{ color: colours.indigo600 }}
+                    className="font-bold text-xl md:text-2xl cursor-pointer flex items-center"
+                    onClick={() => {
+                        setTimeOfLastClick(Date.now());
+                        setIsMenuOpen(false);
+                    }}
                 >
-                    KarmicDD
+                    <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                    >
+                        <span style={{
+                            background: colours.primaryGradient,
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent'
+                        }}>
+                            KarmicDD
+                        </span>
+                    </motion.div>
                 </ScrollLink>
 
                 {/* Mobile menu button */}
-                <button
-                    className="md:hidden rounded-md p-2 hover:bg-gray-100 focus:outline-none"
+                <motion.button
+                    className="md:hidden rounded-md p-2 focus:outline-none"
+                    style={{ backgroundColor: isMenuOpen ? colours.indigo50 : 'transparent' }}
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    whileTap={{ scale: 0.95 }}
                 >
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke={colours.indigo600}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
                     </svg>
-                </button>
+                </motion.button>
 
                 {/* Desktop menu */}
-                <div className={`${isMenuOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row w-full md:w-auto items-start md:items-center md:space-x-6 mt-4 md:mt-0`}>
+                <div className="hidden md:flex md:items-center md:space-x-8">
                     {links.map((link) => (
                         <ScrollLink
                             key={link.name}
-                            to={link.hash.substring(1)} // Remove the # from the hash
+                            to={link.hash.substring(1)}
                             {...scrollSettings}
-                            className={`hover:text-indigo-600 text-sm md:text-base w-full md:w-auto py-2 md:py-0 cursor-pointer transition-colors duration-300 ${activeSection === link.name ? 'font-semibold' : ''
-                                }`}
+                            className="relative font-medium hover:text-indigo-600 text-base cursor-pointer transition-colors duration-300 group"
                             style={{
                                 color: activeSection === link.name ? colours.indigo600 : colours.gray600
                             }}
                             onClick={() => {
-                                setIsMenuOpen(false);
                                 setTimeOfLastClick(Date.now());
                             }}
                         >
                             {link.name}
+                            {activeSection === link.name && (
+                                <motion.span
+                                    className="absolute -bottom-1 left-0 w-full h-0.5 bg-indigo-600 rounded-full"
+                                    layoutId="activeSection"
+                                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                />
+                            )}
                         </ScrollLink>
                     ))}
 
-                    <a
+                    <motion.a
                         href="#"
                         style={{ color: colours.gray600 }}
-                        className="hover:text-indigo-600 text-sm md:text-base w-full md:w-auto py-2 md:py-0"
+                        className="font-medium hover:text-indigo-600 text-base transition-colors duration-300"
                         onClick={(e) => {
                             e.preventDefault();
-                            handleRedirect('Sign In');
+                            handleAuth();
                         }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                     >
                         Sign In
-                    </a>
+                    </motion.a>
 
-                    <a
+                    <motion.a
                         href="#"
-                        className="px-4 py-2 rounded-md hover:bg-indigo-700 text-sm md:text-base mt-2 md:mt-0 w-full md:w-auto text-center transition-colors duration-300"
-                        style={{ backgroundColor: colours.indigo600, color: colours.whiteText }}
+                        className="px-5 py-2.5 rounded-lg font-medium text-base transition-all duration-300 shadow-md hover:shadow-lg"
+                        style={{
+                            background: colours.primaryGradient,
+                            color: colours.whiteText
+                        }}
                         onClick={(e) => {
                             e.preventDefault();
                             handleRedirect('Get Started');
                         }}
+                        whileHover={{
+                            scale: 1.05,
+                            boxShadow: "0 10px 25px -5px rgba(94, 66, 227, 0.4)"
+                        }}
+                        whileTap={{ scale: 0.95 }}
                     >
                         Get Started
-                    </a>
+                    </motion.a>
                 </div>
+
+                {/* Mobile menu dropdown */}
+                <AnimatePresence>
+                    {isMenuOpen && (
+                        <motion.div
+                            className="md:hidden absolute top-full left-0 right-0 bg-white shadow-lg rounded-b-lg border-t overflow-hidden"
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            <div className="flex flex-col p-4 space-y-4">
+                                {links.map((link) => (
+                                    <ScrollLink
+                                        key={link.name}
+                                        to={link.hash.substring(1)}
+                                        {...scrollSettings}
+                                        className="py-2 px-4 rounded-md font-medium transition-colors duration-300"
+                                        style={{
+                                            color: activeSection === link.name ? colours.white : colours.gray600,
+                                            backgroundColor: activeSection === link.name ? colours.indigo600 : 'transparent'
+                                        }}
+                                        onClick={() => {
+                                            setIsMenuOpen(false);
+                                            setTimeOfLastClick(Date.now());
+                                        }}
+                                    >
+                                        {link.name}
+                                    </ScrollLink>
+                                ))}
+
+                                <a
+                                    href="#"
+                                    className="py-2 px-4 rounded-md font-medium"
+                                    style={{ color: colours.gray600 }}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setIsMenuOpen(false);
+                                        handleAuth();
+                                    }}
+                                >
+                                    Sign In
+                                </a>
+
+                                <a
+                                    href="#"
+                                    className="py-2 px-4 rounded-md font-medium text-center"
+                                    style={{
+                                        background: colours.primaryGradient,
+                                        color: colours.whiteText
+                                    }}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setIsMenuOpen(false);
+                                        handleRedirect('Get Started');
+                                    }}
+                                >
+                                    Get Started
+                                </a>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </motion.nav>
     );

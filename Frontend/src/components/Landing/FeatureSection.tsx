@@ -1,81 +1,117 @@
-// ..src/components/Landing/FeatureSection.tsx
+// src/components/Landing/FeatureSection.tsx
 import { RiRobot2Fill } from "react-icons/ri";
 import { FaHandshake, FaLink } from "react-icons/fa";
 import { motion } from 'framer-motion';
 import { colours } from "../../utils/colours";
 import React from 'react';
 import { useSectionInView } from '../../hooks/useSectionInView';
-
-const featureVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
-};
+import { useInView } from 'react-intersection-observer';
 
 export const FeatureSection: React.FC = () => {
-    const ref = useSectionInView({ sectionName: 'About', threshold: 0.50 });
+    const ref = useSectionInView({ sectionName: 'About', threshold: 0.3 });
+
+    const [inViewRef, inView] = useInView({
+        triggerOnce: true,
+        threshold: 0.2
+    });
+
+    const combinedRef = (el: HTMLElement | null) => {
+        if (el) {
+            // Apply both refs
+            ref(el);
+            inViewRef(el);
+        }
+    };
+
+    const sectionVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.2
+            }
+        }
+    };
+
+    const featureVariants = {
+        hidden: { opacity: 0, y: 30 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: {
+                type: "spring",
+                stiffness: 60,
+                damping: 15
+            }
+        }
+    };
+
+    const features = [
+        {
+            icon: RiRobot2Fill,
+            title: "Automated Profile Fetching",
+            description: "Instantly import your company or investor profile from existing platforms with one click, saving you time and ensuring data accuracy."
+        },
+        {
+            icon: FaHandshake,
+            title: "Belief-Based Matching",
+            description: "Our proprietary algorithm ensures alignment in values and business philosophy, leading to more successful and harmonious partnerships."
+        },
+        {
+            icon: FaLink,
+            title: "Seamless Connections",
+            description: "Connect directly with matched partners through our platform and start building relationships that are founded on shared vision and goals."
+        }
+    ];
 
     return (
         <section
-            ref={ref}
+            ref={combinedRef}
             id="features"
-            className="py-8 md:py-16">
+            className="py-16 md:py-24">
             <div className="container mx-auto px-4">
-                <h2 className="text-2xl md:text-3xl font-bold text-center mb-8 md:mb-16">Why Choose KarmicDD</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-                    {/* Feature 1 */}
-                    <motion.div
-                        className="text-center p-4 rounded-lg hover:shadow-md transition-shadow duration-300"
-                        variants={featureVariants}
-                        initial="hidden"
-                        whileInView="visible"
-                        viewport={{ once: true, amount: 0.5 }}
-                        transition={{ duration: 0.3, delay: 0 }}
-                    >
-                        <div className="flex justify-center mb-2 md:mb-4">
-                            <RiRobot2Fill className="text-4xl md:text-5xl" style={{ color: colours.indigo600 }} />
-                        </div>
-                        <h3 className="text-lg md:text-xl font-semibold mb-1 md:mb-2">Automated Profile Fetching</h3>
-                        <p style={{ color: colours.gray600 }} className="text-sm md:text-base">
-                            Instantly import your company or investor profile from existing platforms.
-                        </p>
-                    </motion.div>
+                <motion.div
+                    className="text-center max-w-2xl mx-auto mb-12 md:mb-16"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                    transition={{ duration: 0.6 }}
+                >
+                    <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Choose KarmicDD</h2>
+                    <p className="text-base md:text-lg" style={{ color: colours.gray600 }}>
+                        We bring together startups and investors based on what truly matters - shared values and vision.
+                    </p>
+                </motion.div>
 
-                    {/* Feature 2 */}
-                    <motion.div
-                        className="text-center p-4 rounded-lg hover:shadow-md transition-shadow duration-300"
-                        variants={featureVariants}
-                        initial="hidden"
-                        whileInView="visible"
-                        viewport={{ once: true, amount: 0.5 }}
-                        transition={{ duration: 0.3, delay: 0.2 }}
-                    >
-                        <div className="flex justify-center mb-2 md:mb-4">
-                            <FaHandshake className="text-4xl md:text-5xl" style={{ color: colours.indigo600 }} />
-                        </div>
-                        <h3 className="text-lg md:text-xl font-semibold mb-1 md:mb-2">Belief-Based Matching</h3>
-                        <p style={{ color: colours.gray600 }} className="text-sm md:text-base">
-                            Our algorithm ensures alignment in values and business philosophy.
-                        </p>
-                    </motion.div>
-
-                    {/* Feature 3 */}
-                    <motion.div
-                        className="text-center p-4 rounded-lg hover:shadow-md transition-shadow duration-300 sm:col-span-2 md:col-span-1 sm:mx-auto"
-                        variants={featureVariants}
-                        initial="hidden"
-                        whileInView="visible"
-                        viewport={{ once: true, amount: 0.5 }}
-                        transition={{ duration: 0.3, delay: 0.4 }}
-                    >
-                        <div className="flex justify-center mb-2 md:mb-4">
-                            <FaLink className="text-4xl md:text-5xl" style={{ color: colours.indigo600 }} />
-                        </div>
-                        <h3 className="text-lg md:text-xl font-semibold mb-1 md:mb-2">Seamless Connections</h3>
-                        <p style={{ color: colours.gray600 }} className="text-sm md:text-base">
-                            Connect directly with matched partners through our platform.
-                        </p>
-                    </motion.div>
-                </div>
+                <motion.div
+                    className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10"
+                    variants={sectionVariants}
+                    initial="hidden"
+                    animate={inView ? "visible" : "hidden"}
+                >
+                    {features.map((feature, index) => (
+                        <motion.div
+                            key={index}
+                            className="bg-white rounded-xl p-6 md:p-8 shadow-lg hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2"
+                            variants={featureVariants}
+                        >
+                            <div className="mb-6 flex items-center justify-center w-16 h-16 rounded-full"
+                                style={{
+                                    background: `linear-gradient(135deg, ${colours.indigo50}, ${colours.indigo100})`,
+                                    boxShadow: '0 8px 16px -4px rgba(90, 66, 227, 0.2)'
+                                }}
+                            >
+                                <feature.icon
+                                    className="text-3xl md:text-4xl"
+                                    style={{ color: colours.indigo600 }}
+                                />
+                            </div>
+                            <h3 className="text-xl md:text-2xl font-semibold mb-3">{feature.title}</h3>
+                            <p className="text-base" style={{ color: colours.gray600 }}>
+                                {feature.description}
+                            </p>
+                        </motion.div>
+                    ))}
+                </motion.div>
             </div>
         </section>
     );

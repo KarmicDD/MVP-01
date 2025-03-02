@@ -20,4 +20,12 @@ export const colours = {
     primaryBlue: '#3e60e9', // New primary blue for buttons
     formBackground: '#f9fafb', // Light mode form background
     mainBackground: '#f9fafb', // Main background
+
+    // Added new colours for enhanced UI
+    primaryGradient: 'linear-gradient(135deg, #3e60e9, #5A42E3)',
+    secondaryGradient: 'linear-gradient(135deg, #5A42E3, #8170f0)',
+    errorRed: '#ef4444',
+    successGreen: '#22c55e',
+    warningYellow: '#eab308',
+    neutralGray: '#6b7280',
 };

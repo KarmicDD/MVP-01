@@ -6,12 +6,15 @@ import OAuthCallback from './components/Auth/OAuthCallback';
 import { StartupDashboard } from './pages/StartupDashboard';
 import { InvestorDashboard } from './pages/InvestorDashboard';
 import { authService } from './services/api';
+import Landing from './pages/Landing';
+import ActiveSectionContextProvider from './context/active-section-context';
+import ComingSoon from './components/ComingSoon/ComingSoon';
+import VentureMatch from './components/Forms/form';
 
 // Protected route component
-const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode, requiredRole?: string }) => {
+const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) => {
   const user = authService.getCurrentUser();
 
-  // Check if authenticated and has the required role
   if (!authService.isAuthenticated() || (requiredRole && user?.role !== requiredRole)) {
     return <Navigate to="/auth" replace />;
   }
@@ -19,37 +22,63 @@ const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode,
   return children;
 };
 
+// Auth route handling redirection
+const AuthRoute = () => {
+  const user = authService.getCurrentUser();
+
+  if (authService.isAuthenticated()) {
+    return user?.role === 'startup' ? (
+      <Navigate to="/startup/dashboard" replace />
+    ) : user?.role === 'investor' ? (
+      <Navigate to="/investor/dashboard" replace />
+    ) : (
+      <Navigate to="/" replace />
+    );
+  }
+
+  return <AuthPage />;
+};
+
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Auth Routes */}
-        <Route path="/auth" element={<AuthPage />} />
-        <Route path="/auth/callback" element={<OAuthCallback />} />
-        <Route path="/auth/select-role" element={<OAuthCallback />} />
+    <ActiveSectionContextProvider>
+      <Router>
+        <Routes>
+          {/* Default Landing Page */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/forms" element={<VentureMatch />} />
 
-        {/* Protected Routes */}
-        <Route
-          path="/startup/dashboard"
-          element={
-            <ProtectedRoute requiredRole="startup">
-              <StartupDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/investor/dashboard"
-          element={
-            <ProtectedRoute requiredRole="investor">
-              <InvestorDashboard />
-            </ProtectedRoute>
-          }
-        />
+          {/* Auth Routes */}
+          <Route path="/auth" element={<AuthRoute />} />
+          <Route path="/auth/callback" element={<OAuthCallback />} />
+          <Route path="/auth/select-role" element={<OAuthCallback />} />
 
-        {/* Redirect root to auth for now */}
-        <Route path="/" element={<Navigate to="/auth" replace />} />
-      </Routes>
-    </Router>
+          {/* Open Routes */}
+          <Route path="/coming-soon" element={<ComingSoon />} /> {/* Anyone can access */}
+
+          {/* Protected Routes */}
+          <Route
+            path="/startup/dashboard"
+            element={
+              <ProtectedRoute requiredRole="startup">
+                <StartupDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/investor/dashboard"
+            element={
+              <ProtectedRoute requiredRole="investor">
+                <InvestorDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Redirect all unknown routes to Landing */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </ActiveSectionContextProvider>
   );
 }
 

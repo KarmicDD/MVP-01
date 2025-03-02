@@ -3,7 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../../services/api';
 import { colours } from '../../utils/colours';
-import { FaRocket, FaChartLine } from "react-icons/fa";
+import { FaRocket, FaChartLine, FaArrowLeft } from "react-icons/fa";
+import { motion } from 'framer-motion';
 
 const OAuthCallback: React.FC = () => {
     const [loading, setLoading] = useState(true);
@@ -77,82 +78,162 @@ const OAuthCallback: React.FC = () => {
         }
     };
 
+    const handleBackToAuth = () => {
+        navigate('/auth');
+    };
+
     if (loading && !needsRole) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ backgroundColor: colours.mainBackground }}>
+            <motion.div
+                className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-b from-blue-50 to-white"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+            >
                 <div className="text-center">
-                    <h2 className="text-xl font-bold mb-4">Completing Authentication</h2>
+                    <motion.div
+                        animate={{
+                            scale: [1, 1.1, 1],
+                            opacity: [0.8, 1, 0.8]
+                        }}
+                        transition={{
+                            repeat: Infinity,
+                            duration: 1.5
+                        }}
+                    >
+                        <h2 className="text-xl font-bold mb-4">Completing Authentication</h2>
+                    </motion.div>
                     <p>Please wait while we finish setting up your account...</p>
+                    <div className="mt-6 flex justify-center">
+                        <div className="w-12 h-12 border-t-4 border-b-4 border-blue-500 rounded-full animate-spin"></div>
+                    </div>
                 </div>
-            </div>
+            </motion.div>
         );
     }
 
     if (error) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ backgroundColor: colours.mainBackground }}>
-                <div className="text-center">
-                    <h2 className="text-xl font-bold mb-4">Authentication Error</h2>
-                    <p className="text-red-500 mb-4">{error}</p>
-                    <button
-                        className="px-4 py-2 rounded-md text-white"
-                        style={{ backgroundColor: colours.primaryBlue }}
-                        onClick={() => navigate('/auth')}
+            <motion.div
+                className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-b from-blue-50 to-white"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+            >
+                <div className="text-center max-w-md w-full bg-white p-8 rounded-xl shadow-lg">
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.3 }}
                     >
-                        Return to Login
-                    </button>
+                        <h2 className="text-xl font-bold mb-4">Authentication Error</h2>
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                            <p className="text-red-600">{error}</p>
+                        </div>
+                        <motion.button
+                            className="px-4 py-2 rounded-md text-white flex items-center mx-auto"
+                            style={{ backgroundColor: colours.primaryBlue }}
+                            onClick={handleBackToAuth}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <FaArrowLeft className="mr-2" />
+                            Return to Login
+                        </motion.button>
+                    </motion.div>
                 </div>
-            </div>
+            </motion.div>
         );
     }
 
     if (needsRole) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ backgroundColor: colours.mainBackground }}>
+            <motion.div
+                className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-b from-blue-50 to-white"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+            >
                 <div className="w-full max-w-md">
-                    <div className="flex justify-center mb-8">
-                        <h1 className="text-2xl font-bold" style={{ color: colours.primaryBlue }}>KarmicDD</h1>
-                    </div>
+                    <motion.div
+                        className="flex justify-center mb-8"
+                        initial={{ y: -20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ duration: 0.5 }}
+                    >
+                        <h1 className="text-3xl font-bold" style={{ color: colours.primaryBlue }}>KarmicDD</h1>
+                    </motion.div>
 
-                    <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+                    <motion.div
+                        className="bg-white rounded-xl shadow-lg overflow-hidden mb-6"
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ duration: 0.5, delay: 0.2 }}
+                    >
+                        <div className="p-6 border-b border-gray-100">
+                            <h2 className="text-xl font-bold text-center">Complete Your Profile</h2>
+                        </div>
                         <div className="p-6">
-                            <h2 className="text-xl font-bold text-center mb-6">Select Your Role</h2>
                             <p className="text-center mb-6">Please select your role to complete signup</p>
 
                             <div className="space-y-4">
-                                <div
-                                    className="border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
+                                <motion.div
+                                    className="border rounded-lg p-5 cursor-pointer hover:shadow-md transition-shadow"
                                     onClick={() => handleRoleSelection('startup')}
+                                    whileHover={{
+                                        scale: 1.02,
+                                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                                        borderColor: colours.primaryBlue
+                                    }}
+                                    whileTap={{ scale: 0.98 }}
                                 >
                                     <div className="flex items-center">
-                                        <div className="rounded-full p-2 mr-3" style={{ backgroundColor: '#e6edff' }}>
-                                            <FaRocket className="text-xl" style={{ color: colours.primaryBlue }} />
+                                        <div className="rounded-full p-3 mr-4" style={{ backgroundColor: '#e6edff' }}>
+                                            <FaRocket className="text-2xl" style={{ color: colours.primaryBlue }} />
                                         </div>
                                         <div>
-                                            <h3 className="font-medium">Sign in as Startup</h3>
-                                            <p className="text-sm text-gray-600">Perfect for entrepreneurs seeking funding and resources</p>
+                                            <h3 className="font-medium text-lg">Sign in as Startup</h3>
+                                            <p className="text-gray-600">Perfect for entrepreneurs seeking funding and resources</p>
                                         </div>
                                     </div>
-                                </div>
-                                <div
-                                    className="border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
+                                </motion.div>
+                                <motion.div
+                                    className="border rounded-lg p-5 cursor-pointer hover:shadow-md transition-shadow"
                                     onClick={() => handleRoleSelection('investor')}
+                                    whileHover={{
+                                        scale: 1.02,
+                                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                                        borderColor: '#10b981'
+                                    }}
+                                    whileTap={{ scale: 0.98 }}
                                 >
                                     <div className="flex items-center">
-                                        <div className="rounded-full p-2 mr-3" style={{ backgroundColor: '#e6f9ef' }}>
-                                            <FaChartLine className="text-xl" style={{ color: '#10b981' }} />
+                                        <div className="rounded-full p-3 mr-4" style={{ backgroundColor: '#e6f9ef' }}>
+                                            <FaChartLine className="text-2xl" style={{ color: '#10b981' }} />
                                         </div>
                                         <div>
-                                            <h3 className="font-medium">Sign in as Investor</h3>
-                                            <p className="text-sm text-gray-600">Ideal for investors looking to discover promising startups</p>
+                                            <h3 className="font-medium text-lg">Sign in as Investor</h3>
+                                            <p className="text-gray-600">Ideal for investors looking to discover promising startups</p>
                                         </div>
                                     </div>
-                                </div>
+                                </motion.div>
+                            </div>
+
+                            <div className="mt-6 text-center">
+                                <motion.button
+                                    className="text-gray-600 hover:text-gray-900 flex items-center mx-auto text-sm"
+                                    onClick={handleBackToAuth}
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                >
+                                    <FaArrowLeft className="mr-1" />
+                                    Back to sign in
+                                </motion.button>
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
-            </div>
+            </motion.div>
         );
     }
 
