@@ -1,9 +1,9 @@
-// ..src/pages/Auth.tsx
+// src/pages/Auth.tsx
 import React, { useState } from 'react';
 import { colours } from '../utils/colours';
 import RoleSelection from '../components/Auth/RoleSelector';
-import SignIn from '../components/Auth/Sigin';
 import SignUp from '../components/Auth/SignUp';
+import SignIn from '../components/Auth/SigIn';
 
 const AuthPage: React.FC = () => {
     const [activeView, setActiveView] = useState<'chooseRole' | 'signIn' | 'createAccount'>('chooseRole');
@@ -27,10 +27,17 @@ const AuthPage: React.FC = () => {
                         <RoleSelection handleRoleSelection={handleRoleSelection} />
                     )}
                     {activeView === 'signIn' && (
-                        <SignIn setActiveView={setActiveView} setSelectedRole={setSelectedRole} />
+                        <SignIn
+                            setActiveView={setActiveView}
+                            setSelectedRole={setSelectedRole}
+                            selectedRole={selectedRole}
+                        />
                     )}
                     {activeView === 'createAccount' && (
-                        <SignUp setActiveView={setActiveView} />
+                        <SignUp
+                            setActiveView={setActiveView}
+                            selectedRole={selectedRole}
+                        />
                     )}
                 </div>
             </div>
