@@ -128,4 +128,81 @@ const login = async (req: Request, res: Response) => {
     }
 };
 
-export { register, login };
+// Update role for OAuth user
+const updateOAuthUserRole = async (req: Request, res: Response) => {
+    const { userId, role } = req.body;
+
+    try {
+        // Update user role
+        await prisma.user.update({
+            where: {
+                user_id: userId,
+            },
+            data: {
+                role: role,
+            },
+        });
+
+        // Get updated user
+        const userResult = await prisma.user.findUnique({
+            where: {
+                user_id: userId,
+            },
+            select: {
+                user_id: true,
+                email: true,
+                role: true,
+            },
+        });
+
+        if (!userResult) {
+            res.status(404).json({ message: 'User not found' });
+            return;
+        }
+
+        // Generate JWT with updated role
+        const token = generateToken(userResult.user_id, userResult.email, userResult.role);
+
+        res.json({
+            message: 'User role updated successfully',
+            token,
+            user: {
+                userId: userResult.user_id,
+                email: userResult.email,
+                role: userResult.role
+            }
+        });
+    } catch (error) {
+        console.error('Update OAuth user role error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Handle OAuth callback
+const handleOAuthCallback = (provider: string) => {
+    return (req: Request, res: Response) => {
+        // Generate JWT token
+        const user: any = req.user; // Type assertion here
+
+        if (!user) {
+            res.status(500).json({ message: 'User not found after OAuth' });
+            return;
+        }
+
+        const { user_id, email, role } = user;
+        const token = generateToken(user_id, email, role);
+
+        // Check if role is set
+        if (!role) {
+            // Redirect to frontend role selection with userId for later update
+            res.redirect(`${process.env.FRONTEND_URL}/auth/select-role?userId=${user_id}&token=${token}`);
+            return;
+        }
+
+        // Redirect to frontend with token
+        res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
+    };
+};
+
+export { register, login, updateOAuthUserRole, handleOAuthCallback };
+

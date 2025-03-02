@@ -8,30 +8,48 @@ import dotenv from 'dotenv';
 // Routes import
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
+import { connectMongoDBwithRetry, testPostgressConnection } from './config/db';
 
 dotenv.config();
 
-// Initialize app
-const app: Application = express();
-const PORT = process.env.PORT || 5000;
+const startServer = async () => {
+    try {
+        // Initialize database connections with retry logic
+        await Promise.all([
+            testPostgressConnection(),
+            connectMongoDBwithRetry()
+        ]);
 
-// Middleware
-app.use(helmet()); // Security headers
-app.use(cors({
-    origin: process.env.FRONTEND_URL, // Your React app URL
-    credentials: true // Allow cookies with CORS
-}));
-app.use(express.json()); // Parse JSON request body
-app.use(cookieParser()); // Parse cookies
+        // Initialize app after successful DB connections
+        const app: Application = express();
+        const PORT = process.env.PORT || 5000;
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
+        // Middleware (existing setup preserved)
+        app.use(helmet());
+        app.use(cors({
+            origin: process.env.FRONTEND_URL,
+            credentials: true
+        }));
+        app.use(express.json());
+        app.use(cookieParser());
 
-// Error handling middleware
-app.use(errorHandler);
+        // Existing routes
+        app.use('/api/auth', authRoutes);
+        app.use('/api/users', userRoutes);
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+        // Existing error handler
+        app.use(errorHandler);
+
+        // Start server
+        app.listen(PORT, () => {
+            console.log(`Server running on http://localhost:${PORT}`);
+        });
+
+    } catch (err) {
+        console.error('Failed to start server:', err);
+        process.exit(1);
+    }
+};
+
+// Start the server
+startServer();

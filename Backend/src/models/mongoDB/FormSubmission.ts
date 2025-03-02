@@ -35,5 +35,5 @@ const FormSubmissionSchema: Schema = new Schema({
     }
 });
 
-const FormModel = mongoose.model<FormSubmission>('FormSubmission', FormSubmissionSchema);
-export default FormModel;
+const FormSubmission = mongoose.model<FormSubmission>('FormSubmission', FormSubmissionSchema);
+export default FormSubmission;
