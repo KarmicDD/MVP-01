@@ -2,14 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import AuthPage from './pages/Auth';
 import OAuthCallback from './components/Auth/OAuthCallback';
-import { StartupDashboard } from './pages/StartupDashboard';
-import { InvestorDashboard } from './pages/InvestorDashboard';
 import api, { authService } from './services/api';
 import Landing from './pages/Landing';
 import ActiveSectionContextProvider from './context/active-section-context';
 import ComingSoon from './components/ComingSoon/ComingSoon';
 import VentureMatch from './components/Forms/form';
 import LoadingSpinner from './components/Loading';
+import Dashboard from './pages/Dashboard';
 
 // Protected route component with profile check
 const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) => {
@@ -99,17 +98,27 @@ const AuthRoute = () => {
       return <Navigate to="/forms" replace />;
     }
 
-    // If has profile, go to dashboard
-    return user?.role === 'startup' ? (
-      <Navigate to="/startup/dashboard" replace />
-    ) : user?.role === 'investor' ? (
-      <Navigate to="/investor/dashboard" replace />
+    // If has profile and has a role, go to dashboard
+    return user?.role ? (
+      <Navigate to="/dashboard" replace />
     ) : (
       <Navigate to="/" replace />
     );
   }
 
   return <AuthPage />;
+};
+
+const DashboardRoute = () => {
+  const user = authService.getCurrentUser();
+
+  if (user?.role) {
+    return <Dashboard />;
+  } else if (user?.role === 'investor') {
+    return <Dashboard />;
+  } else {
+    return <Navigate to="/" replace />;
+  }
 };
 
 function App() {
@@ -133,18 +142,10 @@ function App() {
 
           {/* Protected Routes */}
           <Route
-            path="/startup/dashboard"
+            path="/dashboard"
             element={
-              <ProtectedRoute requiredRole="startup">
-                <StartupDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/investor/dashboard"
-            element={
-              <ProtectedRoute requiredRole="investor">
-                <InvestorDashboard />
+              <ProtectedRoute>
+                <DashboardRoute />
               </ProtectedRoute>
             }
           />

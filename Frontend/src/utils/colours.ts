@@ -28,4 +28,8 @@ export const colours = {
     successGreen: '#22c55e',
     warningYellow: '#eab308',
     neutralGray: '#6b7280',
+
+    //logout
+    red400: '#F87171',
+    red500: '#EF4444',
 };

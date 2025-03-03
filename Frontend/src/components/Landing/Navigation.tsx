@@ -1,4 +1,3 @@
-// src/components/Landing/Navigation.tsx
 import React, { useState, useEffect } from 'react';
 import { Link as ScrollLink } from 'react-scroll';
 import { colours } from "../../utils/colours";
@@ -7,12 +6,14 @@ import { useNavigate } from 'react-router-dom';
 import { useActiveSectionContext } from '../../context/active-section-context';
 import { links } from '../../libs/data';
 import { SectionName } from '../../libs/data';
+import { authService } from '../../services/api'; // Import authService
 
 export const Navigation: React.FC = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const navigate = useNavigate();
     const { activeSection, setActiveSection, setTimeOfLastClick } = useActiveSectionContext();
+    const isLoggedIn = authService.isAuthenticated(); // Check if user is logged in
 
     // Handle scroll event to change navbar style
     useEffect(() => {
@@ -44,6 +45,127 @@ export const Navigation: React.FC = () => {
 
     const handleAuth = () => {
         navigate('/auth');
+    };
+
+    const handleLogout = () => {
+        authService.logout();
+        navigate('/');
+    };
+
+    // Render auth buttons based on login state
+    const renderAuthButtons = () => {
+        if (isLoggedIn) {
+            return (
+                <motion.button
+                    id="logout-btn"
+                    className="px-5 py-2.5 rounded-lg font-medium text-base transition-all duration-300 shadow-md hover:shadow-lg"
+                    style={{
+                        background: `linear-gradient(135deg, ${colours.red400}, ${colours.red500})`,
+                        color: colours.whiteText
+                    }}
+                    onClick={handleLogout}
+                    whileHover={{
+                        scale: 1.05,
+                        boxShadow: "0 10px 25px -5px rgba(239, 68, 68, 0.4)"
+                    }}
+                    whileTap={{ scale: 0.95 }}
+                >
+                    Log Out
+                </motion.button>
+            );
+        } else {
+            return (
+                <>
+                    <motion.a
+                        href="#"
+                        style={{ color: colours.gray600 }}
+                        className="font-medium hover:text-indigo-600 text-base transition-colors duration-300"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            handleAuth();
+                        }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        Sign In
+                    </motion.a>
+
+                    <motion.a
+                        href="#"
+                        className="px-5 py-2.5 rounded-lg font-medium text-base transition-all duration-300 shadow-md hover:shadow-lg"
+                        style={{
+                            background: colours.primaryGradient,
+                            color: colours.whiteText
+                        }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            navigate('/auth');
+                        }}
+                        whileHover={{
+                            scale: 1.05,
+                            boxShadow: "0 10px 25px -5px rgba(94, 66, 227, 0.4)"
+                        }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        Get Started
+                    </motion.a>
+                </>
+            );
+        }
+    };
+
+    // Render mobile auth buttons
+    const renderMobileAuthButtons = () => {
+        if (isLoggedIn) {
+            return (
+                <button
+                    className="py-2 px-4 rounded-md font-medium text-center w-full"
+                    style={{
+                        background: `linear-gradient(135deg, ${colours.red400}, ${colours.red500})`,
+                        color: colours.whiteText
+                    }}
+                    onClick={() => {
+                        setIsMenuOpen(false);
+                        handleLogout();
+                    }}
+                >
+                    Log Out
+                </button>
+            );
+        } else {
+            return (
+                <>
+                    <a
+                        href="#"
+                        className="py-2 px-4 rounded-md font-medium"
+                        style={{ color: colours.gray600 }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            setIsMenuOpen(false);
+                            handleAuth();
+                        }}
+                    >
+                        Sign In
+                    </a>
+
+                    <a
+                        href="#"
+                        className="py-2 px-4 rounded-md font-medium text-center"
+                        style={{
+                            background: colours.primaryGradient,
+                            color: colours.whiteText
+                        }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            setIsMenuOpen(false);
+                            handleRedirect('Get Started');
+                        }}
+                    >
+                        Get Started
+                    </a>
+                </>
+            );
+        }
     };
 
     return (
@@ -120,39 +242,7 @@ export const Navigation: React.FC = () => {
                         </ScrollLink>
                     ))}
 
-                    <motion.a
-                        href="#"
-                        style={{ color: colours.gray600 }}
-                        className="font-medium hover:text-indigo-600 text-base transition-colors duration-300"
-                        onClick={(e) => {
-                            e.preventDefault();
-                            handleAuth();
-                        }}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                    >
-                        Sign In
-                    </motion.a>
-
-                    <motion.a
-                        href="#"
-                        className="px-5 py-2.5 rounded-lg font-medium text-base transition-all duration-300 shadow-md hover:shadow-lg"
-                        style={{
-                            background: colours.primaryGradient,
-                            color: colours.whiteText
-                        }}
-                        onClick={(e) => {
-                            e.preventDefault();
-                            handleRedirect('Get Started');
-                        }}
-                        whileHover={{
-                            scale: 1.05,
-                            boxShadow: "0 10px 25px -5px rgba(94, 66, 227, 0.4)"
-                        }}
-                        whileTap={{ scale: 0.95 }}
-                    >
-                        Get Started
-                    </motion.a>
+                    {renderAuthButtons()}
                 </div>
 
                 {/* Mobile menu dropdown */}
@@ -185,34 +275,7 @@ export const Navigation: React.FC = () => {
                                     </ScrollLink>
                                 ))}
 
-                                <a
-                                    href="#"
-                                    className="py-2 px-4 rounded-md font-medium"
-                                    style={{ color: colours.gray600 }}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        setIsMenuOpen(false);
-                                        handleAuth();
-                                    }}
-                                >
-                                    Sign In
-                                </a>
-
-                                <a
-                                    href="#"
-                                    className="py-2 px-4 rounded-md font-medium text-center"
-                                    style={{
-                                        background: colours.primaryGradient,
-                                        color: colours.whiteText
-                                    }}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        setIsMenuOpen(false);
-                                        handleRedirect('Get Started');
-                                    }}
-                                >
-                                    Get Started
-                                </a>
+                                {renderMobileAuthButtons()}
                             </div>
                         </motion.div>
                     )}

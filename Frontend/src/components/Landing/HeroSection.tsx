@@ -10,7 +10,13 @@ export const HeroSection: React.FC = () => {
     const navigate = useNavigate();
 
     const handleRedirect = (buttonName: string) => {
-        navigate('/coming-soon', { state: { from: buttonName } });
+        if (buttonName === 'Sign in as Startup') {
+            navigate('/auth', { state: { preselectedRole: 'startup' } });
+        } else if (buttonName === 'Sign in as Investor') {
+            navigate('/auth', { state: { preselectedRole: 'investor' } });
+        } else {
+            navigate('/coming-soon', { state: { from: buttonName } });
+        }
     };
 
     const containerVariants = {

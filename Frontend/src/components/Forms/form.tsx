@@ -881,7 +881,7 @@ const VentureMatch = () => {
       setTimeout(() => {
         successMessage.remove();
         // Redirect to dashboard correctly based on user type
-        navigate(userType === 'startup' ? '/startup/dashboard' : '/investor/dashboard');
+        navigate('/dashboard');
       }, 3000);
     } catch (error) {
       console.error('Error submitting profile:', error);

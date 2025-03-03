@@ -20,6 +20,14 @@ const AuthPage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const from = location.state?.from || '/';
+    const preselectedRole = location.state?.preselectedRole as 'startup' | 'investor' | undefined;
+
+    useEffect(() => {
+        // If role is preselected from navigation state, set it automatically
+        if (preselectedRole) {
+            handleRoleSelection(preselectedRole);
+        }
+    }, []);
 
     useEffect(() => {
         // Update page title based on active view

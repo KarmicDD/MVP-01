@@ -72,9 +72,9 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, setSelectedRole, selecte
             setTimeout(() => {
                 // Redirect based on user role
                 if (response.user.role === 'startup') {
-                    navigate('/startup/dashboard');
+                    navigate('/dashboard');
                 } else if (response.user.role === 'investor') {
-                    navigate('/investor/dashboard');
+                    navigate('/dashboard');
                 }
             }, 800);
 

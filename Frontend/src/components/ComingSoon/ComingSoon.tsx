@@ -9,11 +9,15 @@ import { colours } from '../../utils/colours';
 interface ComingSoonProps {
     title?: string;
     subtitle?: string;
+    description?: string; // For backward compatibility
+    icon?: React.ReactNode; // New icon prop
 }
 
 export const ComingSoon: React.FC<ComingSoonProps> = ({
     title = "Coming Soon!",
-    subtitle = "We're working hard to bring you this feature."
+    subtitle = "We're working hard to bring you this feature.",
+    description,
+    icon // Optional icon
 }) => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -22,6 +26,9 @@ export const ComingSoon: React.FC<ComingSoonProps> = ({
     const [currentFeatureIndex, setCurrentFeatureIndex] = useState(0);
     const [showFact, setShowFact] = useState(true);
     const [darkMode, setDarkMode] = useState(true);
+
+    // Use description if provided (for backward compatibility)
+    const subtitleText = description || subtitle;
 
     // Get referring button from location state if available
     const referringButton = location.state?.from || 'this page';
@@ -127,11 +134,29 @@ export const ComingSoon: React.FC<ComingSoonProps> = ({
             >
                 {/* Header Section */}
                 <motion.div
-                    className="text-center py-8 px-4 relative"
+                    className="text-center py-8 px-4 relative items-center justify-center"
                     initial={{ scale: 0.8 }}
                     animate={{ scale: 1 }}
                     transition={{ duration: 0.5, delay: 0.3 }}
                 >
+                    {/* Display icon if provided */}
+                    {icon && (
+                        <motion.div
+                            className="mx-auto mb-6 flex justify-center items-center"
+                            initial={{ scale: 0, rotate: -180 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            transition={{ duration: 0.7, delay: 0.2 }}
+                        >
+                            <div className="w-24 h-24 rounded-full flex items-center justify-center" style={{
+                                background: darkMode ? 'rgba(79, 70, 229, 0.2)' : 'rgba(79, 70, 229, 0.1)'
+                            }}>
+                                <div className="w-16 h-16 text-indigo-600">
+                                    {icon}
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
                     <motion.h1
                         className="text-6xl font-extrabold mb-4 bg-gradient-to-r from-blue-600 via-purple-500 to-yellow-400 bg-clip-text text-transparent"
                         initial={{ y: -20 }}
@@ -146,7 +171,7 @@ export const ComingSoon: React.FC<ComingSoonProps> = ({
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.5, delay: 0.7 }}
                     >
-                        {subtitle}
+                        {subtitleText}
                     </motion.p>
                     <motion.div
                         className={`mt-6 text-base ${darkMode ? 'text-gray-400' : 'text-gray-500'} transition-colors duration-300`}
@@ -158,7 +183,7 @@ export const ComingSoon: React.FC<ComingSoonProps> = ({
                     </motion.div>
                 </motion.div>
 
-
+                {/* Rest of the component remains unchanged */}
                 {/* Upcoming Features Section */}
                 <motion.div
                     className={`my-8 p-8 ${sectionBg} rounded-xl transition-colors duration-300`}
