@@ -27,7 +27,7 @@ async function testPostgressConnection(): Promise<void> {
 dotenv.config();
 
 dotenv.config();
-const MONGO_URL = process.env.MONGO_URL || 'NO STRING LOADED';
+const MONGO_URL = process.env.MONGODB_URL || 'NO STRING LOADED';
 
 const connectMongoDBwithRetry = (): Promise<void> => {
   return new Promise((resolve, reject) => {

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
-import FormSubmission from '../models/mongoDB/FormSubmission';
+import FormSubmission from '../models/Forms/FormSubmission';
 
 // Get user profile
 const getUserProfile = async (req: Request, res: Response): Promise<void> => {

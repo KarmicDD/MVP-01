@@ -8,9 +8,12 @@ import dotenv from 'dotenv';
 // Routes import
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
+import profileRoutes from './routes/profileRoutes';
+import matchingRoutes from './routes/matchingRoutes';
 import { connectMongoDBwithRetry, testPostgressConnection } from './config/db';
+import { resolve } from 'path';
 
-dotenv.config();
+dotenv.config({ path: resolve(__dirname, '../.env') });
 
 const startServer = async () => {
     try {
@@ -27,15 +30,17 @@ const startServer = async () => {
         // Middleware (existing setup preserved)
         app.use(helmet());
         app.use(cors({
-            origin: process.env.FRONTEND_URL,
+            origin: [process.env.FRONTEND_URL || '', 'http://localhost:5173'],
             credentials: true
         }));
         app.use(express.json());
         app.use(cookieParser());
 
-        // Existing routes
+        // Existing routes  
         app.use('/api/auth', authRoutes);
         app.use('/api/users', userRoutes);
+        app.use('/api/profile', profileRoutes);
+        app.use('/api/matching', matchingRoutes);
 
         // Existing error handler
         app.use(errorHandler);
