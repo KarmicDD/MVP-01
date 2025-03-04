@@ -34,17 +34,24 @@ passport.use(new GoogleStrategy({
         }
 
         // User doesn't exist, create new user
-        // Note: Role will need to be set during the first login flow
         const newUserResult = await prisma.user.create({
             data: {
                 user_id: uuidv4(),
                 email: email,
                 oauth_provider: 'google',
                 oauth_id: profile.id,
+                role: 'pending', // Temporary role until user selects startup or investor
+                updated_at: new Date()
             },
         });
 
-        return done(null, newUserResult);
+        // Set flag to indicate this is a new user (for frontend redirection)
+        const userWithFlag = {
+            ...newUserResult,
+            isNewUser: true
+        };
+
+        return done(null, userWithFlag);
     } catch (error) {
         console.error('Google auth error:', error);
         return done(error);
@@ -84,14 +91,49 @@ passport.use(new LinkedInStrategy({
                 email: email,
                 oauth_provider: 'linkedin',
                 oauth_id: profile.id,
+                role: 'pending', // Temporary role until user selects startup or investor
+                updated_at: new Date()
             },
         });
 
-        return done(null, newUserResult);
+        // Set flag to indicate this is a new user (for frontend redirection)
+        const userWithFlag = {
+            ...newUserResult,
+            isNewUser: true
+        };
+
+        return done(null, userWithFlag);
     } catch (error) {
         console.error('LinkedIn auth error:', error);
         return done(error);
     }
 }));
+
+// Serialize and deserialize user
+passport.serializeUser((user: any, done) => {
+    done(null, user.user_id);
+});
+
+passport.deserializeUser(async (id: string, done) => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { user_id: id }
+        });
+
+        if (user) {
+            // Transform to match the User interface
+            const transformedUser = {
+                userId: user.user_id,
+                email: user.email,
+                role: user.role
+            };
+            done(null, transformedUser);
+        } else {
+            done(null, null);
+        }
+    } catch (error) {
+        done(error);
+    }
+});
 
 export default passport;

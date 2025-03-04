@@ -8,8 +8,8 @@ import {
     getInvestorProfile
 } from '../controllers/profileController';
 import { authenticateJWT, authorizeRole } from '../middleware/auth';
-import { StartupProfile } from '../models/Profile/StartupProfile';
-import { InvestorProfile } from '../models/mongoDB/InvestorProfile';
+import StartupProfileModel, { StartupProfile } from '../models/Profile/StartupProfile';
+import InvestorProfileModel, { InvestorProfile } from '../models/mongoDB/InvestorProfile';
 import { prisma } from '../config/db';
 
 const router = express.Router();
@@ -70,14 +70,14 @@ router.get('/check-profile', authenticateJWT, async (req, res): Promise<void> =>
 
         if (user?.role === 'startup') {
             // Check if startup profile exists and is complete
-            const startupProfile = await StartupProfile.findOne({ userId });
+            const startupProfile = await StartupProfileModel.findOne({ userId });
             profileComplete = !!startupProfile &&
                 !!startupProfile.companyName &&
                 !!startupProfile.industry &&
                 !!startupProfile.fundingStage;
         } else if (user?.role === 'investor') {
             // Check if investor profile exists and is complete
-            const investorProfile = await InvestorProfile.findOne({ userId });
+            const investorProfile = await InvestorProfileModel.findOne({ userId });
             profileComplete = !!investorProfile &&
                 investorProfile.industriesOfInterest.length > 0 &&
                 investorProfile.preferredStages.length > 0;
