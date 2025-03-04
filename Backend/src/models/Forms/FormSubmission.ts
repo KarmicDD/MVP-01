@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-interface FormSubmission extends Document {
+export interface FormSubmission extends Document {
     userId: string;
     formId: string;
     responses: Map<string, any>;
@@ -35,5 +35,5 @@ const FormSubmissionSchema: Schema = new Schema({
     }
 });
 
-const FormSubmission = mongoose.model<FormSubmission>('FormSubmission', FormSubmissionSchema);
-export default FormSubmission;
+const FormSubmissionModel = mongoose.model<FormSubmission>('FormSubmission', FormSubmissionSchema);
+export default FormSubmissionModel;

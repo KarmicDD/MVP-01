@@ -1,6 +1,7 @@
-// controllers/matchingController.ts
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
+import StartupProfileModel from '../models/Profile/StartupProfile';
+import InvestorProfileModel from '../models/mongoDB/InvestorProfile';
 
 // Find potential matches for startups
 export const findMatchesForStartup = async (req: Request, res: Response): Promise<void> => {
@@ -10,60 +11,62 @@ export const findMatchesForStartup = async (req: Request, res: Response): Promis
             return;
         }
 
-        // Get startup details
-        const startup = await prisma.startup.findUnique({
-            where: {
-                user_id: req.user.userId,
-            },
-        });
+        // Get startup details from MongoDB
+        const startup = await StartupProfileModel.findOne({ userId: req.user.userId });
 
         if (!startup) {
             res.status(404).json({ message: 'Startup profile not found' });
             return;
         }
 
-        // Find matching investors based on criteria
-        const matchingInvestors = await prisma.investor.findMany({
-            where: {
-                industries_of_interest: {
-                    has: startup.industry,
-                },
-                preferred_stages: {
-                    has: startup.funding_stage,
-                },
-            },
-            include: {
-                user: {
-                    select: {
-                        email: true,
-                    },
-                },
-            },
+        // Find matching investors in MongoDB
+        const matchingInvestors = await InvestorProfileModel.find({
+            industriesOfInterest: startup.industry,
+            preferredStages: startup.fundingStage
         });
+
+        // Get user emails from PostgreSQL in a single query
+        const investorIds = matchingInvestors.map(investor => investor.userId);
+        const userEmails = await prisma.user.findMany({
+            where: {
+                user_id: { in: investorIds }
+            },
+            select: {
+                user_id: true,
+                email: true
+            }
+        });
+
+        // Create a lookup table for emails
+        const emailLookup = userEmails.reduce((acc, user) => {
+            acc[user.user_id] = user.email;
+            return acc;
+        }, {} as Record<string, string>);
 
         // Calculate match score for each investor
         const scoredMatches = matchingInvestors.map(investor => {
             let score = 0;
 
             // Score based on industry match
-            if (investor.industries_of_interest.includes(startup.industry)) {
+            if (investor.industriesOfInterest.includes(startup.industry)) {
                 score += 30;
             }
 
             // Score based on funding stage match
-            if (investor.preferred_stages.includes(startup.funding_stage)) {
+            if (investor.preferredStages.includes(startup.fundingStage)) {
                 score += 30;
             }
 
             // Additional scoring logic can be added here
 
             return {
-                investorId: investor.user_id,
-                email: investor.user.email,
+                investorId: investor.userId,
+                email: emailLookup[investor.userId] || '',
                 matchScore: score,
-                industriesOfInterest: investor.industries_of_interest,
-                preferredStages: investor.preferred_stages,
-                ticketSize: investor.ticket_size,
+                companyName: investor.companyName,
+                industriesOfInterest: investor.industriesOfInterest,
+                preferredStages: investor.preferredStages,
+                ticketSize: investor.ticketSize
             };
         });
 
@@ -85,61 +88,64 @@ export const findMatchesForInvestor = async (req: Request, res: Response): Promi
             return;
         }
 
-        // Get investor details
-        const investor = await prisma.investor.findUnique({
-            where: {
-                user_id: req.user.userId,
-            },
-        });
+        // Get investor details from MongoDB
+        const investor = await InvestorProfileModel.findOne({ userId: req.user.userId });
 
         if (!investor) {
             res.status(404).json({ message: 'Investor profile not found' });
             return;
         }
 
-        // Find matching startups based on criteria
-        const matchingStartups = await prisma.startup.findMany({
-            where: {
-                industry: {
-                    in: investor.industries_of_interest,
-                },
-                funding_stage: {
-                    in: investor.preferred_stages,
-                },
-            },
-            include: {
-                user: {
-                    select: {
-                        email: true,
-                    },
-                },
-            },
+        // Find matching startups in MongoDB
+        const matchingStartups = await StartupProfileModel.find({
+            $or: [
+                { industry: { $in: investor.industriesOfInterest } },
+                { fundingStage: { $in: investor.preferredStages } }
+            ]
         });
+
+        // Get user emails from PostgreSQL in a single query
+        const startupIds = matchingStartups.map(startup => startup.userId);
+        const userEmails = await prisma.user.findMany({
+            where: {
+                user_id: { in: startupIds }
+            },
+            select: {
+                user_id: true,
+                email: true
+            }
+        });
+
+        // Create a lookup table for emails
+        const emailLookup = userEmails.reduce((acc, user) => {
+            acc[user.user_id] = user.email;
+            return acc;
+        }, {} as Record<string, string>);
 
         // Calculate match score for each startup
         const scoredMatches = matchingStartups.map(startup => {
             let score = 0;
 
             // Score based on industry match
-            if (investor.industries_of_interest.includes(startup.industry)) {
+            if (investor.industriesOfInterest.includes(startup.industry)) {
                 score += 30;
             }
 
             // Score based on funding stage match
-            if (investor.preferred_stages.includes(startup.funding_stage)) {
+            if (investor.preferredStages.includes(startup.fundingStage)) {
                 score += 30;
             }
 
             // Additional scoring logic can be added here
 
             return {
-                startupId: startup.user_id,
-                companyName: startup.company_name,
-                email: startup.user.email,
+                startupId: startup.userId,
+                companyName: startup.companyName,
+                email: emailLookup[startup.userId] || '',
                 matchScore: score,
                 industry: startup.industry,
-                fundingStage: startup.funding_stage,
-                location: startup.location,
+                fundingStage: startup.fundingStage,
+                location: startup.location
             };
         });
 

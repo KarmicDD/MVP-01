@@ -1,12 +1,13 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export interface InvestorProfileDocument extends Document {
-    userId: string;
+export interface InvestorProfile extends Document {
+    userId: string;            // Reference to PostgreSQL User.user_id
+    companyName: string;
     industriesOfInterest: string[];
     preferredStages: string[];
-    ticketSize: string;
-    investmentCriteria: string[];
-    pastInvestments: string;
+    ticketSize?: string;
+    investmentCriteria?: string[];
+    pastInvestments?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -18,23 +19,23 @@ const InvestorProfileSchema: Schema = new Schema({
         unique: true,
         index: true
     },
+    companyName: {
+        type: String,
+        required: true
+    },
     industriesOfInterest: {
         type: [String],
-        required: true
+        required: true,
+        index: true // Index for matching queries
     },
     preferredStages: {
         type: [String],
-        required: true
+        required: true,
+        index: true // Index for matching queries
     },
-    ticketSize: {
-        type: String
-    },
-    investmentCriteria: {
-        type: [String]
-    },
-    pastInvestments: {
-        type: String
-    },
+    ticketSize: String,
+    investmentCriteria: [String],
+    pastInvestments: String,
     createdAt: {
         type: Date,
         default: Date.now
@@ -45,5 +46,5 @@ const InvestorProfileSchema: Schema = new Schema({
     }
 });
 
-const InvestorProfile = mongoose.model<InvestorProfileDocument>('InvestorProfile', InvestorProfileSchema);
-export { InvestorProfile };
+const InvestorProfileModel = mongoose.model<InvestorProfile>('InvestorProfile', InvestorProfileSchema);
+export default InvestorProfileModel;

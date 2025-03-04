@@ -1,8 +1,7 @@
-// controllers/profileController.ts
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
-import { StartupProfile } from '../models/Profile/StartupProfile';
-import { InvestorProfile } from '../models/mongoDB/InvestorProfile';
+import StartupProfileModel from '../models/Profile/StartupProfile';
+import InvestorProfileModel from '../models/mongoDB/InvestorProfile';
 
 // Get user type (for initial form display)
 export const getUserType = async (req: Request, res: Response): Promise<void> => {
@@ -55,34 +54,20 @@ export const createUpdateStartupProfile = async (req: Request, res: Response): P
             return;
         }
 
-        // Store in PostgreSQL via Prisma
-        const startup = await prisma.startup.upsert({
-            where: {
-                user_id: req.user.userId,
-            },
-            update: {
-                company_name: companyName,
-                industry,
-                funding_stage: fundingStage,
-                employee_count: employeeCount,
-                location,
-                pitch,
-            },
-            create: {
-                user_id: req.user.userId,
-                company_name: companyName,
-                industry,
-                funding_stage: fundingStage,
-                employee_count: employeeCount,
-                location,
-                pitch,
-            },
+        // Update user role in PostgreSQL if needed
+        await prisma.user.update({
+            where: { user_id: req.user.userId },
+            data: {
+                role: 'startup',
+                updated_at: new Date()
+            }
         });
 
-        // Store in MongoDB for more flexible querying and analysis
-        await StartupProfile.findOneAndUpdate(
+        // Store profile in MongoDB
+        const profile = await StartupProfileModel.findOneAndUpdate(
             { userId: req.user.userId },
             {
+                userId: req.user.userId,
                 companyName,
                 industry,
                 fundingStage,
@@ -96,7 +81,7 @@ export const createUpdateStartupProfile = async (req: Request, res: Response): P
 
         res.status(200).json({
             message: 'Startup profile saved successfully',
-            profile: startup
+            profile
         });
     } catch (error) {
         console.error('Create/update startup profile error:', error);
@@ -113,8 +98,8 @@ export const createUpdateInvestorProfile = async (req: Request, res: Response): 
         }
 
         const {
-            industriesOfInterest,
             companyName,
+            industriesOfInterest,
             preferredStages,
             ticketSize,
             investmentCriteria,
@@ -122,38 +107,26 @@ export const createUpdateInvestorProfile = async (req: Request, res: Response): 
         } = req.body;
 
         // Validate required fields
-        if (!industriesOfInterest?.length || !preferredStages?.length) {
+        if (!companyName || !industriesOfInterest?.length || !preferredStages?.length) {
             res.status(400).json({ message: 'Missing required fields' });
             return;
         }
 
-        // Store in PostgreSQL via Prisma
-        const investor = await prisma.investor.upsert({
-            where: {
-                user_id: req.user.userId,
-            },
-            update: {
-                industries_of_interest: industriesOfInterest,
-                preferred_stages: preferredStages,
-                ticket_size: ticketSize,
-                investment_criteria: investmentCriteria || [],
-                past_investments: pastInvestments,
-            },
-            create: {
-                user_id: req.user.userId,
-                company_name: companyName,
-                industries_of_interest: industriesOfInterest,
-                preferred_stages: preferredStages,
-                ticket_size: ticketSize,
-                investment_criteria: investmentCriteria || [],
-                past_investments: pastInvestments,
-            },
+        // Update user role in PostgreSQL if needed
+        await prisma.user.update({
+            where: { user_id: req.user.userId },
+            data: {
+                role: 'investor',
+                updated_at: new Date()
+            }
         });
 
-        // Store in MongoDB for more flexible querying and analysis
-        await InvestorProfile.findOneAndUpdate(
+        // Store profile in MongoDB
+        const profile = await InvestorProfileModel.findOneAndUpdate(
             { userId: req.user.userId },
             {
+                userId: req.user.userId,
+                companyName,
                 industriesOfInterest,
                 preferredStages,
                 ticketSize,
@@ -166,7 +139,7 @@ export const createUpdateInvestorProfile = async (req: Request, res: Response): 
 
         res.status(200).json({
             message: 'Investor profile saved successfully',
-            profile: investor
+            profile
         });
     } catch (error) {
         console.error('Create/update investor profile error:', error);
@@ -182,11 +155,7 @@ export const getStartupProfile = async (req: Request, res: Response): Promise<vo
             return;
         }
 
-        const profile = await prisma.startup.findUnique({
-            where: {
-                user_id: req.user.userId,
-            },
-        });
+        const profile = await StartupProfileModel.findOne({ userId: req.user.userId });
 
         if (!profile) {
             res.status(404).json({ message: 'Profile not found' });
@@ -208,11 +177,7 @@ export const getInvestorProfile = async (req: Request, res: Response): Promise<v
             return;
         }
 
-        const profile = await prisma.investor.findUnique({
-            where: {
-                user_id: req.user.userId,
-            },
-        });
+        const profile = await InvestorProfileModel.findOne({ userId: req.user.userId });
 
         if (!profile) {
             res.status(404).json({ message: 'Profile not found' });

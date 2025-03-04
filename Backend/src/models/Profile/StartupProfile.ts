@@ -1,14 +1,13 @@
-// models/mongoDB/StartupProfile.ts
 import mongoose, { Schema, Document } from 'mongoose';
 
-export interface StartupProfileDocument extends Document {
-    userId: string;
+export interface StartupProfile extends Document {
+    userId: string;            // Reference to PostgreSQL User.user_id
     companyName: string;
     industry: string;
     fundingStage: string;
-    employeeCount: string;
-    location: string;
-    pitch: string;
+    employeeCount?: string;
+    location?: string;
+    pitch?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -26,21 +25,17 @@ const StartupProfileSchema: Schema = new Schema({
     },
     industry: {
         type: String,
-        required: true
+        required: true,
+        index: true // Index for matching queries
     },
     fundingStage: {
         type: String,
-        required: true
+        required: true,
+        index: true // Index for matching queries
     },
-    employeeCount: {
-        type: String
-    },
-    location: {
-        type: String
-    },
-    pitch: {
-        type: String
-    },
+    employeeCount: String,
+    location: String,
+    pitch: String,
     createdAt: {
         type: Date,
         default: Date.now
@@ -51,5 +46,5 @@ const StartupProfileSchema: Schema = new Schema({
     }
 });
 
-const StartupProfile = mongoose.model<StartupProfileDocument>('StartupProfile', StartupProfileSchema);
-export { StartupProfile };
+const StartupProfileModel = mongoose.model<StartupProfile>('StartupProfile', StartupProfileSchema);
+export default StartupProfileModel;
