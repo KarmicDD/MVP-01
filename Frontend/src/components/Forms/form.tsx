@@ -62,6 +62,29 @@ const VentureMatch = () => {
         setUserData(userData);
         setIsAuthenticated(true);
 
+        // Check if profile is complete
+        try {
+          const profileCheckResponse = await api.get(`${API_BASE_URL}/api/profile/check-profile`, {
+            withCredentials: true
+          });
+
+          if (profileCheckResponse.data.profileComplete === true) {
+            // Profile is complete, redirect to dashboard
+            console.log("Profile is complete, redirecting to dashboard");
+            // alert the user that the profile is complete
+
+
+            // fininsh this and replace the alert with a toast notification
+
+            alert("Profile is complete, redirecting to dashboard");
+            navigate('/dashboard');
+            return; // Exit early to prevent further processing
+          }
+        } catch (profileCheckError) {
+          console.error("Error checking profile completion:", profileCheckError);
+          // Continue with form if profile check fails
+        }
+
         // Check if user already has a role defined
         if (userData.role) {
           const existingUserType = userData.role === 'startup' ? 'startup' : 'investor';
@@ -106,7 +129,7 @@ const VentureMatch = () => {
     };
 
     checkAuth();
-  }, []);
+  }, [navigate]);
 
   // Transition animations
   const pageVariants = {

@@ -91,9 +91,9 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
             setTimeout(() => {
                 // Redirect based on user role
                 if (response.user.role === 'startup') {
-                    navigate('/startup/dashboard');
+                    navigate('/dashboard');
                 } else if (response.user.role === 'investor') {
-                    navigate('/investor/dashboard');
+                    navigate('/dashboard');
                 }
             }, 1000);
         } catch (err: any) {
@@ -162,8 +162,8 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
                             type="text"
                             placeholder="John Doe"
                             className={`w-full px-10 py-3 border ${isNameTouched && !isNameValid
-                                    ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-500'
-                                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                                ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-500'
+                                : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                                 } rounded-lg focus:outline-none focus:ring-1 transition-colors text-gray-800`}
                             value={name}
                             onChange={(e) => setName(e.target.value)}
@@ -205,8 +205,8 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
                             type="email"
                             placeholder="your@email.com"
                             className={`w-full px-10 py-3 border ${isEmailTouched && !isEmailValid
-                                    ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-500'
-                                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                                ? 'border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-500'
+                                : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                                 } rounded-lg focus:outline-none focus:ring-1 transition-colors text-gray-800`}
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}

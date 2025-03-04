@@ -51,6 +51,7 @@ model Startup {
 model Investor {
   id                     Int      @id @default(autoincrement())
   user_id                String   @unique
+  company_name           String // Added default value
   industries_of_interest String[]
   preferred_stages       String[]
   ticket_size            String?

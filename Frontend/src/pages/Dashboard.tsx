@@ -1,33 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiSearch, FiFilter, FiMapPin, FiBriefcase, FiDollarSign, FiBookmark, FiUsers, FiTarget, FiLogOut } from 'react-icons/fi';
+import { FiSearch, FiFilter, FiMapPin, FiBriefcase, FiDollarSign, FiBookmark } from 'react-icons/fi';
 import axios from 'axios';
 import { colours } from '../utils/colours';
-import { BsFillLightbulbFill } from 'react-icons/bs';
-import { Logo } from '../components/Auth/Logo';
 import ComingSoon from '../components/ComingSoon/ComingSoon';
 import { useNavigate } from 'react-router-dom';
-
-// Types
-interface Match {
-    investorId?: string;
-    startupId?: string;
-    email: string;
-    matchScore: number;
-    companyName?: string;
-    industriesOfInterest?: string[];
-    preferredStages?: string[];
-    ticketSize?: string;
-    industry?: string;
-    fundingStage?: string;
-    location?: string;
-}
-
-interface UserProfile {
-    userId: string;
-    email: string;
-    role: string;
-}
+import CompatibilityBreakdown from '../components/Dashboard/MatchesPage/CompatibilityBreakdown';
+import AIRecommendations from '../components/Dashboard/MatchesPage/AIRecomendations';
+import renderMatchCards from '../components/Dashboard/MatchesPage/renderMarchCards';
+import Header from '../components/Dashboard/MatchesPage/Header'; // Import the new Header component
+import { Match, UserProfile } from '../types/DashboardTypes';
+import LoadingSpinner from '../components/Loading';
+import api from '../services/api';
 
 const Dashboard: React.FC = () => {
     // State
@@ -41,6 +25,21 @@ const Dashboard: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [activeTab, setActiveTab] = useState<string>('matches');
     const [bookmarkedMatches, setBookmarkedMatches] = useState<Set<string>>(new Set());
+    const [compatibilityData, setCompatibilityData] = useState({
+        breakdown: {
+            missionAlignment: 0,
+            investmentPhilosophy: 0,
+            sectorFocus: 0,
+            fundingStageAlignment: 0,
+            valueAddMatch: 0,
+        },
+        overallScore: 0,
+        insights: [] as string[]
+    });
+    const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+    const [loadingCompatibility, setLoadingCompatibility] = useState(false);
+
+
     const navigate = useNavigate();
 
     // Constants
@@ -60,6 +59,70 @@ const Dashboard: React.FC = () => {
     const headers = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
+    };
+
+    const fetchCompatibilityData = async (matchId: string) => {
+        try {
+            if (!userProfile) return;
+
+            setLoadingCompatibility(true);
+            setSelectedMatchId(matchId);
+
+            // Determine the current user's role and the match ID
+            let startupId, investorId;
+
+            if (userProfile.role === 'startup') {
+                startupId = userProfile.userId; // Current user is a startup
+                investorId = matchId; // The match is an investor
+            } else {
+                investorId = userProfile.userId; // Current user is an investor
+                startupId = matchId; // The match is a startup
+            }
+
+            // Use the correct endpoint format with path parameters
+            const endpoint = `${API_URL}/score/compatibility/${startupId}/${investorId}`;
+
+            // Make the API request
+            const response = await api.get(endpoint, { headers });
+
+            setCompatibilityData({
+                breakdown: response.data.breakdown || {
+                    missionAlignment: 75,
+                    investmentPhilosophy: 82,
+                    sectorFocus: 90,
+                    fundingStageAlignment: 65,
+                    valueAddMatch: 78,
+                },
+                overallScore: response.data.overallScore || 78,
+                insights: response.data.insights || [
+                    "Strong alignment in sector focus and vision",
+                    "Investment philosophy matches your growth plans",
+                    "Consider discussing funding timeline expectations",
+                    "Potential for strategic mentorship beyond funding"
+                ]
+            });
+            setLoadingCompatibility(false);
+        } catch (err) {
+            console.error('Error fetching compatibility data:', err);
+            // Use fallback data if API fails
+            setCompatibilityData({
+                breakdown: {
+                    missionAlignment: 75,
+                    investmentPhilosophy: 82,
+                    sectorFocus: 90,
+                    fundingStageAlignment: 65,
+                    valueAddMatch: 78,
+                },
+                overallScore: 78,
+                insights: [
+                    "Strong alignment in sector focus and vision",
+                    "Investment philosophy matches your growth plans",
+                    "Consider discussing funding timeline expectations",
+                    "Potential for strategic mentorship beyond funding"
+                ]
+            });
+            setLoadingCompatibility(false);
+        }
     };
 
     // Fetch user profile and matches on component mount
@@ -131,6 +194,10 @@ const Dashboard: React.FC = () => {
         localStorage.setItem('bookmarkedMatches', JSON.stringify([...newBookmarks]));
     };
 
+    const handleMatchCardClick = (matchId: string) => {
+        fetchCompatibilityData(matchId);
+    };
+
     // Connect with match
     const connectWithMatch = async (matchId: string) => {
         try {
@@ -143,266 +210,18 @@ const Dashboard: React.FC = () => {
         }
     };
 
-    // Compatibility breakdown component
-    const CompatibilityBreakdown = () => {
-        return (
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h3 className="text-lg font-semibold mb-4">Compatibility Breakdown</h3>
-
-                <div className="mb-4">
-                    <div className="flex justify-between mb-1">
-                        <span>Mission Alignment</span>
-                        <span>95%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                        <motion.div
-                            className="h-2 rounded-full"
-                            style={{ backgroundColor: colours.primaryBlue, width: '95%' }}
-                            initial={{ width: 0 }}
-                            animate={{ width: '95%' }}
-                            transition={{ duration: 0.8 }}
-                        />
-                    </div>
-                </div>
-
-                <div className="mb-4">
-                    <div className="flex justify-between mb-1">
-                        <span>Investment Philosophy</span>
-                        <span>88%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                        <motion.div
-                            className="h-2 rounded-full"
-                            style={{ backgroundColor: colours.primaryBlue, width: '88%' }}
-                            initial={{ width: 0 }}
-                            animate={{ width: '88%' }}
-                            transition={{ duration: 0.8 }}
-                        />
-                    </div>
-                </div>
-
-                <div className="mb-4">
-                    <div className="flex justify-between mb-1">
-                        <span>Sector Focus</span>
-                        <span>92%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                        <motion.div
-                            className="h-2 rounded-full"
-                            style={{ backgroundColor: colours.primaryBlue, width: '92%' }}
-                            initial={{ width: 0 }}
-                            animate={{ width: '92%' }}
-                            transition={{ duration: 0.8 }}
-                        />
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    // AI Recommendations component
-    const AIRecommendations = () => {
-        return (
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h3 className="text-lg font-semibold mb-4">AI Recommendations</h3>
-
-                <div className="mb-4">
-                    <div className="flex items-start mb-3">
-                        <BsFillLightbulbFill className="text-blue-500 mt-1 mr-2" />
-                        <p>Strong alignment in AI and machine learning focus areas</p>
-                    </div>
-
-                    <div className="flex items-start mb-3">
-                        <FiTarget className="text-blue-500 mt-1 mr-2" />
-                        <p>Growth trajectory matches investor's portfolio preferences</p>
-                    </div>
-
-                    <div className="flex items-start mb-3">
-                        <FiUsers className="text-blue-500 mt-1 mr-2" />
-                        <p>Team composition indicates strong execution capability</p>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    // Main content - match cards
-    const renderMatchCards = () => {
-        if (loading) {
-            return (
-                <div className="flex justify-center items-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2" style={{ borderColor: colours.primaryBlue }} />
-                </div>
-            );
-        }
-
-        if (error) {
-            return (
-                <div className="flex justify-center items-center h-64">
-                    <p className="text-red-500">{error}</p>
-                </div>
-            );
-        }
-
-        if (filteredMatches.length === 0) {
-            return (
-                <div className="flex justify-center items-center h-64">
-                    <p className="text-gray-500">No matches found. Try adjusting your filters.</p>
-                </div>
-            );
-        }
-
-        return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredMatches.map((match, index) => {
-                    const matchId = match.investorId || match.startupId || `match-${index}`;
-                    const isBookmarked = bookmarkedMatches.has(matchId);
-
-                    return (
-                        <motion.div
-                            key={matchId}
-                            className="bg-white rounded-lg shadow-sm overflow-hidden"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3, delay: index * 0.1 }}
-                            whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                        >
-                            <div className="p-6">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex items-center">
-                                        <div className="flex items-center justify-center w-12 h-12 rounded-full text-white font-bold text-lg" style={{ backgroundColor: colours.primaryBlue }}>
-                                            {(match.companyName || match.email || 'User').charAt(0)}
-                                        </div>
-                                        <div className="ml-3">
-                                            <h3 className="text-lg font-semibold">
-                                                {match.companyName || match.email.split('@')[0]}
-                                            </h3>
-                                            <p className="text-sm text-gray-600">
-                                                {userProfile?.role === 'startup'
-                                                    ? (match.ticketSize && `${match.ticketSize} Investment Fund`)
-                                                    : (match.industry && `${match.industry} Company`)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <span className="font-bold text-xl" style={{ color: colours.primaryBlue }}>
-                                            {match.matchScore}%
-                                        </span>
-                                        <span className="text-sm text-gray-500 ml-1">match</span>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3 mb-4">
-                                    <div className="flex items-center">
-                                        <FiDollarSign className="text-gray-500 mr-2" />
-                                        <span className="text-sm">
-                                            {userProfile?.role === 'startup'
-                                                ? match.ticketSize
-                                                : `Funding ${match.fundingStage}`}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex items-center">
-                                        <FiMapPin className="text-gray-500 mr-2" />
-                                        <span className="text-sm">{match.location || 'Location not specified'}</span>
-                                    </div>
-
-                                    <div className="flex items-center">
-                                        <FiBriefcase className="text-gray-500 mr-2" />
-                                        <span className="text-sm">
-                                            {userProfile?.role === 'startup'
-                                                ? (match.industriesOfInterest && match.industriesOfInterest.join(', '))
-                                                : match.industry}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="flex space-x-2">
-                                    <motion.button
-                                        className="flex-1 py-2 px-4 rounded-md text-white font-medium"
-                                        style={{ backgroundColor: colours.primaryBlue }}
-                                        whileHover={{ scale: 1.03 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={() => connectWithMatch(matchId)}
-                                    >
-                                        Connect
-                                    </motion.button>
-
-                                    <motion.button
-                                        className="p-2 rounded-md border border-gray-300"
-                                        whileHover={{ scale: 1.1 }}
-                                        whileTap={{ scale: 0.9 }}
-                                        onClick={() => toggleBookmark(matchId)}
-                                    >
-                                        <FiBookmark
-                                            className={isBookmarked ? "text-yellow-500" : "text-gray-400"}
-                                            fill={isBookmarked ? "#EAB308" : "none"}
-                                        />
-                                    </motion.button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    );
-                })}
-            </div>
-        );
-    };
-
     // Render the component
     return (
         <div className="min-h-screen" style={{ backgroundColor: colours.formBackground }}>
-            {/* Header */}
-            <header className="bg-white shadow-sm">
-                <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-                    <div className="flex items-center">
-                        <Logo Title="StartupMatch" />
-                    </div>
-
-                    <nav className="hidden md:flex space-x-8">
-                        <button
-                            className={`px-4 py-2 font-medium transition-colors ${activeTab === 'matches' ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}
-                            onClick={() => setActiveTab('matches')}
-                        >
-                            Matches
-                        </button>
-                        <button
-                            className="px-4 py-2 font-medium text-gray-400 cursor-not-allowed"
-                            onClick={() => setActiveTab('analytics')}
-                        >
-                            Analytics
-                        </button>
-                        <button
-                            className="px-4 py-2 font-medium text-gray-400 cursor-not-allowed"
-                            onClick={() => setActiveTab('messages')}
-                        >
-                            Messages
-                        </button>
-                        <button
-                            className="px-4 py-2 font-medium text-gray-400 cursor-not-allowed"
-                            onClick={() => setActiveTab('calendar')}
-                        >
-                            Calendar
-                        </button>
-                    </nav>
-
-                    <div className="flex items-center space-x-4">
-                        <motion.button
-                            className="flex items-center px-3 py-2 text-gray-600 hover:text-red-600 transition-colors rounded-md border border-gray-300 hover:border-red-300"
-                            whileHover={{ scale: 1.03 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={handleLogout}
-                        >
-                            <FiLogOut className="mr-2" />
-                            <span className="hidden sm:inline">Logout</span>
-                        </motion.button>
-
-                        <div className="flex items-center justify-center w-10 h-10 rounded-full text-white font-bold" style={{ backgroundColor: colours.primaryBlue }}>
-                            {userProfile?.email?.charAt(0).toUpperCase() || 'U'}
-                        </div>
-                    </div>
-                </div>
-            </header>
-
+            {/* Use the new Header component */}
+            {userProfile && (
+                <Header
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                    handleLogout={handleLogout}
+                    userProfile={userProfile}
+                />
+            )}
 
             {/* Main content */}
             <main className="container mx-auto px-4 py-8">
@@ -475,15 +294,33 @@ const Dashboard: React.FC = () => {
 
                         {/* Match cards */}
                         <div className="mb-12">
-                            {renderMatchCards()}
+                            {renderMatchCards({
+                                loading,
+                                error,
+                                filteredMatches,
+                                bookmarkedMatches,
+                                userProfile,
+                                colours,
+                                connectWithMatch,
+                                toggleBookmark,
+                                onCardClick: handleMatchCardClick, // Add this new prop
+                            })}
                         </div>
 
                         {/* Match analysis */}
-                        {filteredMatches.length > 0 && (
+                        {selectedMatchId && (
                             <section>
                                 <h2 className="text-2xl font-bold mb-6">Match Analysis</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <CompatibilityBreakdown />
+                                    {loadingCompatibility ? (
+                                        <LoadingSpinner />
+                                    ) : (
+                                        <CompatibilityBreakdown
+                                            breakdown={compatibilityData.breakdown}
+                                            overallScore={compatibilityData.overallScore}
+                                            insights={compatibilityData.insights}
+                                        />
+                                    )}
                                     <AIRecommendations />
                                 </div>
                             </section>

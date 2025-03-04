@@ -114,6 +114,7 @@ export const createUpdateInvestorProfile = async (req: Request, res: Response): 
 
         const {
             industriesOfInterest,
+            companyName,
             preferredStages,
             ticketSize,
             investmentCriteria,
@@ -140,6 +141,7 @@ export const createUpdateInvestorProfile = async (req: Request, res: Response): 
             },
             create: {
                 user_id: req.user.userId,
+                company_name: companyName,
                 industries_of_interest: industriesOfInterest,
                 preferred_stages: preferredStages,
                 ticket_size: ticketSize,

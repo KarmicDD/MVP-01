@@ -10,6 +10,8 @@ import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
 import profileRoutes from './routes/profileRoutes';
 import matchingRoutes from './routes/matchingRoutes';
+import compatiblityRoutes from './routes/compatibilityControllerRoutes';
+
 import { connectMongoDBwithRetry, testPostgressConnection } from './config/db';
 import { resolve } from 'path';
 
@@ -41,6 +43,7 @@ const startServer = async () => {
         app.use('/api/users', userRoutes);
         app.use('/api/profile', profileRoutes);
         app.use('/api/matching', matchingRoutes);
+        app.use('/api/score', compatiblityRoutes);
 
         // Existing error handler
         app.use(errorHandler);
