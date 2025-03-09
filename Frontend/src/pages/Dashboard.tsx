@@ -160,7 +160,7 @@ const Dashboard: React.FC = () => {
         };
 
         fetchUserData();
-    },);
+    }, []);
 
     // Filter matches based on search query and filters
     const filteredMatches = matches.filter(match => {

@@ -27,7 +27,7 @@ const AuthPage: React.FC = () => {
         if (preselectedRole) {
             handleRoleSelection(preselectedRole);
         }
-    },);
+    }, []);
 
     useEffect(() => {
         // Update page title based on active view
