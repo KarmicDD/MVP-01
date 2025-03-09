@@ -48,7 +48,7 @@ const OAuthCallback: React.FC = () => {
                 } else {
                     throw new Error('No authentication token received');
                 }
-            } catch (err: any) {
+            } catch (err: Error | unknown) {
                 console.error('OAuth callback error:', err);
                 setError('Authentication failed. Please try again.');
                 setLoading(false);
@@ -71,7 +71,7 @@ const OAuthCallback: React.FC = () => {
             } else {
                 navigate('/investor/dashboard');
             }
-        } catch (err: any) {
+        } catch (err: Error | unknown) {
             console.error('Role selection error:', err);
             setError('Failed to update role. Please try again.');
             setLoading(false);

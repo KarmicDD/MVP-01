@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { FiDollarSign, FiMapPin, FiBriefcase, FiBookmark } from 'react-icons/fi';
-import { RenderMatchCardsProps } from '../../../types/DashboardTypes';
+import { RenderMatchCardsProps } from '../../../types/Dashboard.types';
 
 
 

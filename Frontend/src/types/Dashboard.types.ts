@@ -40,7 +40,7 @@ export interface StartupProfile {
     location: string;
     pitch: string;
     // Additional properties that might be used in the application
-    [key: string]: any;
+    [key: string]: string | number | string[] | unknown;
 }
 
 // Investor Profile Interface based on API response
@@ -53,6 +53,6 @@ export interface InvestorProfile {
     investment_criteria: string[];
     past_investments: string;
     // Additional properties that might be used in the application
-    [key: string]: any;
+    [key: string]: string | number | string[] | unknown;
 }
 

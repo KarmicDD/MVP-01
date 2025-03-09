@@ -1,6 +1,7 @@
+// ./src/pages/Dashboard.tsx
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiSearch, FiFilter, FiMapPin, FiBriefcase, FiDollarSign, FiBookmark } from 'react-icons/fi';
+import { FiSearch, FiFilter, } from 'react-icons/fi';
 import axios from 'axios';
 import { colours } from '../utils/colours';
 import ComingSoon from '../components/ComingSoon/ComingSoon';
@@ -9,9 +10,10 @@ import CompatibilityBreakdown from '../components/Dashboard/MatchesPage/Compatib
 import AIRecommendations from '../components/Dashboard/MatchesPage/AIRecomendations';
 import renderMatchCards from '../components/Dashboard/MatchesPage/renderMarchCards';
 import Header from '../components/Dashboard/MatchesPage/Header'; // Import the new Header component
-import { Match, UserProfile } from '../types/DashboardTypes';
+import { Match, UserProfile } from '../types/Dashboard.types';
 import LoadingSpinner from '../components/Loading';
 import api from '../services/api';
+import BeliefSystemAnalytics from '../components/Dashboard/Analytics/BeliefSystemAnalytics';
 
 const Dashboard: React.FC = () => {
     // State
@@ -158,7 +160,7 @@ const Dashboard: React.FC = () => {
         };
 
         fetchUserData();
-    }, []);
+    },);
 
     // Filter matches based on search query and filters
     const filteredMatches = matches.filter(match => {
@@ -328,7 +330,60 @@ const Dashboard: React.FC = () => {
                     </>
                 )}
 
-                {activeTab !== 'matches' && (
+                {activeTab === 'analytics' && (
+                    <div className="mt-6">
+                        <h2 className="text-2xl font-bold mb-6">Analytics & Insights</h2>
+
+                        {/* Tabs for different analytics */}
+                        <div className="mb-6">
+                            <div className="border-b border-gray-200">
+                                <nav className="-mb-px flex space-x-8">
+                                    <button className="border-blue-500 text-blue-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                                        Belief System Analysis
+                                    </button>
+                                    <button className="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                                        Performance Metrics
+                                    </button>
+                                    <button className="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                                        Match Trends
+                                    </button>
+                                </nav>
+                            </div>
+                        </div>
+
+                        {/* Match selection for analytics */}
+                        <div className="mb-6">
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                                <div className="flex items-start">
+                                    <div className="flex-shrink-0">
+                                        <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <div className="ml-3">
+                                        <h3 className="text-sm font-medium text-blue-800">Analysis Instructions</h3>
+                                        <div className="mt-2 text-sm text-blue-700">
+                                            <p>Select a match from the Matches tab to view belief system analysis and compatibility insights.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Belief System Analytics */}
+                            {userProfile && (
+                                <BeliefSystemAnalytics
+                                    userProfile={{
+                                        ...userProfile,
+                                        role: userProfile.role as "startup" | "investor"
+                                    }}
+                                    selectedMatchId={selectedMatchId}
+                                />
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab !== 'matches' && activeTab !== 'analytics' && (
                     <div className="mt-8">
                         <ComingSoon
                             title={`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Coming Soon!`}

@@ -22,9 +22,7 @@ export const CTAsection: React.FC = () => {
     // Combine refs
     const combinedRef = (el: HTMLElement | null) => {
         if (el) {
-            // @ts-ignore - This is a valid way to set refs manually
             sectionRef(el);
-            // @ts-ignore
             animationRef(el);
         }
     };

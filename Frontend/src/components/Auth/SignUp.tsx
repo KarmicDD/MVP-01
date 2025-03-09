@@ -96,8 +96,9 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
                     navigate('/dashboard');
                 }
             }, 1000);
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'Registration failed. Please try again.');
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Registration failed. Please try again.';
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }

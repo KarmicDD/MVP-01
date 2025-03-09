@@ -3,10 +3,10 @@ import { Link as ScrollLink } from 'react-scroll';
 import { colours } from "../../utils/colours";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { useActiveSectionContext } from '../../context/active-section-context';
-import { links } from '../../libs/data';
-import { SectionName } from '../../libs/data';
+import { links } from '../../data/data';
+import { SectionName } from '../../data/data';
 import { authService } from '../../services/api'; // Import authService
+import { useActiveSectionContext } from '../../context/active-section-hooks';
 
 export const Navigation: React.FC = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);

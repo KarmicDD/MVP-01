@@ -9,6 +9,9 @@ import ComingSoon from './components/ComingSoon/ComingSoon';
 import VentureMatch from './components/Forms/form';
 import LoadingSpinner from './components/Loading';
 import Dashboard from './pages/Dashboard';
+import QuestionnairePage from './pages/QuestionnairePage';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Protected route component with profile check
 const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) => {
@@ -57,6 +60,8 @@ const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode;
 // Forms route with auth check
 const FormsRoute = () => {
   if (!authService.isAuthenticated()) {
+    // logout
+    authService.logout();
     return <Navigate to="/auth" replace />;
   }
 
@@ -139,6 +144,8 @@ function App() {
 
           {/* Open Routes */}
           <Route path="/coming-soon" element={<ComingSoon />} /> {/* Anyone can access */}
+          <Route path="/loading" element={<LoadingSpinner />} /> {/* Anyone can access */}
+          <Route path="/question" element={<QuestionnairePage />} /> {/* Anyone can access */}
 
           {/* Protected Routes */}
           <Route
@@ -153,6 +160,8 @@ function App() {
           {/* Redirect all unknown routes to Landing */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        {/* Add ToastContainer for notifications */}
+        <ToastContainer position="bottom-right" />
       </Router>
     </ActiveSectionContextProvider>
   );

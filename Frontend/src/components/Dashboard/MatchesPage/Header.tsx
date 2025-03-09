@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserProfile, StartupProfile, InvestorProfile } from '../../../types/DashboardTypes';
+import { UserProfile, StartupProfile, InvestorProfile } from '../../../types/Dashboard.types';
 import { colours } from '../../../utils/colours';
 import { FiUser, FiBell, FiChevronDown, FiSettings, FiLogOut, FiGrid, FiBarChart2, FiMessageCircle, FiCalendar } from 'react-icons/fi';
 import { Logo } from '../../Auth/Logo';
@@ -15,6 +15,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, userProfile }) => {
     const role = userProfile?.role || 'startup';
+    const [, setProfileCompleteFromAPI] = useState<boolean | null>(null);
     const [scrolled, setScrolled] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [notifications, setNotifications] = useState<{ id: number, text: string, read: boolean }[]>([
@@ -24,7 +25,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
     const [showNotifications, setShowNotifications] = useState(false);
     const unreadCount = notifications.filter(n => !n.read).length;
     const [profileData, setProfileData] = useState<StartupProfile | InvestorProfile | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [, setLoading] = useState(false);
 
     // API constants
     const API_URL = 'http://localhost:5000/api';
@@ -44,6 +45,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
 
             setLoading(true);
             try {
+                // 1. Fetch the profile data as before
                 const endpoint = role === 'startup' ? '/profile/startup' : '/profile/investor';
                 const response = await axios.get(`${API_URL}${endpoint}`, {
                     headers: {
@@ -53,7 +55,36 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
 
                 setProfileData(response.data.profile);
 
-                // Update notifications based on profile completeness
+                // 2. Call the new check-profile endpoint
+                const profileCheckResponse = await axios.get(`${API_URL}/profile/check-profile`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                // 3. Store the API's assessment of profile completeness
+                setProfileCompleteFromAPI(profileCheckResponse.data.profileComplete);
+
+                // 4. Update notifications based on API profile completeness result
+                if (!profileCheckResponse.data.profileComplete) {
+                    setNotifications(prev => {
+                        // Check if we already have a profile completion notification
+                        const hasProfileNotification = prev.some(n =>
+                            n.text.includes("Complete your profile")
+                        );
+
+                        if (hasProfileNotification) return prev;
+
+                        return [...prev, {
+                            id: Date.now(),
+                            text: `Complete your profile to improve matches`,
+                            read: false
+                        }];
+                    });
+                }
+
+                // 5. Keep the existing detailed notification logic as a fallback
+                // This provides more specific information about what's missing
                 if (response.data.profile) {
                     const fieldsToCheck = role === 'startup'
                         ? ['company_name', 'industry', 'funding_stage', 'pitch']
@@ -65,16 +96,16 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
                         (Array.isArray(profileFields[field]) && profileFields[field].length === 0)
                     );
 
-                    if (missingFields.length > 0) {
+                    if (missingFields.length > 0 && !profileCheckResponse.data.profileComplete) {
+                        // Replace any generic profile completion notification with a more detailed one
                         setNotifications(prev => {
-                            // Check if we already have a profile completion notification
-                            const hasProfileNotification = prev.some(n =>
-                                n.text.includes("Complete your profile")
+                            // Remove any generic profile completion notifications
+                            const filteredNotifications = prev.filter(n =>
+                                !n.text.includes("Complete your profile to improve matches")
                             );
 
-                            if (hasProfileNotification) return prev;
-
-                            return [...prev, {
+                            // Add the detailed notification
+                            return [...filteredNotifications, {
                                 id: Date.now(),
                                 text: `Complete your profile: ${missingFields.join(', ')} missing`,
                                 read: false
@@ -88,7 +119,6 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
                 setLoading(false);
             }
         };
-
         fetchProfileData();
     }, [userProfile, role, token]);
 
@@ -126,7 +156,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
 
     const tabs = [
         { id: 'matches', label: 'Matches', icon: <FiGrid />, disabled: false },
-        { id: 'analytics', label: 'Analytics', icon: <FiBarChart2 />, disabled: true },
+        { id: 'analytics', label: 'Analytics', icon: <FiBarChart2 />, disabled: false },
         { id: 'messages', label: 'Messages', icon: <FiMessageCircle />, disabled: true },
         { id: 'calendar', label: 'Calendar', icon: <FiCalendar />, disabled: true },
     ];

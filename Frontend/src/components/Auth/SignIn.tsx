@@ -9,7 +9,7 @@ import { authService } from '../../services/api';
 
 interface SignInProps {
     setActiveView: (view: 'signIn' | 'createAccount' | 'chooseRole') => void;
-    setSelectedRole: (role: 'startup' | 'investor' | null) => void;
+    // setSelectedRole: (role: 'startup' | 'investor' | null) => void;
     selectedRole: 'startup' | 'investor' | null;
 }
 
@@ -38,7 +38,7 @@ const buttonVariants = {
     tap: { scale: 0.97 }
 };
 
-const SignIn: React.FC<SignInProps> = ({ setActiveView, setSelectedRole, selectedRole }) => {
+const SignIn: React.FC<SignInProps> = ({ setActiveView, selectedRole }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -46,7 +46,7 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, setSelectedRole, selecte
     const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const navigate = useNavigate();
-
+    console.log('selectedRole:', selectedRole);
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -78,9 +78,9 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, setSelectedRole, selecte
                 }
             }, 800);
 
-        } catch (err: any) {
+        } catch (err: Error | unknown) {
             setShowSuccess(false);
-            setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+            setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.');
             setLoading(false);
         }
     };
