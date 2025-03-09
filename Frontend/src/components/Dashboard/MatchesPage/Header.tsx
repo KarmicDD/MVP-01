@@ -28,7 +28,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
     const [, setLoading] = useState(false);
 
     // API constants
-    const API_URL = 'http://localhost:5000/api';
+    const API_URL = 'https://mvp-01.onrender.com/api';
     const token = localStorage.getItem('token');
 
     // Role-specific styling
