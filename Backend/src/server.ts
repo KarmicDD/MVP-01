@@ -31,16 +31,31 @@ const startServer = async () => {
         const app: Application = express();
         const PORT = process.env.PORT || 5000;
 
-        // Middleware (existing setup preserved)
+        // Middleware setup
         app.use(helmet());
-        app.use(cors({
-            origin: [process.env.FRONTEND_URL || '', 'http://localhost:5173'],
-            credentials: true
-        }));
         app.use(express.json());
         app.use(cookieParser());
 
-        // Existing routes  
+        // CORS Configuration
+        app.use(cors({
+            origin: ['https://karmicdd.netlify.app', 'http://localhost:5173'],
+            credentials: true,
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+            allowedHeaders: ['Content-Type', 'Authorization']
+        }));
+
+        // Handle CORS Preflight Requests
+        app.options('*', cors());
+
+        // Debugging CORS headers (Optional, remove in production)
+        app.use((req: Request, res: Response, next: NextFunction) => {
+            res.header('Access-Control-Allow-Origin', 'https://karmicdd.netlify.app');
+            res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+            res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+            next();
+        });
+
+        // Define Routes  
         app.use('/api/auth', authRoutes);
         app.use('/api/users', userRoutes);
         app.use('/api/profile', profileRoutes);
@@ -48,16 +63,17 @@ const startServer = async () => {
         app.use('/api/score', compatiblityRoutes);
         app.use('/api/questionnaire', questionnaireRoutes);
         app.use('/api/analysis', beliefSystemRoutes);
-        // Existing error handler
+
+        // Error handler middleware
         app.use(errorHandler);
 
         // Start server
         app.listen(PORT, () => {
-            console.log(`Server running on http://localhost:${PORT}`);
+            console.log(`🚀 Server running on http://localhost:${PORT}`);
         });
 
     } catch (err) {
-        console.error('Failed to start server:', err);
+        console.error('❌ Failed to start server:', err);
         process.exit(1);
     }
 };
