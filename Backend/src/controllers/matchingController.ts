@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
 import StartupProfileModel from '../models/Profile/StartupProfile';
-import InvestorProfileModel from '../models/mongoDB/InvestorProfile';
+import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
 
 // Find potential matches for startups
 export const findMatchesForStartup = async (req: Request, res: Response): Promise<void> => {

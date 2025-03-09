@@ -9,7 +9,7 @@ import {
 } from '../controllers/profileController';
 import { authenticateJWT, authorizeRole } from '../middleware/auth';
 import StartupProfileModel, { StartupProfile } from '../models/Profile/StartupProfile';
-import InvestorProfileModel, { InvestorProfile } from '../models/mongoDB/InvestorProfile';
+import InvestorProfileModel, { InvestorProfile } from '../models/InvestorModels/InvestorProfile';
 import { prisma } from '../config/db';
 
 const router = express.Router();

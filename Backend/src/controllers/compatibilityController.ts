@@ -4,7 +4,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
 import MatchAnalysisModel from '../models/MatchAnalysisSchema';
 import StartupProfileModel from '../models/Profile/StartupProfile';
-import InvestorProfileModel from '../models/mongoDB/InvestorProfile';
+import ApiUsageModel from '../models/ApiUsageModel/ApiUsage';
+import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
 
 // Load environment variables
 dotenv.config();
@@ -19,6 +20,9 @@ const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
 });
+
+// Maximum API requests per day
+const MAX_DAILY_REQUESTS = 5;
 
 interface CompatibilityScore {
     overallScore: number;
@@ -47,10 +51,64 @@ function cleanJsonResponse(text: string): string {
 }
 
 /**
+ * Helper function to check and update API usage limits
+ */
+async function checkRateLimit(userId: string): Promise<boolean> {
+    // Find or create usage record for this user
+    let usageRecord = await ApiUsageModel.findOne({ userId });
+
+    if (!usageRecord) {
+        usageRecord = await ApiUsageModel.create({
+            userId,
+            compatibilityRequestCount: 0,
+            lastReset: new Date()
+        });
+    }
+
+    // Check if we need to reset the counter (new day)
+    const now = new Date();
+    const lastReset = new Date(usageRecord.lastReset);
+    if (now.getDate() !== lastReset.getDate() ||
+        now.getMonth() !== lastReset.getMonth() ||
+        now.getFullYear() !== lastReset.getFullYear()) {
+        // Reset counter for new day
+        usageRecord.compatibilityRequestCount = 0;
+        usageRecord.lastReset = now;
+    }
+
+    // Check if user has reached limit
+    if (usageRecord.compatibilityRequestCount >= MAX_DAILY_REQUESTS) {
+        return false; // Limit reached
+    }
+
+    // Update counter and save
+    usageRecord.compatibilityRequestCount += 1;
+    await usageRecord.save();
+
+    return true; // Under limit
+}
+
+/**
  * Analyzes compatibility between a startup and an investor using Gemini API
  */
 export const getStartupInvestorCompatibility = async (req: Request, res: Response): Promise<void> => {
     try {
+        if (!req.user?.userId) {
+            res.status(401).json({ message: 'Unauthorized' });
+            return;
+        }
+
+        // Check rate limit
+        const underLimit = await checkRateLimit(req.user.userId);
+        if (!underLimit) {
+            res.status(429).json({
+                message: 'Daily request limit reached',
+                limit: MAX_DAILY_REQUESTS,
+                nextReset: 'Tomorrow'
+            });
+            return;
+        }
+
         const { startupId, investorId } = req.params;
 
         if (!startupId || !investorId) {
@@ -58,10 +116,24 @@ export const getStartupInvestorCompatibility = async (req: Request, res: Respons
             return;
         }
 
-        // Check if we have a recent analysis in MongoDB cache
+        // Determine the user perspective based on their role
+        let perspective: 'startup' | 'investor';
+
+        // Check if the user is the startup or the investor
+        if (req.user.userId === startupId) {
+            perspective = 'startup';
+        } else if (req.user.userId === investorId) {
+            perspective = 'investor';
+        } else {
+            // Default perspective if not directly involved
+            perspective = 'investor';
+        }
+
+        // Check if we have a recent analysis in MongoDB cache with matching perspective
         const existingAnalysis = await MatchAnalysisModel.findOne({
-            startupId,
-            investorId,
+            startupId: startupId,
+            investorId: investorId,
+            perspective: perspective,
             // Only use cached results if less than 7 days old
             createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
         });
@@ -71,7 +143,8 @@ export const getStartupInvestorCompatibility = async (req: Request, res: Respons
             res.json({
                 breakdown: existingAnalysis.breakdown,
                 overallScore: existingAnalysis.overallScore,
-                insights: existingAnalysis.insights
+                insights: existingAnalysis.insights,
+                perspective: existingAnalysis.perspective
             });
             return;
         }
@@ -90,73 +163,28 @@ export const getStartupInvestorCompatibility = async (req: Request, res: Respons
             return;
         }
 
-        // Prepare prompt for Gemini API
-        const prompt = `
-          Analyze the compatibility between this startup and investor. Be very strict in your analysis.
-          Return your analysis ONLY as valid JSON format with the following structure:
-          {
-            "overallScore": (number between 0-100),
-            "breakdown": {
-              "missionAlignment": (number between 0-100),
-              "investmentPhilosophy": (number between 0-100),
-              "sectorFocus": (number between 0-100),
-              "fundingStageAlignment": (number between 0-100),
-              "valueAddMatch": (number between 0-100)
-            },
-            "insights": [(array of 3 string insights about why they match)]
-          }
-          Important: Return only the JSON structure and nothing else. No explanations or markdown code blocks.
+        // Call Gemini API using the helper function with perspective
+        const compatibilityData = await getCompatibilityAnalysis(startup, investor, perspective);
 
-          Startup data:
-          - Company Name: ${startup.companyName}
-          - Industry: ${startup.industry}
-          - Funding Stage: ${startup.fundingStage}
-          - Employee Count: ${startup.employeeCount || 'N/A'}
-          - Location: ${startup.location || 'N/A'}
-          - Pitch: ${startup.pitch || 'N/A'}
+        // Store analysis in MongoDB for caching with exact startupId, investorId and perspective
+        await MatchAnalysisModel.create({
+            startupId: startupId,
+            investorId: investorId,
+            perspective: perspective,
+            overallScore: compatibilityData.overallScore,
+            breakdown: compatibilityData.breakdown,
+            insights: compatibilityData.insights,
+            createdAt: new Date(),
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Expire after 30 days
+        });
 
-          Investor data:
-          - Company Name: ${investor.companyName}
-          - Industries of Interest: ${investor.industriesOfInterest.join(', ')}
-          - Preferred Stages: ${investor.preferredStages.join(', ')}
-          - Ticket Size: ${investor.ticketSize || 'N/A'}
-          - Investment Criteria: ${investor.investmentCriteria?.join(', ') || 'N/A'}
-          - Past Investments: ${investor.pastInvestments || 'N/A'}
-        `;
-
-        // Call Gemini API
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const textResponse = response.text();
-
-        // Clean and parse JSON response from Gemini
-        try {
-            const cleanedResponse = cleanJsonResponse(textResponse);
-            const compatibilityData: CompatibilityScore = JSON.parse(cleanedResponse);
-
-            // Store analysis in MongoDB for caching
-            await MatchAnalysisModel.create({
-                startupId,
-                investorId,
-                overallScore: compatibilityData.overallScore,
-                breakdown: compatibilityData.breakdown,
-                insights: compatibilityData.insights,
-                createdAt: new Date(),
-                expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Expire after 30 days
-            });
-
-            // Return compatibility data
-            res.json({
-                breakdown: compatibilityData.breakdown,
-                overallScore: compatibilityData.overallScore,
-                insights: compatibilityData.insights
-            });
-
-        } catch (parseError) {
-            console.error('Error parsing Gemini API response:', parseError);
-            console.error('Raw response:', textResponse);
-            res.status(500).json({ message: 'Error processing AI response' });
-        }
+        // Return compatibility data
+        res.json({
+            breakdown: compatibilityData.breakdown,
+            overallScore: compatibilityData.overallScore,
+            insights: compatibilityData.insights,
+            perspective: perspective
+        });
 
     } catch (error) {
         console.error('Compatibility analysis error:', error);
@@ -174,6 +202,17 @@ export const batchAnalyzeCompatibility = async (req: Request, res: Response): Pr
             return;
         }
 
+        // Check rate limit - batch analysis counts as one request
+        const underLimit = await checkRateLimit(req.user.userId);
+        if (!underLimit) {
+            res.status(429).json({
+                message: 'Daily request limit reached',
+                limit: MAX_DAILY_REQUESTS,
+                nextReset: 'Tomorrow'
+            });
+            return;
+        }
+
         const { role } = req.query;
 
         if (role !== 'startup' && role !== 'investor') {
@@ -181,9 +220,11 @@ export const batchAnalyzeCompatibility = async (req: Request, res: Response): Pr
             return;
         }
 
+        // Set perspective based on user's role
+        const perspective = role as 'startup' | 'investor';
         let matches = [];
 
-        if (role === 'startup') {
+        if (perspective === 'startup') {
             // Get startup details from MongoDB
             const startup = await StartupProfileModel.findOne({ userId: req.user.userId });
 
@@ -198,10 +239,11 @@ export const batchAnalyzeCompatibility = async (req: Request, res: Response): Pr
                 preferredStages: startup.fundingStage
             }).limit(5);
 
-            // Check for existing analyses first to reduce API calls
+            // Check for existing analyses first to reduce API calls, including perspective
             const existingAnalyses = await MatchAnalysisModel.find({
                 startupId: req.user.userId,
                 investorId: { $in: matchingInvestors.map(inv => inv.userId) },
+                perspective: perspective, // Only get analyses with matching perspective
                 // Only use cached results if less than 7 days old
                 createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
             });
@@ -228,13 +270,14 @@ export const batchAnalyzeCompatibility = async (req: Request, res: Response): Pr
                             }
                         });
                     } else {
-                        // Generate new analysis
-                        const analysis = await getCompatibilityAnalysis(startup, investor);
+                        // Generate new analysis with startup perspective
+                        const analysis = await getCompatibilityAnalysis(startup, investor, perspective);
 
-                        // Store for future use
+                        // Store for future use with exact IDs and perspective
                         await MatchAnalysisModel.create({
                             startupId: req.user.userId,
                             investorId: investor.userId,
+                            perspective: perspective,
                             overallScore: analysis.overallScore,
                             breakdown: analysis.breakdown,
                             insights: analysis.insights,
@@ -269,10 +312,11 @@ export const batchAnalyzeCompatibility = async (req: Request, res: Response): Pr
                 fundingStage: { $in: investor.preferredStages }
             }).limit(5);
 
-            // Check for existing analyses first
+            // Check for existing analyses first, including perspective
             const existingAnalyses = await MatchAnalysisModel.find({
                 startupId: { $in: matchingStartups.map(s => s.userId) },
                 investorId: req.user.userId,
+                perspective: perspective, // Only get analyses with matching perspective
                 // Only use cached results if less than 7 days old
                 createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
             });
@@ -286,7 +330,7 @@ export const batchAnalyzeCompatibility = async (req: Request, res: Response): Pr
             // Process each match
             for (const startup of matchingStartups) {
                 try {
-                    // Use cached analysis if available
+                    // Use cached analysis if available for this exact startup-investor pair with matching perspective
                     if (analysisLookup[startup.userId]) {
                         const cachedAnalysis = analysisLookup[startup.userId];
                         matches.push({
@@ -299,13 +343,14 @@ export const batchAnalyzeCompatibility = async (req: Request, res: Response): Pr
                             }
                         });
                     } else {
-                        // Generate new analysis
-                        const analysis = await getCompatibilityAnalysis(startup, investor);
+                        // Generate new analysis with investor perspective
+                        const analysis = await getCompatibilityAnalysis(startup, investor, perspective);
 
-                        // Store for future use
+                        // Store for future use with exact IDs and perspective
                         await MatchAnalysisModel.create({
                             startupId: startup.userId,
                             investorId: req.user.userId,
+                            perspective: perspective,
                             overallScore: analysis.overallScore,
                             breakdown: analysis.breakdown,
                             insights: analysis.insights,
@@ -332,7 +377,7 @@ export const batchAnalyzeCompatibility = async (req: Request, res: Response): Pr
         // Sort matches by overall score
         validMatches.sort((a, b) => b.compatibility.overallScore - a.compatibility.overallScore);
 
-        res.json({ matches: validMatches });
+        res.json({ matches: validMatches, perspective: perspective });
 
     } catch (error) {
         console.error('Batch compatibility analysis error:', error);
@@ -342,11 +387,21 @@ export const batchAnalyzeCompatibility = async (req: Request, res: Response): Pr
 
 /**
  * Helper function to get compatibility analysis between a startup and investor
+ * @param startup The startup data
+ * @param investor The investor data
+ * @param perspective The perspective from which to analyze ('startup' or 'investor')
  */
-async function getCompatibilityAnalysis(startup: any, investor: any): Promise<CompatibilityScore> {
+async function getCompatibilityAnalysis(
+    startup: any,
+    investor: any,
+    perspective: 'startup' | 'investor'
+): Promise<CompatibilityScore> {
     const prompt = `
-    Analyze the compatibility between this startup and investor.
-    Return your analysis ONLY as valid JSON format with the following structure:
+    You are a specialized investment advisor analyzing the compatibility between a startup and an investor.
+    
+    TASK: Analyze the compatibility between the following startup and investor from the perspective of the ${perspective}.
+    
+    RESPONSE FORMAT: Return ONLY valid JSON with this exact structure:
     {
       "overallScore": (number between 0-100),
       "breakdown": {
@@ -356,26 +411,43 @@ async function getCompatibilityAnalysis(startup: any, investor: any): Promise<Co
         "fundingStageAlignment": (number between 0-100),
         "valueAddMatch": (number between 0-100)
       },
-      "insights": [(array of 3 string insights about why they match)]
+      "insights": [(array of 3 string insights)]
     }
-    Important: Return only the JSON structure and nothing else. No explanations or markdown code blocks.
-
-    Startup data:
-    - Company Name: ${startup.companyName}
+    
+    INSIGHT GUIDELINES:
+    - Write from the ${perspective}'s perspective (use "you" when referring to the ${perspective})
+    - Each insight must be specific, detailed, and actionable
+    - Include concrete reasons WHY this match would benefit or challenge ${perspective === 'startup' ? 'your company' : 'your investment portfolio'}
+    - Focus on unique aspects of this specific startup-investor pairing
+    - Consider strategic value beyond industry matching (expertise transfer, network benefits, etc.)
+    - Include at least one potential growth opportunity this pairing enables for ${perspective === 'startup' ? 'your company' : 'your portfolio'}
+    - Each insight should be 1-3 sentences, detailed enough to be useful but concise
+    
+    SCORING GUIDELINES:
+    - missionAlignment: How well the startup's mission aligns with investor's philosophy
+    - investmentPhilosophy: Compatibility between investor's approach and startup's needs
+    - sectorFocus: How well the startup's industry matches investor's focus areas
+    - fundingStageAlignment: Match between startup's current stage and investor's preferred stages
+    - valueAddMatch: How well the investor's non-financial support meets startup's needs
+    
+    DATA:
+    
+    Startup:
+    - Company: ${startup.companyName}
     - Industry: ${startup.industry}
     - Funding Stage: ${startup.fundingStage}
-    - Employee Count: ${startup.employeeCount || 'N/A'}
+    - Employees: ${startup.employeeCount || 'N/A'}
     - Location: ${startup.location || 'N/A'}
     - Pitch: ${startup.pitch || 'N/A'}
-
-    Investor data:
-    - Company Name: ${investor.companyName}
-    - Industries of Interest: ${investor.industriesOfInterest.join(', ')}
+    
+    Investor:
+    - Company: ${investor.companyName}
+    - Industries: ${investor.industriesOfInterest.join(', ')}
     - Preferred Stages: ${investor.preferredStages.join(', ')}
     - Ticket Size: ${investor.ticketSize || 'N/A'}
     - Investment Criteria: ${investor.investmentCriteria?.join(', ') || 'N/A'}
     - Past Investments: ${investor.pastInvestments || 'N/A'}
-  `;
+    `;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;

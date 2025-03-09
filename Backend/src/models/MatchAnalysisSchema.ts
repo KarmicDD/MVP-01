@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface MatchAnalysis extends Document {
     startupId: string;
     investorId: string;
+    perspective: 'startup' | 'investor';
     overallScore: number;
     breakdown: {
         missionAlignment: number;
@@ -13,10 +14,10 @@ export interface MatchAnalysis extends Document {
     };
     insights: string[];
     createdAt: Date;
-    expiresAt?: Date; // Optional: analyses could expire after certain time
+    expiresAt: Date;
 }
 
-const MatchAnalysisSchema: Schema = new Schema({
+const MatchAnalysisSchema = new mongoose.Schema({
     startupId: {
         type: String,
         required: true,
@@ -27,10 +28,15 @@ const MatchAnalysisSchema: Schema = new Schema({
         required: true,
         index: true
     },
+    perspective: {
+        type: String,
+        enum: ['startup', 'investor'],
+        required: true,
+        default: 'investor'
+    },
     overallScore: {
         type: Number,
-        required: true,
-        index: true // For sorting by score
+        required: true
     },
     breakdown: {
         missionAlignment: Number,
@@ -42,13 +48,17 @@ const MatchAnalysisSchema: Schema = new Schema({
     insights: [String],
     createdAt: {
         type: Date,
-        default: Date.now
+        default: Date.now,
+        index: true
     },
-    expiresAt: Date
+    expiresAt: {
+        type: Date,
+        required: true
+    }
 });
 
-// Compound index for faster lookups of specific startup-investor pairs
-MatchAnalysisSchema.index({ startupId: 1, investorId: 1 }, { unique: true });
+// Create a compound index for faster lookups of specific startup-investor pairs with perspective
+MatchAnalysisSchema.index({ startupId: 1, investorId: 1, perspective: 1 });
 
-const MatchAnalysisModel = mongoose.model<MatchAnalysis>('MatchAnalysis', MatchAnalysisSchema);
+const MatchAnalysisModel = mongoose.model('MatchAnalysis', MatchAnalysisSchema);
 export default MatchAnalysisModel;
