@@ -106,7 +106,7 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
 
     const handleOAuthSignup = (provider: string) => {
         // Redirect to OAuth endpoint
-        window.location.href = `http://localhost:5000/api/auth/${provider}`;
+        window.location.href = `https://mvp-01.onrender.com/api/auth/${provider}`;
     };
 
     const getPasswordStrengthText = () => {
