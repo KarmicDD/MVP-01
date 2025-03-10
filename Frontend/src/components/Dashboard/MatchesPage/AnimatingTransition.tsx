@@ -22,7 +22,7 @@ const AnimatingTransition: React.FC<AnimatingTransitionProps> = ({
     const [completedSteps, setCompletedSteps] = useState<number[]>([]);
     const iconControls = useAnimation();
     const [displayStartTime, setDisplayStartTime] = useState(Date.now());
-    const [canExit, setCanExit] = useState(false);
+    const [, setCanExit] = useState(false);
 
     // Default loading steps if none provided
     const defaultSteps = [
@@ -348,10 +348,10 @@ const AnimatingTransition: React.FC<AnimatingTransitionProps> = ({
                                 )}
                             </AnimatePresence>
                             <span className={`text-sm ${step.status === 'completed' || completedSteps.includes(step.id)
-                                    ? 'text-gray-500 line-through'
-                                    : step.status === 'loading'
-                                        ? 'text-blue-700 font-medium'
-                                        : 'text-gray-700'
+                                ? 'text-gray-500 line-through'
+                                : step.status === 'loading'
+                                    ? 'text-blue-700 font-medium'
+                                    : 'text-gray-700'
                                 }`}>
                                 {step.label}
                             </span>

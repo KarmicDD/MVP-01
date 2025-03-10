@@ -59,7 +59,7 @@ export const Footer: React.FC = () => {
             const response = await axios.post('http://localhost:5000/api/email/welcome', { email });
 
             if (response.status !== 200) {
-                const errorData = response.data;
+                // const errorData = response.data;
 
                 // we dont have an domain so for all say subbsiced though toast
                 toast.success("Thank you for subscribing to our newsletter!");

@@ -1,6 +1,6 @@
 import { RiRobot2Fill } from "react-icons/ri";
 import { FaHandshake, FaLink } from "react-icons/fa";
-import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { colours } from "../../utils/colours";
 import React, { useRef, useState } from 'react';
 import { useSectionInView } from '../../hooks/useSectionInView';
@@ -23,7 +23,7 @@ export const FeatureSection: React.FC = () => {
     const backgroundScale = useTransform(scrollYProgress, [0, 0.3], [0.95, 1]);
 
     // Lower threshold to trigger animations earlier
-    const [inViewRef, inView] = useInView({
+    const [inViewRef,] = useInView({
         triggerOnce: false,
         threshold: 0.1
     });
@@ -36,16 +36,16 @@ export const FeatureSection: React.FC = () => {
         }
     };
 
-    const sectionVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.15,
-                delayChildren: 0.1,
-            }
-        }
-    };
+    // const sectionVariants = {
+    //     hidden: { opacity: 0 },
+    //     visible: {
+    //         opacity: 1,
+    //         transition: {
+    //             staggerChildren: 0.15,
+    //             delayChildren: 0.1,
+    //         }
+    //     }
+    // };
 
     const titleVariants = {
         hidden: { opacity: 0, y: -20 },
@@ -60,18 +60,18 @@ export const FeatureSection: React.FC = () => {
         }
     };
 
-    const featureVariants = {
-        hidden: { opacity: 0, y: 30 },
-        visible: {
-            opacity: 1,
-            y: 0,
-            transition: {
-                type: "spring",
-                stiffness: 60,
-                damping: 12
-            }
-        }
-    };
+    // const featureVariants = {
+    //     hidden: { opacity: 0, y: 30 },
+    //     visible: {
+    //         opacity: 1,
+    //         y: 0,
+    //         transition: {
+    //             type: "spring",
+    //             stiffness: 60,
+    //             damping: 12
+    //         }
+    //     }
+    // };
 
     // Updated features with extended descriptions for the card back
     const features = [
