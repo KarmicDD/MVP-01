@@ -1,7 +1,8 @@
 import React from 'react';
-import LoadingSpinner from '../../Loading';
+import { LoadingSpinner } from '../../Loading';
 import { useBeliefSystemReport } from '../../../hooks/useBeliefSystemReport';
 import BeliefSystemReportContent from './BeliefSystemReportContent';
+import QuestionnairePrompt from '../Analytics/QuestionnairePromptNotification';
 
 interface UserProfile {
     userId: string;
@@ -27,8 +28,18 @@ const BeliefSystemAnalytics: React.FC<BeliefSystemAnalyticsProps> = ({ userProfi
         }
     }
 
-    const { report, loading, error, handleExportPDF, handleShareReport, formatDate } =
-        useBeliefSystemReport(startupId, investorId);
+    const {
+        report,
+        loading,
+        error,
+        questionnaireStatus,
+        isQuestionnaireComplete,
+        checkingQuestionnaire,
+        handleExportPDF,
+        handleShareReport,
+        formatDate,
+        reportRef
+    } = useBeliefSystemReport(startupId, investorId);
 
     if (!selectedMatchId) {
         return (
@@ -39,10 +50,22 @@ const BeliefSystemAnalytics: React.FC<BeliefSystemAnalyticsProps> = ({ userProfi
         );
     }
 
-    if (loading) {
-        return <LoadingSpinner />;
+    // Show loading state while checking questionnaire or loading report
+    if (checkingQuestionnaire || loading) {
+        return <LoadingSpinner message="Preparing Analysis" submessage="Loading belief system data..." />;
     }
 
+    // Show questionnaire prompt if questionnaire isn't complete
+    if (isQuestionnaireComplete === false && questionnaireStatus) {
+        return (
+            <QuestionnairePrompt
+                status={questionnaireStatus}
+                message="Complete the belief system questionnaire to access compatibility analytics."
+            />
+        );
+    }
+
+    // Show error if any
     if (error) {
         return (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -56,13 +79,15 @@ const BeliefSystemAnalytics: React.FC<BeliefSystemAnalyticsProps> = ({ userProfi
     }
 
     return (
-        <BeliefSystemReportContent
-            report={report}
-            formatDate={formatDate}
-            handleExportPDF={handleExportPDF}
-            handleShareReport={handleShareReport}
-            isCompact={true}
-        />
+        <div ref={reportRef}>
+            <BeliefSystemReportContent
+                report={report}
+                formatDate={formatDate}
+                handleExportPDF={handleExportPDF}
+                handleShareReport={handleShareReport}
+                isCompact={true}
+            />
+        </div>
     );
 };
 

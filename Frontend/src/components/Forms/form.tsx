@@ -11,9 +11,10 @@ import AnimatingTransition from '../Dashboard/MatchesPage/AnimatingTransition';
 import AppHeader from '../Dashboard/AppHeader ';
 import FormProgress from '../Dashboard/MatchesPage/FormProgress';
 import FormNavigationFooter from '../Dashboard/MatchesPage/FormNavigationFooter';
+import { toast } from 'react-toastify';
 
 // API base URL
-const API_BASE_URL = 'https://mvp-01.onrender.com';
+const API_BASE_URL = 'http://localhost:5000';
 
 // The main VentureMatch application component
 const VentureMatch = () => {
@@ -86,12 +87,9 @@ const VentureMatch = () => {
           if (profileCheckResponse.data.profileComplete === true) {
             // Profile is complete, redirect to dashboard
             console.log("Profile is complete, redirecting to dashboard");
-            // alert the user that the profile is complete
 
-
-            // fininsh this and replace the alert with a toast notification
-
-            alert("Profile is complete, redirecting to dashboard");
+            // alert("Profile is complete, redirecting to dashboard");
+            toast.success('Profile is complete, redirecting to dashboard');
             navigate('/dashboard');
             return; // Exit early to prevent further processing
           }
@@ -548,7 +546,7 @@ const VentureMatch = () => {
       } else {
         // Added companyName field for investor profile
         profileData = {
-          companyName: formData.companyName, // Add this line
+          companyName: formData.companyName,
           industriesOfInterest: formData.industriesOfInterest,
           preferredStages: formData.preferredStages,
           ticketSize: formData.ticketSize,
@@ -560,22 +558,35 @@ const VentureMatch = () => {
       // Log for debugging
       console.log(`Submitting ${userType} profile:`, profileData);
 
-      // Remove duplicate API call - there were two before
+      // Submit the profile data first
       const response = await api.post(endpoint, profileData);
       console.log('Profile submission response:', response.data);
 
       // Show success message
       setApiError(null);
 
-      // Success notification
-      const successMessage = document.createElement('div');
-      successMessage.innerHTML = `
-        <div class="fixed top-4 right-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 shadow-lg rounded z-50" role="alert">
-          <p class="font-bold">Success!</p>
-          <p>Profile successfully created! Redirecting to dashboard...</p>
-        </div>
-      `;
-      document.body.appendChild(successMessage);
+      // Show toast and then navigate
+      toast.success('Profile successfully created! Redirecting to dashboard...', {
+        position: "top-right",
+        autoClose: 2500, // Slightly shorter time
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: false,
+        draggable: true,
+        onClose: () => {
+          // Navigate only after the toast is closed or its time expires
+          window.location.href = '/dashboard';
+        }
+      });
+
+      // Wait for toast and any background operations to complete
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 3000);
+
+      // DO NOT return navigate() directly - that can cause issues
+      return;
+
     } catch (error: unknown) {
       console.error('Error submitting profile:', error);
 

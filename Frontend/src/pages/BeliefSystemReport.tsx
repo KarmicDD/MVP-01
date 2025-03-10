@@ -2,11 +2,9 @@
 import { useParams } from 'react-router-dom';
 import { useBeliefSystemReport } from '../hooks/useBeliefSystemReport';
 import BeliefSystemReportContent from '../components/Dashboard/Analytics/BeliefSystemReportContent';
-import { useQuestionnaireCheck } from '../src/hooks/useQuestionnaireCheck';
 
 
 const BeliefSystemReport = () => {
-    useQuestionnaireCheck();
 
     const { startupId, investorId } = useParams();
 

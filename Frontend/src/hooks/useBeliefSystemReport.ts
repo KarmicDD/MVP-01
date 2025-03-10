@@ -4,6 +4,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import api from '../services/api';
 
 export interface BeliefSystemReportType {
     generatedDate: string;
@@ -35,16 +36,69 @@ export interface BeliefSystemReportType {
 export function useBeliefSystemReport(startupId: string | null, investorId: string | null) {
     const [report, setReport] = useState<BeliefSystemReportType | null>(null);
     const reportRef = useRef<HTMLDivElement>(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true); // Start with loading true
     const [error, setError] = useState<string | null>(null);
 
+    // Add questionnaire status states
+    const [questionnaireStatus, setQuestionnaireStatus] = useState<'not_started' | 'in_progress' | 'submitted' | 'pending' | null>(null);
+    const [isQuestionnaireComplete, setIsQuestionnaireComplete] = useState<boolean | null>(null);
+    const [checkingQuestionnaire, setCheckingQuestionnaire] = useState(true);
+
+    // First check if questionnaire is complete
     useEffect(() => {
+        const checkQuestionnaireStatus = async () => {
+            try {
+                setCheckingQuestionnaire(true);
+                console.log('Checking questionnaire status in report hook...');
+
+                const response = await api.get('/questionnaire/status');
+                console.log('Questionnaire status response in report hook:', response.data);
+
+                const status = response.data.status || 'not_started';
+                const isComplete = Boolean(response.data.isComplete);
+
+                setQuestionnaireStatus(status);
+                setIsQuestionnaireComplete(isComplete);
+
+                if (!isComplete) {
+                    setLoading(false); // Stop loading since we won't fetch the report
+                }
+
+            } catch (err) {
+                console.error('Error checking questionnaire status in report hook:', err);
+                // Don't set error here as we still want to try fetching the report
+            } finally {
+                setCheckingQuestionnaire(false);
+            }
+        };
+
+        checkQuestionnaireStatus();
+    }, []);
+
+    // Only fetch report if questionnaire is complete
+    useEffect(() => {
+        // Skip if still checking questionnaire or if questionnaire is not complete
+        if (checkingQuestionnaire || isQuestionnaireComplete === null) {
+            return;
+        }
+
+        // If questionnaire is not complete, don't fetch report
+        if (!isQuestionnaireComplete) {
+            console.log('Questionnaire not complete, skipping report fetch');
+            return;
+        }
+
+        // If we're here, questionnaire is complete, so fetch report if IDs are provided
         const fetchReport = async () => {
-            if (!startupId || !investorId) return;
+            if (!startupId || !investorId) {
+                setLoading(false);
+                return;
+            }
 
             try {
                 setLoading(true);
                 setError(null);
+                console.log(`Fetching belief system report for startup ${startupId} and investor ${investorId}`);
                 const data = await beliefSystemService.getReport(startupId, investorId);
                 setReport(data);
             } catch (err: unknown) {
@@ -61,7 +115,7 @@ export function useBeliefSystemReport(startupId: string | null, investorId: stri
         };
 
         fetchReport();
-    }, [startupId, investorId]);
+    }, [startupId, investorId, isQuestionnaireComplete, checkingQuestionnaire]);
 
     const handleExportPDF = async () => {
         if (!reportRef.current) {
@@ -119,7 +173,6 @@ export function useBeliefSystemReport(startupId: string | null, investorId: stri
         }
     };
 
-
     const handleShareReport = async () => {
         if (!startupId || !investorId) return;
 
@@ -130,14 +183,14 @@ export function useBeliefSystemReport(startupId: string | null, investorId: stri
 
         try {
             await beliefSystemService.shareReport(startupId, investorId, emails);
-            alert('Report shared successfully!');
+            toast.success('Report shared successfully!');
         } catch (err: unknown) {
             console.error('Error sharing report:', err);
             if (err instanceof Error) {
                 const errorObj = err as { response?: { data?: { message?: string } } };
-                alert('Failed to share report: ' + (errorObj.response?.data?.message || err.message || 'Unknown error'));
+                toast.error('Failed to share report: ' + (errorObj.response?.data?.message || err.message || 'Unknown error'));
             } else {
-                alert('Failed to share report: Unknown error');
+                toast.error('Failed to share report: Unknown error');
             }
         }
     };
@@ -151,6 +204,9 @@ export function useBeliefSystemReport(startupId: string | null, investorId: stri
         report,
         loading,
         error,
+        questionnaireStatus,
+        isQuestionnaireComplete,
+        checkingQuestionnaire,
         handleExportPDF,
         handleShareReport,
         formatDate,

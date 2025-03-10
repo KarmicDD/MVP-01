@@ -145,7 +145,14 @@ function App() {
           {/* Open Routes */}
           <Route path="/coming-soon" element={<ComingSoon />} /> {/* Anyone can access */}
           <Route path="/loading" element={<LoadingSpinner />} /> {/* Anyone can access */}
-          <Route path="/question" element={<QuestionnairePage />} /> {/* Anyone can access */}
+          <Route
+            path="/question"
+            element={
+              <ProtectedRoute>
+                <QuestionnairePage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Protected Routes */}
           <Route

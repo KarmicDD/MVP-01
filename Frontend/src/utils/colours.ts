@@ -1,6 +1,8 @@
 export const colours = {
     indigo600: '#5A42E3', // Original indigo-600, used for primary buttons and accents
     indigo700: '#4C51BF', // Darker shade for hover states
+    indigo400: '#818CF8', // Lighter shade for hover states
+    indigo200: '#C3DAFE', // Lighter shade for hover states
     indigo100: '#E0E7FF', // Lightest shade for backgrounds
     indigo50: '#F5F7FF', // Lightest shade for backgrounds
     // Text Colours
@@ -13,6 +15,7 @@ export const colours = {
     background: '#F1F2FE', // Background for the Hero Section
     gray50: '#FAFAFA', // Background for "How it Works" section
     gray900: '#111827', // Footer background
+    gray700: '#374151', // Footer background
     // Button Text Colour
     whiteText: '#FFFFFF', // Text colour for buttons
     button: '#5A42E3', // Main colour for brand and all the indigo
@@ -32,4 +35,6 @@ export const colours = {
     //logout
     red400: '#F87171',
     red500: '#EF4444',
+
+
 };

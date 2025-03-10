@@ -13,6 +13,8 @@ import matchingRoutes from './routes/matchingRoutes';
 import compatiblityRoutes from './routes/compatibilityControllerRoutes';
 import questionnaireRoutes from './routes/questionnaireRoute';
 import beliefSystemRoutes from './routes/BelifSystemRoutes';
+import emailRoutes from './routes/emailRoutes';
+import searchRoutes from './routes/searchRoutes';
 
 import { connectMongoDBwithRetry, testPostgressConnection } from './config/db';
 import { resolve } from 'path';
@@ -49,7 +51,11 @@ const startServer = async () => {
 
         // Debugging CORS headers (Optional, remove in production)
         app.use((req: Request, res: Response, next: NextFunction) => {
-            res.header('Access-Control-Allow-Origin', 'https://karmicdd.netlify.app');
+            const allowedOrigins = ['https://karmicdd.netlify.app', 'http://localhost:5173'];
+            const origin = req.headers.origin as string;
+            if (allowedOrigins.includes(origin)) {
+                res.header('Access-Control-Allow-Origin', origin);
+            }
             res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
             res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
             next();
@@ -63,17 +69,19 @@ const startServer = async () => {
         app.use('/api/score', compatiblityRoutes);
         app.use('/api/questionnaire', questionnaireRoutes);
         app.use('/api/analysis', beliefSystemRoutes);
+        app.use('/api/email', emailRoutes);
+        app.use('/api/search', searchRoutes);
 
         // Error handler middleware
         app.use(errorHandler);
 
         // Start server
         app.listen(PORT, () => {
-            console.log(`🚀 Server running on http://localhost:${PORT}`);
+            console.log(`Server running on http://localhost:${PORT}`);
         });
 
     } catch (err) {
-        console.error('❌ Failed to start server:', err);
+        console.error('Failed to start server:', err);
         process.exit(1);
     }
 };
