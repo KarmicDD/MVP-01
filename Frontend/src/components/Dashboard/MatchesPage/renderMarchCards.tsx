@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { FiDollarSign, FiMapPin, FiBriefcase, FiBookmark } from 'react-icons/fi';
 import { RenderMatchCardsProps } from '../../../types/Dashboard.types';
+import { colours } from '../../../utils/colours';
 
 
 
@@ -10,10 +11,9 @@ const renderMatchCards = ({
     filteredMatches,
     bookmarkedMatches,
     userProfile,
-    colours,
     connectWithMatch,
     toggleBookmark,
-    onCardClick, // Add this new prop
+    onCardClick,
 }: RenderMatchCardsProps) => {
     if (loading) {
         return (
@@ -42,7 +42,13 @@ const renderMatchCards = ({
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredMatches.map((match, index) => {
-                const matchId = match.investorId || match.startupId || `match-${index}`;
+                const matchId = match.id;
+
+                if (!matchId) {
+                    console.warn(`Match at index ${index} has no valid ID:`, match);
+                    return null;
+                }
+
                 const isBookmarked = bookmarkedMatches.has(matchId);
 
                 return (

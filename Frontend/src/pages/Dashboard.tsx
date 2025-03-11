@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSearch, FiFilter, FiChevronDown, FiX, FiRefreshCw } from 'react-icons/fi';
+import { FiSearch, FiFilter, FiChevronDown, FiX, FiRefreshCw, FiArrowUp, FiArrowDown } from 'react-icons/fi';
 import axios from 'axios';
 import { colours } from '../utils/colours';
 import ComingSoon from '../components/ComingSoon/ComingSoon';
@@ -12,7 +12,17 @@ import Header from '../components/Dashboard/MatchesPage/Header';
 import { Match, UserProfile } from '../types/Dashboard.types';
 import LoadingSpinner from '../components/Loading';
 import api from '../services/api';
+import {
+    searchStartups,
+    searchInvestors,
+    getFilterOptions,
+    type SearchOptions,
+    type FilterOptions,
+    type SearchResults,
+    PaginationType
+} from '../services/searchServices';
 import BeliefSystemAnalytics from '../components/Dashboard/Analytics/BeliefSystemAnalytics';
+import Pagination from '../components/Dashboard/MatchesPage/Pagination';
 
 const Dashboard: React.FC = () => {
     // State - keeping your existing state
@@ -37,14 +47,29 @@ const Dashboard: React.FC = () => {
         overallScore: 0,
         insights: [] as string[]
     });
+    const [compatibilityError, setCompatibilityError] = useState<string | null>(null);
     const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
     const [loadingCompatibility, setLoadingCompatibility] = useState(false);
     const [filtersOpen, setFiltersOpen] = useState(false);
+    // Add these states to your component
+    const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+        industries: [],
+        fundingStages: [],
+        employeeOptions: [],
+        ticketSizes: [],
+        investmentCriteria: [],
+        investmentRegions: [],
+        revenueRanges: []
+    });
+    const [pagination, setPagination] = useState<PaginationType | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [sortBy, setSortBy] = useState('matchScore');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
     const navigate = useNavigate();
 
     // Keep your existing constants and functions
-    const API_URL = 'https://mvp-01.onrender.com/api';
+    const API_URL = 'http://localhost:5000/api';
     const token = localStorage.getItem('token');
 
     const handleLogout = () => {
@@ -58,13 +83,66 @@ const Dashboard: React.FC = () => {
         'Authorization': `Bearer ${token}`
     };
 
-    // Keep your existing function implementations
+    const fetchMatches = async (page = 1) => {
+        if (!userProfile) return;
+
+        try {
+            setLoading(true);
+            setError(null);
+
+            // Build search options from current state
+            const searchOptions: SearchOptions = {
+                page,
+                limit: 10,
+                sortBy,
+                sortOrder
+            };
+
+            // Add filters if they're set
+            if (industry) searchOptions.industry = industry;
+            if (stage) searchOptions.fundingStage = stage;
+            if (location) searchOptions.location = location;
+            if (searchQuery) searchOptions.keywords = searchQuery;
+
+            console.log(`Fetching matches with sort: ${sortBy} (${sortOrder})`);
+            console.log('Search options:', searchOptions);
+
+            // Call the appropriate search function
+            let results: SearchResults;
+
+            if (userProfile.role === 'startup') {
+                results = await searchInvestors(searchOptions);
+                setMatches(results.investors || []);
+            } else {
+                results = await searchStartups(searchOptions);
+                setMatches(results.startups || []);
+            }
+
+            // Set pagination data
+            setPagination(results.pagination);
+            setCurrentPage(results.pagination.page);
+
+            setLoading(false);
+        } catch (err) {
+            console.error('Error searching matches:', err);
+            // Don't set error for display, just log it
+            setLoading(false);
+        }
+    };
+
     const fetchCompatibilityData = async (matchId: string) => {
-        // ...existing implementation...
         try {
             if (!userProfile) return;
 
+            // Validate matchId to ensure it's a proper ID
+            if (!matchId || matchId.startsWith('match-')) {
+                console.error('Invalid match ID:', matchId);
+                setCompatibilityError(`Cannot load compatibility data. Invalid match ID.`);
+                return;
+            }
+
             setLoadingCompatibility(true);
+            setCompatibilityError(null); // Clear previous errors
             setSelectedMatchId(matchId);
 
             // Determine the current user's role and the match ID
@@ -78,11 +156,14 @@ const Dashboard: React.FC = () => {
                 startupId = matchId; // The match is a startup
             }
 
+            console.log(`Fetching compatibility data for startup=${startupId} and investor=${investorId}`);
+
             // Use the correct endpoint format with path parameters
             const endpoint = `${API_URL}/score/compatibility/${startupId}/${investorId}`;
 
             // Make the API request
             const response = await api.get(endpoint, { headers });
+            console.log('Compatibility data received:', response.data);
 
             setCompatibilityData({
                 breakdown: response.data.breakdown || {
@@ -103,6 +184,17 @@ const Dashboard: React.FC = () => {
             setLoadingCompatibility(false);
         } catch (err) {
             console.error('Error fetching compatibility data:', err);
+
+            // Set compatibility error instead of general error
+            if (axios.isAxiosError(err) && err.response && err.response.status === 404) {
+                setCompatibilityError("Compatibility data not found. Both profiles must have completed questionnaires.");
+            } else {
+                setCompatibilityError("Failed to load compatibility data. Please try again later.");
+            }
+
+            // Reset loading state
+            setLoadingCompatibility(false);
+
             // Use fallback data if API fails
             setCompatibilityData({
                 breakdown: {
@@ -120,13 +212,12 @@ const Dashboard: React.FC = () => {
                     "Potential for strategic mentorship beyond funding"
                 ]
             });
-            setLoadingCompatibility(false);
         }
     };
 
     // Fetch user profile and matches on component mount
     useEffect(() => {
-        const fetchUserData = async () => {
+        const fetchData = async () => {
             try {
                 setLoading(true);
 
@@ -134,13 +225,9 @@ const Dashboard: React.FC = () => {
                 const profileResponse = await axios.get(`${API_URL}/profile/user-type`, { headers });
                 setUserProfile(profileResponse.data);
 
-                // Get matches based on user role
-                const matchEndpoint = profileResponse.data.role === 'startup'
-                    ? `${API_URL}/matching/startup`
-                    : `${API_URL}/matching/investor`;
-
-                const matchesResponse = await axios.get(matchEndpoint, { headers });
-                setMatches(matchesResponse.data.matches);
+                // Load filter options for search dropdowns
+                const options = await getFilterOptions();
+                setFilterOptions(options);
 
                 // Load bookmarks from localStorage
                 const savedBookmarks = localStorage.getItem('bookmarkedMatches');
@@ -156,8 +243,49 @@ const Dashboard: React.FC = () => {
             }
         };
 
-        fetchUserData();
+        fetchData();
     }, []);
+
+    // Fetch matches when user profile is available
+    useEffect(() => {
+        if (userProfile) {
+            // Set default sort to match score descending
+            setSortBy('matchScore');
+            setSortOrder('desc');
+            fetchMatches(1);
+        }
+    }, [userProfile]);
+
+    const handlePageChange = (page: number) => {
+        fetchMatches(page);
+    };
+
+    const handleSearchSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        fetchMatches(1); // Reset to first page when searching
+    };
+
+    const handleFilterChange = (name: string, value: string) => {
+        switch (name) {
+            case 'industry':
+                setIndustry(value);
+                break;
+            case 'fundingStage':
+                setStage(value);
+                break;
+            case 'location':
+                setLocation(value);
+                break;
+            // Add more cases as needed
+        }
+
+        // Don't fetch immediately to avoid too many requests
+        // User can apply filters with a button click
+    };
+
+    const applyFilters = () => {
+        fetchMatches(1); // Reset to page 1 when applying filters
+    };
 
     // Filter matches based on search query and filters
     const filteredMatches = matches.filter(match => {
@@ -216,6 +344,23 @@ const Dashboard: React.FC = () => {
         setSearchQuery('');
     };
 
+    const handleSortChange = (newSortBy: string) => {
+        // If clicking the same field, toggle order
+        if (newSortBy === sortBy) {
+            const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+            console.log(`Toggling sort order for ${sortBy}: ${sortOrder} → ${newOrder}`);
+            setSortOrder(newOrder);
+        } else {
+            // If choosing a new field, default to descending (highest values first)
+            console.log(`Changing sort from ${sortBy} to ${newSortBy}, order: desc`);
+            setSortBy(newSortBy);
+            setSortOrder('desc');
+        }
+
+        // Fetch with new sort settings next time (after state updates)
+        setTimeout(() => fetchMatches(1), 0);
+    };
+
     // Animation variants for framer-motion
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -265,24 +410,30 @@ const Dashboard: React.FC = () => {
                             >
                                 <div className="bg-white rounded-xl shadow-lg p-6">
                                     <div className="flex flex-col md:flex-row gap-4">
-                                        <div className="relative flex-1">
+                                        <form onSubmit={handleSearchSubmit} className="relative flex-1">
                                             <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
                                             <input
                                                 type="text"
                                                 placeholder="Search matches..."
-                                                className="w-full pl-12 pr-4 py-3.5 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                                className="w-full pl-12 pr-12 py-3.5 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                                                 value={searchQuery}
                                                 onChange={(e) => setSearchQuery(e.target.value)}
                                             />
                                             {searchQuery && (
                                                 <button
+                                                    type="button"
                                                     className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                                    onClick={() => setSearchQuery('')}
+                                                    onClick={() => {
+                                                        setSearchQuery('');
+                                                        // Optionally fetch without the search term
+                                                        fetchMatches(1);
+                                                    }}
                                                 >
                                                     <FiX />
                                                 </button>
                                             )}
-                                        </div>
+                                            <button type="submit" className="hidden">Search</button>
+                                        </form>
 
                                         <motion.button
                                             className="px-5 py-3.5 rounded-lg flex items-center justify-center font-medium text-white shadow-md"
@@ -313,14 +464,12 @@ const Dashboard: React.FC = () => {
                                                         <select
                                                             className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                             value={industry}
-                                                            onChange={(e) => setIndustry(e.target.value)}
+                                                            onChange={(e) => handleFilterChange('industry', e.target.value)}
                                                         >
                                                             <option value="">All Industries</option>
-                                                            <option value="fintech">FinTech</option>
-                                                            <option value="healthtech">HealthTech</option>
-                                                            <option value="edtech">EdTech</option>
-                                                            <option value="cleantech">CleanTech</option>
-                                                            <option value="saas">SaaS</option>
+                                                            {filterOptions.industries.map(ind => (
+                                                                <option key={ind} value={ind}>{ind}</option>
+                                                            ))}
                                                         </select>
                                                     </div>
 
@@ -329,29 +478,29 @@ const Dashboard: React.FC = () => {
                                                         <select
                                                             className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                             value={stage}
-                                                            onChange={(e) => setStage(e.target.value)}
+                                                            onChange={(e) => handleFilterChange('fundingStage', e.target.value)}
                                                         >
                                                             <option value="">All Stages</option>
-                                                            <option value="seed">Seed</option>
-                                                            <option value="seriesA">Series A</option>
-                                                            <option value="seriesB">Series B</option>
-                                                            <option value="seriesC">Series C</option>
+                                                            {filterOptions.fundingStages.map(stage => (
+                                                                <option key={stage} value={stage}>{stage}</option>
+                                                            ))}
                                                         </select>
                                                     </div>
 
                                                     <div className="space-y-2">
-                                                        <label className="block text-sm font-medium text-gray-700">Location</label>
-                                                        <select
-                                                            className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                            value={location}
-                                                            onChange={(e) => setLocation(e.target.value)}
-                                                        >
-                                                            <option value="">All Locations</option>
-                                                            <option value="San Francisco">San Francisco</option>
-                                                            <option value="New York">New York</option>
-                                                            <option value="London">London</option>
-                                                            <option value="Berlin">Berlin</option>
-                                                        </select>
+                                                        <div className="space-y-2">
+                                                            <label className="block text-sm font-medium text-gray-700">Location</label>
+                                                            <select
+                                                                className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                value={location}
+                                                                onChange={(e) => setLocation(e.target.value)}
+                                                            >
+                                                                <option value="">All Locations</option>
+                                                                {filterOptions.investmentRegions && filterOptions.investmentRegions.map(loc => (
+                                                                    <option key={loc} value={loc}>{loc}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -409,7 +558,7 @@ const Dashboard: React.FC = () => {
                                 </div>
                             </motion.div>
 
-                            {/* Match results counter */}
+                            {/* Match results counter with sort controls */}
                             <motion.div
                                 className="mb-4"
                                 variants={itemVariants}
@@ -418,6 +567,45 @@ const Dashboard: React.FC = () => {
                                     <h2 className="text-xl font-bold text-gray-800">
                                         {loading ? 'Loading matches...' : `${filteredMatches.length} matches found`}
                                     </h2>
+
+                                    {/* Add simple sort controls */}
+                                    {!loading && filteredMatches.length > 0 && (
+                                        <div className="flex items-center space-x-2">
+                                            <span className="text-sm text-gray-600">Sort by:</span>
+                                            <select
+                                                value={sortBy}
+                                                onChange={(e) => handleSortChange(e.target.value)}
+                                                className="px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="matchScore">Match Score</option>
+                                                <option value="companyName">Name</option>
+                                                <option value="location">Location</option>
+                                                {userProfile?.role === 'startup' ? (
+                                                    <>
+                                                        <option value="ticketSize">Investment Size</option>
+                                                        <option value="portfolioSize">Portfolio Size</option>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <option value="fundingStage">Funding Stage</option>
+                                                        <option value="industry">Industry</option>
+                                                    </>
+                                                )}
+                                            </select>
+                                            <button
+                                                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                                                className={`p-1.5 rounded-md ${sortOrder === 'desc' ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200'
+                                                    } hover:bg-gray-100`}
+                                                title={sortOrder === 'asc' ? "Sort Ascending (A to Z, Low to High)" : "Sort Descending (Z to A, High to Low)"}
+                                            >
+                                                {sortOrder === 'asc' ? (
+                                                    <FiArrowUp className={`text-${sortOrder === 'asc' ? 'blue' : 'gray'}-600`} />
+                                                ) : (
+                                                    <FiArrowDown className={`text-${sortOrder === 'desc' ? 'blue' : 'gray'}-600`} />
+                                                )}
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </motion.div>
 
@@ -432,12 +620,19 @@ const Dashboard: React.FC = () => {
                                     filteredMatches,
                                     bookmarkedMatches,
                                     userProfile,
-                                    colours,
                                     connectWithMatch,
                                     toggleBookmark,
                                     onCardClick: handleMatchCardClick,
                                 })}
                             </motion.div>
+
+                            {pagination && (
+                                <Pagination
+                                    currentPage={pagination.page}
+                                    totalPages={pagination.pages}
+                                    onPageChange={handlePageChange}
+                                />
+                            )}
 
                             {/* Match analysis with improved UI */}
                             {selectedMatchId && (
@@ -448,6 +643,8 @@ const Dashboard: React.FC = () => {
                                     className="bg-white rounded-xl shadow-lg p-6 mb-8"
                                 >
                                     <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b border-gray-100 pb-3">Match Analysis</h2>
+
+                                    {/* Remove error display and always show compatibility data */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         {loadingCompatibility ? (
                                             <div className="col-span-2 flex justify-center py-12">

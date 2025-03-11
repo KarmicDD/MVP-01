@@ -5,6 +5,7 @@ export interface UserProfile {
 }
 
 export interface Match {
+    id?: string;
     investorId?: string;
     startupId?: string;
     email: string;
@@ -24,7 +25,6 @@ export interface RenderMatchCardsProps {
     filteredMatches: Match[];
     bookmarkedMatches: Set<string>;
     userProfile: UserProfile | null;
-    colours: { primaryBlue: string };
     connectWithMatch: (matchId: string) => void;
     toggleBookmark: (matchId: string) => void;
     onCardClick: (matchId: string) => void;
