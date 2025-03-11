@@ -3,13 +3,71 @@ import FormSubmissionModel from '../models/Forms/FormSubmission';
 import StartupProfileModel from '../models/Profile/StartupProfile';
 import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
 import { employeeOptions, fundingStages, industries, investmentCriteria, ticketSizes } from '../constants/profileOptions';
+const locations = require('../constants/profileOptions').locations || [];
 
+/**
+ * Calculate match score between startup and investor
+ */
+const calculateMatchScore = (startup: any, investor: any): { score: number, categories: any } => {
+    let score = 0;
+    const categories: any = {};
+
+    // Industry match (max 30 points)
+    if (investor.industriesOfInterest?.includes(startup.industry)) {
+        score += 30;
+        categories.Industry = 30;
+    } else {
+        categories.Industry = 0;
+    }
+
+    // Funding stage match (max 30 points)
+    if (investor.preferredStages?.includes(startup.fundingStage)) {
+        score += 30;
+        categories.Stage = 30;
+    } else {
+        categories.Stage = 0;
+    }
+
+    // Employee count compatibility (max 15 points)
+    // Consider startup size vs investor preferred size ranges
+    if (startup.employeeCount) {
+        // Simple scaling based on employee count compatibility
+        // More sophisticated logic could be implemented
+        const employeeCountScore = 15;
+        score += employeeCountScore;
+        categories.Size = employeeCountScore;
+    }
+
+    // Location match (max 10 points)
+    if (investor.investmentRegions && startup.location) {
+        // Check if startup's location matches any of investor's regions
+        // This is simplified - would need proper region mapping
+        const locationScore = 10;
+        score += locationScore;
+        categories.Location = locationScore;
+    }
+
+    // Revenue potential alignment (max 15 points)
+    if (startup.revenue && investor.ticketSize) {
+        // Logic to compare revenue vs ticket size expectations
+        const revenueScore = 15;
+        score += revenueScore;
+        categories.Revenue = revenueScore;
+    }
+
+    return { score, categories };
+};
 
 /**
  * Search for startups with filters
  */
 export const searchStartups = async (req: Request, res: Response): Promise<void> => {
     try {
+        // Get current user (presumably an investor)
+        const userId = req.user?.userId; // Changed from req.user?.id to req.user?.userId
+        const currentUser = userId ? await InvestorProfileModel.findOne({ userId }) : null;
+
+
         const {
             industry,
             fundingStage,
@@ -19,7 +77,8 @@ export const searchStartups = async (req: Request, res: Response): Promise<void>
             page = 1,
             limit = 10,
             sortBy = 'createdAt',
-            sortOrder = 'desc'
+            sortOrder = 'desc',
+            matchScore = 0
         } = req.query;
 
         // Build query object
@@ -77,12 +136,40 @@ export const searchStartups = async (req: Request, res: Response): Promise<void>
             // Count for pagination info
             const totalCount = await StartupProfileModel.countDocuments(query);
 
+            // Map results and add match scores
+            const mappedStartups = filteredStartups.map(startup => {
+                const startupObj = startup.toObject();
+
+                // Calculate match score if current user is an investor
+                let matchScoreObj = { score: 0, categories: {} };
+                if (currentUser) {
+                    matchScoreObj = calculateMatchScore(startupObj, currentUser);
+                }
+
+                // Only include startups that meet minimum match score criteria
+                if (matchScore && matchScoreObj.score < Number(matchScore)) {
+                    return null;
+                }
+
+                return {
+                    ...startupObj,
+                    id: startup.userId,
+                    matchScore: matchScoreObj.score,
+                    matchCategories: matchScoreObj.categories
+                };
+            }).filter(Boolean); // Remove null values
+
+            // Adjust total count if filtering by match score
+            const adjustedCount = matchScore ? mappedStartups.length : totalCount;
+
             res.json({
-                startups: filteredStartups,
+                startups: mappedStartups,
                 pagination: {
-                    total: totalCount,
+                    total: adjustedCount,
                     page: Number(page),
-                    pages: Math.ceil(totalCount / Number(limit))
+                    pages: Math.ceil(adjustedCount / Number(limit)),
+                    hasNext: Number(page) < Math.ceil(adjustedCount / Number(limit)),
+                    hasPrev: Number(page) > 1
                 }
             });
             return;
@@ -92,12 +179,40 @@ export const searchStartups = async (req: Request, res: Response): Promise<void>
         const startups = await startupQuery.exec();
         const totalCount = await StartupProfileModel.countDocuments(query);
 
+        // Map results and add match scores
+        const mappedStartups = startups.map(startup => {
+            const startupObj = startup.toObject();
+
+            // Calculate match score if current user is an investor
+            let matchScoreObj = { score: 0, categories: {} };
+            if (currentUser) {
+                matchScoreObj = calculateMatchScore(startupObj, currentUser);
+            }
+
+            // Only include startups that meet minimum match score criteria
+            if (matchScore && matchScoreObj.score < Number(matchScore)) {
+                return null;
+            }
+
+            return {
+                ...startupObj,
+                id: startup.userId,
+                matchScore: matchScoreObj.score,
+                matchCategories: matchScoreObj.categories
+            };
+        }).filter(Boolean); // Remove null values
+
+        // Adjust total count if filtering by match score
+        const adjustedCount = matchScore ? mappedStartups.length : totalCount;
+
         res.json({
-            startups,
+            startups: mappedStartups,
             pagination: {
-                total: totalCount,
+                total: adjustedCount,
                 page: Number(page),
-                pages: Math.ceil(totalCount / Number(limit))
+                pages: Math.ceil(adjustedCount / Number(limit)),
+                hasNext: Number(page) < Math.ceil(adjustedCount / Number(limit)),
+                hasPrev: Number(page) > 1
             }
         });
 
@@ -115,6 +230,10 @@ export const searchStartups = async (req: Request, res: Response): Promise<void>
  */
 export const searchInvestors = async (req: Request, res: Response): Promise<void> => {
     try {
+        // Get current user (presumably a startup)
+        const userId = req.user?.userId; // Changed from req.user?.id to req.user?.userId
+        const currentUser = userId ? await StartupProfileModel.findOne({ userId }) : null;
+
         const {
             industry,
             fundingStage,
@@ -124,7 +243,8 @@ export const searchInvestors = async (req: Request, res: Response): Promise<void
             page = 1,
             limit = 10,
             sortBy = 'createdAt',
-            sortOrder = 'desc'
+            sortOrder = 'desc',
+            matchScore = 0
         } = req.query;
 
         // Build query object
@@ -184,12 +304,40 @@ export const searchInvestors = async (req: Request, res: Response): Promise<void
             // Count for pagination info
             const totalCount = await InvestorProfileModel.countDocuments(query);
 
+            // Map results and add match scores
+            const mappedInvestors = filteredInvestors.map(investor => {
+                const investorObj = investor.toObject();
+
+                // Calculate match score if current user is a startup
+                let matchScoreObj = { score: 0, categories: {} };
+                if (currentUser) {
+                    matchScoreObj = calculateMatchScore(currentUser, investorObj);
+                }
+
+                // Only include investors that meet minimum match score criteria
+                if (matchScore && matchScoreObj.score < Number(matchScore)) {
+                    return null;
+                }
+
+                return {
+                    ...investorObj,
+                    id: investor.userId,
+                    matchScore: matchScoreObj.score,
+                    matchCategories: matchScoreObj.categories
+                };
+            }).filter(Boolean); // Remove null values
+
+            // Adjust total count if filtering by match score
+            const adjustedCount = matchScore ? mappedInvestors.length : totalCount;
+
             res.json({
-                investors: filteredInvestors,
+                investors: mappedInvestors,
                 pagination: {
-                    total: totalCount,
+                    total: adjustedCount,
                     page: Number(page),
-                    pages: Math.ceil(totalCount / Number(limit))
+                    pages: Math.ceil(adjustedCount / Number(limit)),
+                    hasNext: Number(page) < Math.ceil(adjustedCount / Number(limit)),
+                    hasPrev: Number(page) > 1
                 }
             });
             return;
@@ -199,12 +347,40 @@ export const searchInvestors = async (req: Request, res: Response): Promise<void
         const investors = await investorQuery.exec();
         const totalCount = await InvestorProfileModel.countDocuments(query);
 
+        // Map results and add match scores
+        const mappedInvestors = investors.map(investor => {
+            const investorObj = investor.toObject();
+
+            // Calculate match score if current user is a startup
+            let matchScoreObj = { score: 0, categories: {} };
+            if (currentUser) {
+                matchScoreObj = calculateMatchScore(currentUser, investorObj);
+            }
+
+            // Only include investors that meet minimum match score criteria
+            if (matchScore && matchScoreObj.score < Number(matchScore)) {
+                return null;
+            }
+
+            return {
+                ...investorObj,
+                id: investor.userId,
+                matchScore: matchScoreObj.score,
+                matchCategories: matchScoreObj.categories
+            };
+        }).filter(Boolean); // Remove null values
+
+        // Adjust total count if filtering by match score
+        const adjustedCount = matchScore ? mappedInvestors.length : totalCount;
+
         res.json({
-            investors,
+            investors: mappedInvestors,
             pagination: {
-                total: totalCount,
+                total: adjustedCount,
                 page: Number(page),
-                pages: Math.ceil(totalCount / Number(limit))
+                pages: Math.ceil(adjustedCount / Number(limit)),
+                hasNext: Number(page) < Math.ceil(adjustedCount / Number(limit)),
+                hasPrev: Number(page) > 1
             }
         });
 
@@ -222,12 +398,15 @@ export const searchInvestors = async (req: Request, res: Response): Promise<void
  */
 export const getFilterOptions = async (req: Request, res: Response): Promise<void> => {
     try {
+        // Import the locations from constants or provide an empty array if not yet defined
+
         res.json({
             industries,
             fundingStages,
             employeeOptions,
             ticketSizes,
-            investmentCriteria
+            investmentCriteria,
+            locations
         });
     } catch (error) {
         console.error('Error getting filter options:', error);

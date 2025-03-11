@@ -18,6 +18,9 @@ import searchRoutes from './routes/searchRoutes';
 
 import { connectMongoDBwithRetry, testPostgressConnection } from './config/db';
 import { resolve } from 'path';
+import { countRequest, statsMiddleware, trackTime } from './utils/logs';
+
+// Import custom middlewares
 
 dotenv.config({ path: resolve(__dirname, '../.env') });
 
@@ -61,6 +64,10 @@ const startServer = async () => {
             next();
         });
 
+        // Custom middlewares
+        app.use(countRequest);
+        app.use(trackTime);
+
         // Define Routes  
         app.use('/api/auth', authRoutes);
         app.use('/api/users', userRoutes);
@@ -71,6 +78,9 @@ const startServer = async () => {
         app.use('/api/analysis', beliefSystemRoutes);
         app.use('/api/email', emailRoutes);
         app.use('/api/search', searchRoutes);
+
+        // Statistics endpoint
+        app.get('/api/stats', statsMiddleware);
 
         // Error handler middleware
         app.use(errorHandler);
