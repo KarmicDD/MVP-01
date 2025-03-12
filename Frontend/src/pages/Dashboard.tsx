@@ -47,7 +47,7 @@ const Dashboard: React.FC = () => {
         overallScore: 0,
         insights: [] as string[]
     });
-    const [compatibilityError, setCompatibilityError] = useState<string | null>(null);
+    const [, setCompatibilityError] = useState<string | null>(null);
     const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
     const [loadingCompatibility, setLoadingCompatibility] = useState(false);
     const [filtersOpen, setFiltersOpen] = useState(false);
@@ -62,7 +62,7 @@ const Dashboard: React.FC = () => {
         revenueRanges: []
     });
     const [pagination, setPagination] = useState<PaginationType | null>(null);
-    const [currentPage, setCurrentPage] = useState(1);
+    const [, setCurrentPage] = useState(1);
     const [sortBy, setSortBy] = useState('matchScore');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -283,9 +283,9 @@ const Dashboard: React.FC = () => {
         // User can apply filters with a button click
     };
 
-    const applyFilters = () => {
-        fetchMatches(1); // Reset to page 1 when applying filters
-    };
+    // const applyFilters = () => {
+    //     fetchMatches(1); // Reset to page 1 when applying filters
+    // };
 
     // Filter matches based on search query and filters
     const filteredMatches = matches.filter(match => {

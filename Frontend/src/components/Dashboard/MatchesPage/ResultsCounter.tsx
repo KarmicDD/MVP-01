@@ -1,12 +1,12 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FiUsers, FiAlertCircle, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
-import { PaginationData } from '../../../services/searchServices';
+import { PaginationType } from '../../../services/searchServices';
 
 interface ResultsCounterProps {
     loading: boolean;
     error: string | null;
-    pagination: PaginationData;
+    pagination: PaginationType;
     currentPage: number;
     resultsPerPage: number;
     matches: any[];

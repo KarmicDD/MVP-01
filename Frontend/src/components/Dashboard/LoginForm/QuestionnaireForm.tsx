@@ -214,16 +214,6 @@ const QuestionnaireForm: React.FC<QuestionnaireFormProps> = ({ userRole, userId 
     );
   };
 
-  // Handle logout
-  const handleLogout = () => {
-    // Clear local storage  
-    localStorage.removeItem('token');
-    localStorage.removeItem('bookmarkedMatches');
-
-    // Redirect to login page
-    navigate('/login');
-  };
-
   const handleDashboardRedirect = () => {
     navigate('/dashboard');
   }
