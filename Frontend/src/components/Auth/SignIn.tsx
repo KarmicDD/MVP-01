@@ -87,7 +87,7 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, selectedRole }) => {
 
     const handleOAuthLogin = (provider: string) => {
         // Redirect to OAuth endpoint
-        window.location.href = `http://localhost:5000/api/auth/${provider}`;
+        window.location.href = `https://mvp-01.onrender.com/api/auth/${provider}`;
     };
 
     return (
