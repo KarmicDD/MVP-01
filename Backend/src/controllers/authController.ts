@@ -6,6 +6,7 @@ import { generateToken } from '../config/jwt';
 // @ts-ignore
 import { validationResult } from 'express-validator';
 
+const frontendUrl = 'https://karmicdd.netlify.app';
 // Register new user
 const register = async (req: Request, res: Response): Promise<void> => {
     // Validate request
@@ -195,12 +196,12 @@ const handleOAuthCallback = (provider: string) => {
         // Check if role is set
         if (!role) {
             // Redirect to frontend role selection with userId for later update
-            res.redirect(`${process.env.FRONTEND_URL}/auth/select-role?userId=${user_id}&token=${token}`);
+            res.redirect(`${frontendUrl}/auth/select-role?userId=${user_id}&token=${token}`);
             return;
         }
 
         // Redirect to frontend with token
-        res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
+        res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
     };
 };
 
