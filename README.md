@@ -1,4 +1,4 @@
-# KarmicDD: AI-Powered Due Diligence Platform
+# KarmicDD: AI-Powered Due Diligence Platform -YC Request For Startups Compliance and Audit
 
 ## About KarmicDD
 
