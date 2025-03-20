@@ -4,7 +4,6 @@ import { UserProfile, StartupProfile, InvestorProfile } from '../../../types/Das
 import { colours } from '../../../utils/colours';
 import { FiUser, FiBell, FiChevronDown, FiSettings, FiLogOut, FiGrid, FiBarChart2, FiMessageCircle, FiCalendar } from 'react-icons/fi';
 import { Logo } from '../../Auth/Logo';
-import axios from 'axios';
 import { profileService } from '../../../services/api';
 
 interface HeaderProps {
@@ -28,9 +27,6 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
     const [profileData, setProfileData] = useState<StartupProfile | InvestorProfile | null>(null);
     const [, setLoading] = useState(false);
 
-    // API constants
-    const API_URL = 'https://mvp-01.onrender.com/api';
-    const token = localStorage.getItem('token');
 
     // Role-specific styling
     const primaryColor = role === 'startup' ? colours.primaryBlue : '#16a34a';
