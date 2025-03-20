@@ -170,6 +170,45 @@ export const beliefSystemService = {
     }
 };
 
+export const profileService = {
+    // Get startup profile
+    getStartupProfile: async () => {
+        try {
+            const response = await api.get('/profile/startup');
+            return response.data.profile;
+        } catch (error) {
+            console.error('Error fetching startup profile:', error);
+            throw error;
+        }
+    },
+
+    // Get investor profile
+    getInvestorProfile: async () => {
+        try {
+            const response = await api.get('/profile/investor');
+            return response.data.profile;
+        } catch (error) {
+            console.error('Error fetching investor profile:', error);
+            throw error;
+        }
+    },
+
+    // Check profile completeness
+    checkProfileCompleteness: async () => {
+        try {
+            const response = await api.get('/profile/check-profile');
+            return {
+                isComplete: response.data.profileComplete,
+                percentage: response.data.completionPercentage || 0,
+                missingFields: response.data.missingFields || []
+            };
+        } catch (error) {
+            console.error('Error checking profile completeness:', error);
+            throw error;
+        }
+    }
+};
+
 
 
 

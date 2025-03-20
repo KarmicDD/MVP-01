@@ -5,6 +5,7 @@ import { colours } from '../../../utils/colours';
 import { FiUser, FiBell, FiChevronDown, FiSettings, FiLogOut, FiGrid, FiBarChart2, FiMessageCircle, FiCalendar } from 'react-icons/fi';
 import { Logo } from '../../Auth/Logo';
 import axios from 'axios';
+import { profileService } from '../../../services/api';
 
 interface HeaderProps {
     activeTab: string;
@@ -45,28 +46,38 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
 
             setLoading(true);
             try {
-                // 1. Fetch the profile data as before
-                const endpoint = role === 'startup' ? '/profile/startup' : '/profile/investor';
-                const response = await axios.get(`${API_URL}${endpoint}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+                // 1. Fetch the profile data using the service
+                const profileDataResponse = role === 'startup'
+                    ? await profileService.getStartupProfile()
+                    : await profileService.getInvestorProfile();
 
-                setProfileData(response.data.profile);
+                setProfileData(profileDataResponse);
 
-                // 2. Call the new check-profile endpoint
-                const profileCheckResponse = await axios.get(`${API_URL}/profile/check-profile`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+                // 2. Check profile completeness
+                const profileCompleteness = await profileService.checkProfileCompleteness();
 
                 // 3. Store the API's assessment of profile completeness
-                setProfileCompleteFromAPI(profileCheckResponse.data.profileComplete);
+                setProfileCompleteFromAPI(profileCompleteness.isComplete);
 
-                // 4. Update notifications based on API profile completeness result
-                if (!profileCheckResponse.data.profileComplete) {
+                // 4. Update notifications based on profile completeness
+                if (!profileCompleteness.isComplete && profileCompleteness.missingFields?.length > 0) {
+                    // Create a detailed notification about missing fields
+                    setNotifications(prev => {
+                        // Remove any existing profile completion notifications
+                        const filteredNotifications = prev.filter(n =>
+                            !n.text.includes("Complete your profile") &&
+                            !n.text.includes("missing")
+                        );
+
+                        // Add the new notification with specific missing fields
+                        return [...filteredNotifications, {
+                            id: Date.now(),
+                            text: `Complete your profile: ${profileCompleteness.missingFields.join(', ')} missing`,
+                            read: false
+                        }];
+                    });
+                } else if (!profileCompleteness.isComplete) {
+                    // Create a general notification if specific fields aren't provided
                     setNotifications(prev => {
                         // Check if we already have a profile completion notification
                         const hasProfileNotification = prev.some(n =>
@@ -82,46 +93,24 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
                         }];
                     });
                 }
-
-                // 5. Keep the existing detailed notification logic as a fallback
-                // This provides more specific information about what's missing
-                if (response.data.profile) {
-                    const fieldsToCheck = role === 'startup'
-                        ? ['company_name', 'industry', 'funding_stage', 'pitch']
-                        : ['industries_of_interest', 'preferred_stages', 'ticket_size'];
-
-                    const profileFields = response.data.profile;
-                    const missingFields = fieldsToCheck.filter(field =>
-                        !profileFields[field] ||
-                        (Array.isArray(profileFields[field]) && profileFields[field].length === 0)
-                    );
-
-                    if (missingFields.length > 0 && !profileCheckResponse.data.profileComplete) {
-                        // Replace any generic profile completion notification with a more detailed one
-                        setNotifications(prev => {
-                            // Remove any generic profile completion notifications
-                            const filteredNotifications = prev.filter(n =>
-                                !n.text.includes("Complete your profile to improve matches")
-                            );
-
-                            // Add the detailed notification
-                            return [...filteredNotifications, {
-                                id: Date.now(),
-                                text: `Complete your profile: ${missingFields.join(', ')} missing`,
-                                read: false
-                            }];
-                        });
-                    }
-                }
             } catch (error) {
                 console.error('Error fetching profile data:', error);
+                // Show error notification
+                setNotifications(prev => [
+                    ...prev,
+                    {
+                        id: Date.now(),
+                        text: "Failed to load profile data. Please try again later.",
+                        read: false
+                    }
+                ]);
             } finally {
                 setLoading(false);
             }
         };
-        fetchProfileData();
-    }, [userProfile, role, token]);
 
+        fetchProfileData();
+    }, [userProfile, role]);
     // Handle scroll effect for header
     useEffect(() => {
         const handleScroll = () => {
@@ -173,6 +162,13 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
 
     // Get profile completeness percentage
     const getProfileCompleteness = () => {
+        // If we have a direct API percentage, use that
+        const apiProfileCompletenessEl = document.getElementById('api-profile-completeness');
+        if (apiProfileCompletenessEl && apiProfileCompletenessEl.dataset.percentage) {
+            return parseInt(apiProfileCompletenessEl.dataset.percentage);
+        }
+
+        // Otherwise, calculate locally as a fallback
         if (!profileData) return 0;
 
         let totalFields = 0;
