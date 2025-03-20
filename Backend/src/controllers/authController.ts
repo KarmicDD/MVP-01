@@ -6,7 +6,7 @@ import { generateToken } from '../config/jwt';
 // @ts-ignore
 import { validationResult } from 'express-validator';
 
-const frontendUrl = 'https://karmicdd.netlify.app/forms';
+const frontendUrl = 'https://karmicdd.netlify.app/';
 // Register new user
 const register = async (req: Request, res: Response): Promise<void> => {
     // Validate request

@@ -52,10 +52,8 @@ const OAuthCallback: React.FC = () => {
                             // Default to home if no role
                             navigate('/');
                         }
-                    } catch (profileError) {
-                        console.error('Error fetching user profile:', profileError);
-                        setError('Failed to retrieve user information');
-                        setLoading(false);
+                    } catch (err) {
+                        console.error("OAuth callback error:", err);
                     }
                 } else {
                     throw new Error('No authentication token received');
