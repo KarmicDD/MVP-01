@@ -116,37 +116,73 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
     const getMissingProfileFields = (profileData: StartupProfile | InvestorProfile | null, role: string): string[] => {
         if (!profileData) return [];
 
+        // Debug - log the actual profile data structure
+        console.log("Profile data structure:", JSON.stringify(profileData, null, 2));
+
         let missingFields: string[] = [];
 
         if (role === 'startup') {
             const requiredFields = [
-                { key: 'company_name', label: 'Company name' },
+                { key: 'companyName', label: 'Company name' },      // Changed from company_name to companyName
                 { key: 'industry', label: 'Industry' },
-                { key: 'funding_stage', label: 'Funding stage' },
-                { key: 'employee_count', label: 'Employee count' },
+                { key: 'fundingStage', label: 'Funding stage' },    // Changed from funding_stage to fundingStage
+                { key: 'employeeCount', label: 'Employee count' },  // Changed from employee_count to employeeCount
                 { key: 'location', label: 'Location' },
                 { key: 'pitch', label: 'Pitch' }
             ];
 
             missingFields = requiredFields
-                .filter(field => !(profileData as StartupProfile)[field.key as keyof StartupProfile])
+                .filter(field => !(profileData as any)[field.key])
                 .map(field => field.label);
         } else {
             const requiredFields = [
-                { key: 'industries_of_interest', label: 'Industries of interest' },
-                { key: 'preferred_stages', label: 'Preferred stages' },
-                { key: 'ticket_size', label: 'Ticket size' },
-                { key: 'investment_criteria', label: 'Investment criteria' },
-                { key: 'past_investments', label: 'Past investments' }
+                { key: 'industriesOfInterest', label: 'Industries of interest' },  // Changed from industries_of_interest to industriesOfInterest
+                { key: 'preferredStages', label: 'Preferred stages' },            // Changed from preferred_stages to preferredStages
+                { key: 'ticketSize', label: 'Ticket size' },                      // Changed from ticket_size to ticketSize
+                { key: 'investmentCriteria', label: 'Investment criteria' },      // Changed from investment_criteria to investmentCriteria
+                { key: 'pastInvestments', label: 'Past investments' }             // Changed from past_investments to pastInvestments
             ];
 
             missingFields = requiredFields.filter(field => {
-                const value = (profileData as InvestorProfile)[field.key as keyof InvestorProfile];
+                const value = (profileData as any)[field.key];
                 return Array.isArray(value) ? value.length === 0 : !value;
             }).map(field => field.label);
         }
 
         return missingFields;
+    };
+
+    // Replace the getProfileCompleteness function with this corrected version
+    const getProfileCompleteness = () => {
+        // Skip DOM element check as it doesn't exist
+
+        // If no profile data, return 0
+        if (!profileData) return 0;
+
+        let totalFields = 0;
+        let completedFields = 0;
+
+        if (role === 'startup') {
+            // Updated property names to match API camelCase
+            const fields = ['companyName', 'industry', 'fundingStage', 'employeeCount', 'location', 'pitch'];
+            totalFields = fields.length;
+            completedFields = fields.filter(field =>
+                !!(profileData as any)[field]
+            ).length;
+        } else {
+            // Updated property names to match API camelCase
+            const fields = ['industriesOfInterest', 'preferredStages', 'ticketSize', 'investmentCriteria', 'pastInvestments'];
+            totalFields = fields.length;
+            completedFields = fields.filter(field => {
+                const value = (profileData as any)[field];
+                return Array.isArray(value) ? value.length > 0 : !!value;
+            }).length;
+        }
+
+        // Debug logging
+        console.log(`Profile completeness: ${completedFields}/${totalFields} fields completed`);
+
+        return Math.round((completedFields / totalFields) * 100);
     };
 
     // Handle scroll effect for header
@@ -191,43 +227,11 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
     // Get display name for profile menu
     const getDisplayName = () => {
         if (role === 'startup' && profileData) {
-            return (profileData as StartupProfile).company_name || userProfile?.email;
+            return (profileData as any).companyName || userProfile?.email; // Changed from company_name
         } else if (role === 'investor' && profileData) {
-            return (profileData as InvestorProfile).company_name || userProfile?.email;
+            return (profileData as any).companyName || userProfile?.email; // Changed from company_name
         }
         return userProfile?.email;
-    };
-
-    // Get profile completeness percentage
-    const getProfileCompleteness = () => {
-        // If we have a direct API percentage, use that
-        const apiProfileCompletenessEl = document.getElementById('api-profile-completeness');
-        if (apiProfileCompletenessEl && apiProfileCompletenessEl.dataset.percentage) {
-            return parseInt(apiProfileCompletenessEl.dataset.percentage);
-        }
-
-        // Otherwise, calculate locally as a fallback
-        if (!profileData) return 0;
-
-        let totalFields = 0;
-        let completedFields = 0;
-
-        if (role === 'startup') {
-            const fields = ['company_name', 'industry', 'funding_stage', 'employee_count', 'location', 'pitch'];
-            totalFields = fields.length;
-            completedFields = fields.filter(field =>
-                !!(profileData as StartupProfile)[field as keyof StartupProfile]
-            ).length;
-        } else {
-            const fields = ['industries_of_interest', 'preferred_stages', 'ticket_size', 'investment_criteria', 'past_investments'];
-            totalFields = fields.length;
-            completedFields = fields.filter(field => {
-                const value = (profileData as InvestorProfile)[field as keyof InvestorProfile];
-                return Array.isArray(value) ? value.length > 0 : !!value;
-            }).length;
-        }
-
-        return Math.round((completedFields / totalFields) * 100);
     };
 
     const profileCompleteness = getProfileCompleteness();
