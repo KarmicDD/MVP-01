@@ -607,10 +607,10 @@ const VentureMatch = () => {
   const handleLogout = async () => {
     try {
       await api.get('/api/auth/logout', { withCredentials: true });
-      navigate('/auth');
+      navigate('/dashboard');
     } catch (err) {
       console.error('Logout failed:', err);
-      navigate('/auth');
+      navigate('/dashboard');
     }
   };
 
