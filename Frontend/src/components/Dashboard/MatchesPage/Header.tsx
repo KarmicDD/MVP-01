@@ -49,45 +49,50 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
 
                 setProfileData(profileDataResponse);
 
-                // 2. Check profile completeness
+                // 2. Check profile completeness from API
                 const profileCompleteness = await profileService.checkProfileCompleteness();
 
                 // 3. Store the API's assessment of profile completeness
                 setProfileCompleteFromAPI(profileCompleteness.isComplete);
 
                 // 4. Update notifications based on profile completeness
-                if (!profileCompleteness.isComplete && profileCompleteness.missingFields?.length > 0) {
-                    // Create a detailed notification about missing fields
-                    setNotifications(prev => {
-                        // Remove any existing profile completion notifications
-                        const filteredNotifications = prev.filter(n =>
-                            !n.text.includes("Complete your profile") &&
-                            !n.text.includes("missing")
-                        );
+                if (!profileCompleteness.isComplete) {
+                    // Determine missing fields manually since the API doesn't provide them
+                    const missingFields = getMissingProfileFields(profileDataResponse, role);
 
-                        // Add the new notification with specific missing fields
-                        return [...filteredNotifications, {
-                            id: Date.now(),
-                            text: `Complete your profile: ${profileCompleteness.missingFields.join(', ')} missing`,
-                            read: false
-                        }];
-                    });
-                } else if (!profileCompleteness.isComplete) {
-                    // Create a general notification if specific fields aren't provided
-                    setNotifications(prev => {
-                        // Check if we already have a profile completion notification
-                        const hasProfileNotification = prev.some(n =>
-                            n.text.includes("Complete your profile")
-                        );
+                    if (missingFields.length > 0) {
+                        // Create a detailed notification about missing fields
+                        setNotifications(prev => {
+                            // Remove any existing profile completion notifications
+                            const filteredNotifications = prev.filter(n =>
+                                !n.text.includes("Complete your profile") &&
+                                !n.text.includes("missing")
+                            );
 
-                        if (hasProfileNotification) return prev;
+                            // Add the new notification with specific missing fields
+                            return [...filteredNotifications, {
+                                id: Date.now(),
+                                text: `Complete your profile: ${missingFields.join(', ')} missing`,
+                                read: false
+                            }];
+                        });
+                    } else {
+                        // Create a general notification if specific fields aren't identified
+                        setNotifications(prev => {
+                            // Check if we already have a profile completion notification
+                            const hasProfileNotification = prev.some(n =>
+                                n.text.includes("Complete your profile")
+                            );
 
-                        return [...prev, {
-                            id: Date.now(),
-                            text: `Complete your profile to improve matches`,
-                            read: false
-                        }];
-                    });
+                            if (hasProfileNotification) return prev;
+
+                            return [...prev, {
+                                id: Date.now(),
+                                text: `Complete your profile to improve matches`,
+                                read: false
+                            }];
+                        });
+                    }
                 }
             } catch (error) {
                 console.error('Error fetching profile data:', error);
@@ -107,6 +112,43 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
 
         fetchProfileData();
     }, [userProfile, role]);
+
+    const getMissingProfileFields = (profileData: StartupProfile | InvestorProfile | null, role: string): string[] => {
+        if (!profileData) return [];
+
+        let missingFields: string[] = [];
+
+        if (role === 'startup') {
+            const requiredFields = [
+                { key: 'company_name', label: 'Company name' },
+                { key: 'industry', label: 'Industry' },
+                { key: 'funding_stage', label: 'Funding stage' },
+                { key: 'employee_count', label: 'Employee count' },
+                { key: 'location', label: 'Location' },
+                { key: 'pitch', label: 'Pitch' }
+            ];
+
+            missingFields = requiredFields
+                .filter(field => !(profileData as StartupProfile)[field.key as keyof StartupProfile])
+                .map(field => field.label);
+        } else {
+            const requiredFields = [
+                { key: 'industries_of_interest', label: 'Industries of interest' },
+                { key: 'preferred_stages', label: 'Preferred stages' },
+                { key: 'ticket_size', label: 'Ticket size' },
+                { key: 'investment_criteria', label: 'Investment criteria' },
+                { key: 'past_investments', label: 'Past investments' }
+            ];
+
+            missingFields = requiredFields.filter(field => {
+                const value = (profileData as InvestorProfile)[field.key as keyof InvestorProfile];
+                return Array.isArray(value) ? value.length === 0 : !value;
+            }).map(field => field.label);
+        }
+
+        return missingFields;
+    };
+
     // Handle scroll effect for header
     useEffect(() => {
         const handleScroll = () => {

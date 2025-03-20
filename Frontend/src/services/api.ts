@@ -193,14 +193,12 @@ export const profileService = {
         }
     },
 
-    // Check profile completeness
+    // Check profile completeness - simplified to match actual API response
     checkProfileCompleteness: async () => {
         try {
             const response = await api.get('/profile/check-profile');
             return {
-                isComplete: response.data.profileComplete,
-                percentage: response.data.completionPercentage || 0,
-                missingFields: response.data.missingFields || []
+                isComplete: response.data.profileComplete
             };
         } catch (error) {
             console.error('Error checking profile completeness:', error);
@@ -208,8 +206,5 @@ export const profileService = {
         }
     }
 };
-
-
-
 
 export default api;
