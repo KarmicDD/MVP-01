@@ -1,7 +1,7 @@
 // src/components/Auth/OAuthCallback.tsx
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { authService } from '../../services/api';
+import api, { authService } from '../../services/api';
 import { colours } from '../../utils/colours';
 import { FaRocket, FaChartLine, FaArrowLeft } from "react-icons/fa";
 import { motion } from 'framer-motion';
@@ -33,22 +33,34 @@ const OAuthCallback: React.FC = () => {
                         return;
                     }
 
-                    // Otherwise, get user info and redirect
-                    const user = await authService.getCurrentUser();
-                    if (user && user.role) {
-                        if (user.role === 'startup') {
-                            navigate('/startup/dashboard');
-                        } else if (user.role === 'investor') {
-                            navigate('/investor/dashboard');
+                    try {
+                        // Fetch user profile from API with the token
+                        const response = await api.get('/users/profile');
+
+                        // Store user data in localStorage
+                        if (response.data) {
+                            localStorage.setItem('user', JSON.stringify(response.data));
                         }
-                    } else {
-                        // Default to home if no role
-                        navigate('/');
+
+                        // Get updated user information
+                        const user = authService.getCurrentUser();
+
+                        if (user && user.role) {
+                            // Navigate to dashboard - not role-specific routes
+                            navigate('/dashboard');
+                        } else {
+                            // Default to home if no role
+                            navigate('/');
+                        }
+                    } catch (profileError) {
+                        console.error('Error fetching user profile:', profileError);
+                        setError('Failed to retrieve user information');
+                        setLoading(false);
                     }
                 } else {
                     throw new Error('No authentication token received');
                 }
-            } catch (err: Error | unknown) {
+            } catch (err) {
                 console.error('OAuth callback error:', err);
                 setError('Authentication failed. Please try again.');
                 setLoading(false);
@@ -62,16 +74,10 @@ const OAuthCallback: React.FC = () => {
         try {
             setLoading(true);
 
-            // Update user role
             await authService.updateRole(userId, role);
 
-            // Redirect based on selected role
-            if (role === 'startup') {
-                navigate('/startup/dashboard');
-            } else {
-                navigate('/investor/dashboard');
-            }
-        } catch (err: Error | unknown) {
+            navigate('/dashboard');
+        } catch (err) {
             console.error('Role selection error:', err);
             setError('Failed to update role. Please try again.');
             setLoading(false);

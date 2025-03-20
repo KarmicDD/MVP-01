@@ -86,8 +86,15 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, selectedRole }) => {
     };
 
     const handleOAuthLogin = (provider: string) => {
-        // Redirect to OAuth endpoint
-        window.location.href = `https://mvp-01.onrender.com/api/auth/${provider}`;
+        // Store selected role in localStorage for potential later use
+        if (selectedRole) {
+            localStorage.setItem('selectedRole', selectedRole);
+        }
+
+        // Redirect to OAuth endpoint with role parameter
+        const redirectUrl = `https://mvp-01.onrender.com/api/auth/${provider}` +
+            (selectedRole ? `?role=${selectedRole}` : '');
+        window.location.href = redirectUrl;
     };
 
     return (

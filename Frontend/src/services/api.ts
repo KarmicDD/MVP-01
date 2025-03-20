@@ -109,10 +109,18 @@ export const authService = {
 export const userService = {
     // Get user profile
     getProfile: async () => {
-        const response = await api.get('/users/profile');
-        return response.data;
+        try {
+            const response = await api.get('/users/profile');
+            if (response.data) {
+                localStorage.setItem('user', JSON.stringify(response.data));
+                return response.data;
+            }
+            return null;
+        } catch (error) {
+            console.error('Error fetching profile:', error);
+            return null;
+        }
     },
-
     // Get startup dashboard
     getStartupDashboard: async () => {
         const response = await api.get('/users/startup/dashboard');
