@@ -69,7 +69,7 @@ const Dashboard: React.FC = () => {
     const navigate = useNavigate();
 
     // Keep your existing constants and functions
-    const API_URL = 'https://mvp-01.onrender.com/api';
+    const API_URL = 'http://localhost:5000/api';
     const token = localStorage.getItem('token');
 
     const handleLogout = () => {
@@ -93,7 +93,7 @@ const Dashboard: React.FC = () => {
             // Build search options from current state
             const searchOptions: SearchOptions = {
                 page,
-                limit: 10,
+                limit: 4, // Changed from 10 to 4
                 sortBy,
                 sortOrder
             };

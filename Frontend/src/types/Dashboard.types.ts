@@ -5,18 +5,28 @@ export interface UserProfile {
 }
 
 export interface Match {
+    _id?: string;
     id?: string;
-    investorId?: string;
-    startupId?: string;
-    email: string;
-    matchScore: number;
+    userId?: string;
     companyName?: string;
+    createdAt?: string;
+    updatedAt?: string;
+    employeeCount?: string;
+    fundingStage?: string;
+    industry?: string;
+    location?: string;
+    pitch?: string;
+    email?: string;
+    matchScore: number;
+    matchCategories?: {
+        Industry?: number;
+        Stage?: number;
+        Size?: number;
+        [key: string]: number | undefined;
+    };
     industriesOfInterest?: string[];
     preferredStages?: string[];
     ticketSize?: string;
-    industry?: string;
-    fundingStage?: string;
-    location?: string;
 }
 
 export interface RenderMatchCardsProps {
