@@ -64,9 +64,8 @@ const calculateMatchScore = (startup: any, investor: any): { score: number, cate
 export const searchStartups = async (req: Request, res: Response): Promise<void> => {
     try {
         // Get current user (presumably an investor)
-        const userId = req.user?.userId; // Changed from req.user?.id to req.user?.userId
+        const userId = req.user?.userId;
         const currentUser = userId ? await InvestorProfileModel.findOne({ userId }) : null;
-
 
         const {
             industry,
@@ -80,6 +79,10 @@ export const searchStartups = async (req: Request, res: Response): Promise<void>
             sortOrder = 'desc',
             matchScore = 0
         } = req.query;
+
+        // Convert page and limit to numbers
+        const pageNum = Number(page);
+        const limitNum = Number(limit);
 
         // Build query object
         const query: any = {};
@@ -104,115 +107,84 @@ export const searchStartups = async (req: Request, res: Response): Promise<void>
             query.location = { $regex: new RegExp(location as string, 'i') };
         }
 
-        // For pagination
-        const skip = (Number(page) - 1) * Number(limit);
-
-        // Sorting
-        const sort: any = {};
-        sort[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
-
-        // Execute main query
-        let startupQuery = StartupProfileModel.find(query)
-            .sort(sort)
-            .skip(skip)
-            .limit(Number(limit));
-
-        // If we need to filter by form submission
+        // Prepare for form submission filtering
+        let userIdsWithFormSubmission: string[] = [];
         if (hasFormSubmission === 'true' || hasFormSubmission === 'false') {
-            const startups = await startupQuery.exec();
+            // Get all startup user IDs that match our base criteria
+            const startupUserIds = await StartupProfileModel.find(query).distinct('userId');
 
-            // Get IDs of startups that have form submissions
-            const startupIds = startups.map(startup => startup.userId);
-            const formSubmissions = await FormSubmissionModel.find({
-                userId: { $in: startupIds }
+            // Find which ones have form submissions
+            userIdsWithFormSubmission = await FormSubmissionModel.find({
+                userId: { $in: startupUserIds }
             }).distinct('userId');
-
-            // Filter startups based on form submissions
-            const filteredStartups = startups.filter(startup => {
-                const hasSubmission = formSubmissions.includes(startup.userId);
-                return hasFormSubmission === 'true' ? hasSubmission : !hasSubmission;
-            });
-
-            // Count for pagination info
-            const totalCount = await StartupProfileModel.countDocuments(query);
-
-            // Map results and add match scores
-            const mappedStartups = filteredStartups.map(startup => {
-                const startupObj = startup.toObject();
-
-                // Calculate match score if current user is an investor
-                let matchScoreObj = { score: 0, categories: {} };
-                if (currentUser) {
-                    matchScoreObj = calculateMatchScore(startupObj, currentUser);
-                }
-
-                // Only include startups that meet minimum match score criteria
-                if (matchScore && matchScoreObj.score < Number(matchScore)) {
-                    return null;
-                }
-
-                return {
-                    ...startupObj,
-                    id: startup.userId,
-                    matchScore: matchScoreObj.score,
-                    matchCategories: matchScoreObj.categories
-                };
-            }).filter(Boolean); // Remove null values
-
-            // Adjust total count if filtering by match score
-            const adjustedCount = matchScore ? mappedStartups.length : totalCount;
-
-            res.json({
-                startups: mappedStartups,
-                pagination: {
-                    total: adjustedCount,
-                    page: Number(page),
-                    pages: Math.ceil(adjustedCount / Number(limit)),
-                    hasNext: Number(page) < Math.ceil(adjustedCount / Number(limit)),
-                    hasPrev: Number(page) > 1
-                }
-            });
-            return;
         }
 
-        // Standard query execution (no form submission filtering)
-        const startups = await startupQuery.exec();
-        const totalCount = await StartupProfileModel.countDocuments(query);
+        // Get all matching startups for filtering (without pagination)
+        const allStartups = await StartupProfileModel.find(query).lean();
 
-        // Map results and add match scores
-        const mappedStartups = startups.map(startup => {
-            const startupObj = startup.toObject();
+        // Apply form submission filtering
+        let filteredStartups = allStartups;
+        if (hasFormSubmission === 'true') {
+            filteredStartups = allStartups.filter(startup =>
+                userIdsWithFormSubmission.includes(startup.userId));
+        } else if (hasFormSubmission === 'false') {
+            filteredStartups = allStartups.filter(startup =>
+                !userIdsWithFormSubmission.includes(startup.userId));
+        }
 
+        // Calculate match scores and apply score filtering
+        const scoredStartups = filteredStartups.map(startup => {
             // Calculate match score if current user is an investor
             let matchScoreObj = { score: 0, categories: {} };
             if (currentUser) {
-                matchScoreObj = calculateMatchScore(startupObj, currentUser);
-            }
-
-            // Only include startups that meet minimum match score criteria
-            if (matchScore && matchScoreObj.score < Number(matchScore)) {
-                return null;
+                matchScoreObj = calculateMatchScore(startup, currentUser);
             }
 
             return {
-                ...startupObj,
+                ...startup,
                 id: startup.userId,
                 matchScore: matchScoreObj.score,
                 matchCategories: matchScoreObj.categories
             };
-        }).filter(Boolean); // Remove null values
+        }).filter(startup =>
+            // Filter by minimum match score if specified
+            !matchScore || startup.matchScore >= Number(matchScore)
+        );
 
-        // Adjust total count if filtering by match score
-        const adjustedCount = matchScore ? mappedStartups.length : totalCount;
+        // Sort results
+        const sortedStartups = [...scoredStartups].sort((a, b) => {
+            const fieldA = a[sortBy as keyof typeof a];
+            const fieldB = b[sortBy as keyof typeof b];
+
+            if (typeof fieldA === 'string' && typeof fieldB === 'string') {
+                return sortOrder === 'asc'
+                    ? fieldA.localeCompare(fieldB)
+                    : fieldB.localeCompare(fieldA);
+            }
+
+            if (sortOrder === 'asc') {
+                return (fieldA ?? 0) > (fieldB ?? 0) ? 1 : -1;
+            } else {
+                return (fieldA ?? 0) < (fieldB ?? 0) ? 1 : -1;
+            }
+        });
+
+        // Apply pagination
+        const startIndex = (pageNum - 1) * limitNum;
+        const paginatedStartups = sortedStartups.slice(startIndex, startIndex + limitNum);
+
+        // Total count for pagination
+        const totalCount = sortedStartups.length;
+        const totalPages = Math.ceil(totalCount / limitNum);
 
         res.json({
-            startups: mappedStartups,
+            startups: paginatedStartups,
             pagination: {
-                total: adjustedCount,
-                page: Number(page),
-                pages: Math.ceil(adjustedCount / Number(limit)),
-                hasNext: Number(page) < Math.ceil(adjustedCount / Number(limit)),
-                hasPrev: Number(page) > 1
+                total: totalCount,
+                page: pageNum,
+                pages: totalPages,
+                hasNext: pageNum < totalPages,
+                hasPrev: pageNum > 1
             }
         });
 
@@ -231,7 +203,7 @@ export const searchStartups = async (req: Request, res: Response): Promise<void>
 export const searchInvestors = async (req: Request, res: Response): Promise<void> => {
     try {
         // Get current user (presumably a startup)
-        const userId = req.user?.userId; // Changed from req.user?.id to req.user?.userId
+        const userId = req.user?.userId;
         const currentUser = userId ? await StartupProfileModel.findOne({ userId }) : null;
 
         const {
@@ -246,6 +218,10 @@ export const searchInvestors = async (req: Request, res: Response): Promise<void
             sortOrder = 'desc',
             matchScore = 0
         } = req.query;
+
+        // Convert page and limit to numbers
+        const pageNum = Number(page);
+        const limitNum = Number(limit);
 
         // Build query object
         const query: any = {};
@@ -272,115 +248,84 @@ export const searchInvestors = async (req: Request, res: Response): Promise<void
             query.investmentCriteria = { $in: criteriaList };
         }
 
-        // For pagination
-        const skip = (Number(page) - 1) * Number(limit);
-
-        // Sorting
-        const sort: any = {};
-        sort[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
-
-        // Execute main query
-        let investorQuery = InvestorProfileModel.find(query)
-            .sort(sort)
-            .skip(skip)
-            .limit(Number(limit));
-
-        // If we need to filter by form submission
+        // Prepare for form submission filtering
+        let userIdsWithFormSubmission: string[] = [];
         if (hasFormSubmission === 'true' || hasFormSubmission === 'false') {
-            const investors = await investorQuery.exec();
+            // Get all investor user IDs that match our base criteria
+            const investorUserIds = await InvestorProfileModel.find(query).distinct('userId');
 
-            // Get IDs of investors that have form submissions
-            const investorIds = investors.map(investor => investor.userId);
-            const formSubmissions = await FormSubmissionModel.find({
-                userId: { $in: investorIds }
+            // Find which ones have form submissions
+            userIdsWithFormSubmission = await FormSubmissionModel.find({
+                userId: { $in: investorUserIds }
             }).distinct('userId');
-
-            // Filter investors based on form submissions
-            const filteredInvestors = investors.filter(investor => {
-                const hasSubmission = formSubmissions.includes(investor.userId);
-                return hasFormSubmission === 'true' ? hasSubmission : !hasSubmission;
-            });
-
-            // Count for pagination info
-            const totalCount = await InvestorProfileModel.countDocuments(query);
-
-            // Map results and add match scores
-            const mappedInvestors = filteredInvestors.map(investor => {
-                const investorObj = investor.toObject();
-
-                // Calculate match score if current user is a startup
-                let matchScoreObj = { score: 0, categories: {} };
-                if (currentUser) {
-                    matchScoreObj = calculateMatchScore(currentUser, investorObj);
-                }
-
-                // Only include investors that meet minimum match score criteria
-                if (matchScore && matchScoreObj.score < Number(matchScore)) {
-                    return null;
-                }
-
-                return {
-                    ...investorObj,
-                    id: investor.userId,
-                    matchScore: matchScoreObj.score,
-                    matchCategories: matchScoreObj.categories
-                };
-            }).filter(Boolean); // Remove null values
-
-            // Adjust total count if filtering by match score
-            const adjustedCount = matchScore ? mappedInvestors.length : totalCount;
-
-            res.json({
-                investors: mappedInvestors,
-                pagination: {
-                    total: adjustedCount,
-                    page: Number(page),
-                    pages: Math.ceil(adjustedCount / Number(limit)),
-                    hasNext: Number(page) < Math.ceil(adjustedCount / Number(limit)),
-                    hasPrev: Number(page) > 1
-                }
-            });
-            return;
         }
 
-        // Standard query execution (no form submission filtering)
-        const investors = await investorQuery.exec();
-        const totalCount = await InvestorProfileModel.countDocuments(query);
+        // Get all matching investors for filtering (without pagination)
+        const allInvestors = await InvestorProfileModel.find(query).lean();
 
-        // Map results and add match scores
-        const mappedInvestors = investors.map(investor => {
-            const investorObj = investor.toObject();
+        // Apply form submission filtering
+        let filteredInvestors = allInvestors;
+        if (hasFormSubmission === 'true') {
+            filteredInvestors = allInvestors.filter(investor =>
+                userIdsWithFormSubmission.includes(investor.userId));
+        } else if (hasFormSubmission === 'false') {
+            filteredInvestors = allInvestors.filter(investor =>
+                !userIdsWithFormSubmission.includes(investor.userId));
+        }
 
+        // Calculate match scores and apply score filtering
+        const scoredInvestors = filteredInvestors.map(investor => {
             // Calculate match score if current user is a startup
             let matchScoreObj = { score: 0, categories: {} };
             if (currentUser) {
-                matchScoreObj = calculateMatchScore(currentUser, investorObj);
-            }
-
-            // Only include investors that meet minimum match score criteria
-            if (matchScore && matchScoreObj.score < Number(matchScore)) {
-                return null;
+                matchScoreObj = calculateMatchScore(currentUser, investor);
             }
 
             return {
-                ...investorObj,
+                ...investor,
                 id: investor.userId,
                 matchScore: matchScoreObj.score,
                 matchCategories: matchScoreObj.categories
             };
-        }).filter(Boolean); // Remove null values
+        }).filter(investor =>
+            // Filter by minimum match score if specified
+            !matchScore || investor.matchScore >= Number(matchScore)
+        );
 
-        // Adjust total count if filtering by match score
-        const adjustedCount = matchScore ? mappedInvestors.length : totalCount;
+        // Sort results
+        const sortedInvestors = [...scoredInvestors].sort((a, b) => {
+            const fieldA = a[sortBy as keyof typeof a];
+            const fieldB = b[sortBy as keyof typeof b];
+
+            if (typeof fieldA === 'string' && typeof fieldB === 'string') {
+                return sortOrder === 'asc'
+                    ? fieldA.localeCompare(fieldB)
+                    : fieldB.localeCompare(fieldA);
+            }
+
+            if (sortOrder === 'asc') {
+                return (fieldA ?? 0) > (fieldB ?? 0) ? 1 : -1;
+            } else {
+                return (fieldA ?? 0) < (fieldB ?? 0) ? 1 : -1;
+            }
+        });
+
+        // Apply pagination
+        const startIndex = (pageNum - 1) * limitNum;
+        const paginatedInvestors = sortedInvestors.slice(startIndex, startIndex + limitNum);
+
+        // Total count for pagination
+        const totalCount = sortedInvestors.length;
+        const totalPages = Math.ceil(totalCount / limitNum);
 
         res.json({
-            investors: mappedInvestors,
+            investors: paginatedInvestors,
             pagination: {
-                total: adjustedCount,
-                page: Number(page),
-                pages: Math.ceil(adjustedCount / Number(limit)),
-                hasNext: Number(page) < Math.ceil(adjustedCount / Number(limit)),
-                hasPrev: Number(page) > 1
+                total: totalCount,
+                page: pageNum,
+                pages: totalPages,
+                hasNext: pageNum < totalPages,
+                hasPrev: pageNum > 1
             }
         });
 
