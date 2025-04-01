@@ -46,19 +46,12 @@ export const findMatchesForStartup = async (req: Request, res: Response): Promis
         // Calculate match score for each investor
         const scoredMatches = matchingInvestors.map(investor => {
             let score = 0;
-
-            // Score based on industry match
             if (investor.industriesOfInterest.includes(startup.industry)) {
                 score += 30;
             }
-
-            // Score based on funding stage match
             if (investor.preferredStages.includes(startup.fundingStage)) {
                 score += 30;
             }
-
-            // Additional scoring logic can be added here
-
             return {
                 investorId: investor.userId,
                 email: emailLookup[investor.userId] || '',
@@ -125,19 +118,12 @@ export const findMatchesForInvestor = async (req: Request, res: Response): Promi
         // Calculate match score for each startup
         const scoredMatches = matchingStartups.map(startup => {
             let score = 0;
-
-            // Score based on industry match
             if (investor.industriesOfInterest.includes(startup.industry)) {
                 score += 30;
             }
-
-            // Score based on funding stage match
             if (investor.preferredStages.includes(startup.fundingStage)) {
                 score += 30;
             }
-
-            // Additional scoring logic can be added here
-
             return {
                 startupId: startup.userId,
                 companyName: startup.companyName,

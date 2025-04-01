@@ -7,7 +7,7 @@ import ComingSoon from '../components/ComingSoon/ComingSoon';
 import { useNavigate } from 'react-router-dom';
 import CompatibilityBreakdown from '../components/Dashboard/MatchesPage/CompatibilityBreakdown';
 import AIRecommendations from '../components/Dashboard/MatchesPage/AIRecomendations';
-import renderMatchCards from '../components/Dashboard/MatchesPage/renderMarchCards';
+import renderMatchCards from '../components/Dashboard/MatchesPage/MatchCards/renderMarchCards';
 import Header from '../components/Dashboard/MatchesPage/Header';
 import { Match, UserProfile } from '../types/Dashboard.types';
 import LoadingSpinner from '../components/Loading';
@@ -565,7 +565,7 @@ const Dashboard: React.FC = () => {
                             >
                                 <div className="flex justify-between items-center">
                                     <h2 className="text-xl font-bold text-gray-800">
-                                        {loading ? 'Loading matches...' : `${filteredMatches.length} matches found`}
+                                        {loading ? 'Loading matches...' : `${pagination?.total || filteredMatches.length} matches found`}
                                     </h2>
 
                                     {/* Add simple sort controls */}

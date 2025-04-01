@@ -35,6 +35,9 @@ export const colours = {
     //logout
     red400: '#F87171',
     red500: '#EF4444',
+    red50: '#FEF2F2',
+    red600: '#DC2626',
+    red100: '#FEE2E2',
 
 
 };
