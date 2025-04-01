@@ -131,98 +131,153 @@ const renderMatchCards = ({
 
     return (
         <div className="grid grid-cols-1 gap-6">
-            {filteredMatches.map((match) => (
-                <motion.div
-                    key={match.id || match._id}
-                    className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow duration-300"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                    whileHover={{ y: -5 }}
-                    onClick={() => onCardClick(match.id || match._id || '')}
-                >
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                        {/* Left side - Company info */}
-                        <div className="md:col-span-8 p-6">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h3 className="text-xl font-bold text-gray-900 mb-1">{match.companyName}</h3>
-                                    <p className="text-sm text-gray-500 mb-3">
-                                        {match.location} • {match.employeeCount || 'Unknown size'} • {match.fundingStage || 'Unknown stage'}
-                                    </p>
-                                    <div className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-1 rounded mb-4 inline-block">
-                                        {match.industry || 'Unspecified industry'}
+            {filteredMatches.map((match) => {
+                // Handle field display with fallbacks for different data structures
+                const displayIndustry = match.industry ||
+                    (match.industriesOfInterest && match.industriesOfInterest.length > 0
+                        ? match.industriesOfInterest[0]
+                        : 'Unspecified industry');
+
+                const displayStage = match.fundingStage ||
+                    (match.preferredStages && match.preferredStages.length > 0
+                        ? `Prefers ${match.preferredStages.join(', ')}`
+                        : 'Unspecified stage');
+
+                // Create a summary of investment criteria if available
+                const investmentSummary = match.investmentCriteria && match.investmentCriteria.length > 0
+                    ? `Looking for: ${match.investmentCriteria.join(', ')}`
+                    : match.pastInvestments
+                        ? `Past investments: ${match.pastInvestments}`
+                        : "No investment criteria specified";
+
+                return (
+                    <motion.div
+                        key={match.id || match._id}
+                        className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow duration-300"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                        whileHover={{ y: -5 }}
+                        onClick={() => onCardClick(match.id || match._id || '')}
+                    >
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                            {/* Left side - Company info */}
+                            <div className="md:col-span-8 p-6">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-900 mb-1">{match.companyName}</h3>
+                                        <div className="flex flex-wrap gap-2 mb-3">
+                                            {match.location && (
+                                                <span className="text-sm text-gray-500">{match.location}</span>
+                                            )}
+                                            {match.ticketSize && (
+                                                <span className="text-sm text-gray-500">
+                                                    {userProfile?.role === 'startup' ? 'Invests ' : 'Seeking '}{match.ticketSize}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 mb-4">
+                                            {match.industriesOfInterest && match.industriesOfInterest.slice(0, 3).map(industry => (
+                                                <span key={industry} className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-1 rounded">
+                                                    {industry}
+                                                </span>
+                                            ))}
+                                            {match.industry && (
+                                                <span className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-1 rounded">
+                                                    {match.industry}
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleBookmark(match.id || match._id || '');
+                                        }}
+                                        className="text-gray-400 hover:text-yellow-500 transition-colors"
+                                    >
+                                        <FiBookmark
+                                            size={20}
+                                            className={bookmarkedMatches.has(match.id || match._id || '') ? 'fill-yellow-400 text-yellow-400' : ''}
+                                        />
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        toggleBookmark(match.id || match._id || '');
-                                    }}
-                                    className="text-gray-400 hover:text-yellow-500 transition-colors"
-                                >
-                                    <FiBookmark
-                                        size={20}
-                                        className={bookmarkedMatches.has(match.id || match._id || '') ? 'fill-yellow-400 text-yellow-400' : ''}
-                                    />
-                                </button>
+
+                                <div className="mb-4">
+                                    {match.pitch ? (
+                                        <>
+                                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Company Pitch</h4>
+                                            <TruncatedText text={match.pitch} maxLength={150} />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <h4 className="text-sm font-semibold text-gray-700 mb-2">Investment Focus</h4>
+                                            <TruncatedText text={investmentSummary} maxLength={150} />
+                                        </>
+                                    )}
+                                </div>
+
+                                <div className="mt-4 flex space-x-3">
+                                    <motion.button
+                                        className="px-4 py-2 rounded-md flex items-center text-white font-medium text-sm"
+                                        style={{ backgroundColor: colours.primaryBlue }}
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onCardClick(match.id || match._id || '');
+                                        }}
+                                    >
+                                        View Compatibility <FiArrowRight className="ml-2" />
+                                    </motion.button>
+
+                                    <motion.button
+                                        className="px-4 py-2 rounded-md border border-gray-300 flex items-center text-gray-700 font-medium text-sm"
+                                        whileHover={{ scale: 1.05, backgroundColor: "#f8fafc" }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            connectWithMatch(match.id || match._id || '');
+                                        }}
+                                    >
+                                        Connect <FiMessageSquare className="ml-2" />
+                                    </motion.button>
+                                </div>
                             </div>
 
-                            <div className="mb-4">
-                                <h4 className="text-sm font-semibold text-gray-700 mb-2">Company Pitch</h4>
-                                <TruncatedText text={match.pitch || "No pitch available."} maxLength={200} />
-                            </div>
+                            {/* Right side - Match score */}
+                            <div className="md:col-span-4 bg-gray-50 p-6 flex flex-col justify-center border-t md:border-t-0 md:border-l border-gray-100">
+                                <MatchScoreIndicator score={match.matchScore} categories={match.matchCategories} />
 
-                            <div className="mt-4 flex space-x-3">
-                                <motion.button
-                                    className="px-4 py-2 rounded-md flex items-center text-white font-medium text-sm"
-                                    style={{ backgroundColor: colours.primaryBlue }}
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onCardClick(match.id || match._id || '');
-                                    }}
-                                >
-                                    View Compatibility <FiArrowRight className="ml-2" />
-                                </motion.button>
+                                {/* Show appropriate contextual information based on user role */}
+                                {userProfile?.role === 'startup' && (
+                                    <div className="mt-4 text-sm">
+                                        {match.preferredStages && match.preferredStages.length > 0 && (
+                                            <div className="mb-2">
+                                                <span className="text-gray-600">Preferred stages: </span>
+                                                <span className="font-medium">{match.preferredStages.join(', ')}</span>
+                                            </div>
+                                        )}
+                                        {match.ticketSize && (
+                                            <div>
+                                                <span className="text-gray-600">Ticket size: </span>
+                                                <span className="font-medium">{match.ticketSize}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
-                                <motion.button
-                                    className="px-4 py-2 rounded-md border border-gray-300 flex items-center text-gray-700 font-medium text-sm"
-                                    whileHover={{ scale: 1.05, backgroundColor: "#f8fafc" }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        connectWithMatch(match.id || match._id || '');
-                                    }}
-                                >
-                                    Connect <FiMessageSquare className="ml-2" />
-                                </motion.button>
+                                {userProfile?.role === 'investor' && match.fundingStage && (
+                                    <div className="mt-4 text-sm">
+                                        <span className="text-gray-600">Looking for: </span>
+                                        <span className="font-medium">{match.fundingStage} funding</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
-
-                        {/* Right side - Match score */}
-                        <div className="md:col-span-4 bg-gray-50 p-6 flex flex-col justify-center border-t md:border-t-0 md:border-l border-gray-100">
-                            <MatchScoreIndicator score={match.matchScore} categories={match.matchCategories} />
-
-                            {/* Extra information or tags if relevant */}
-                            {userProfile?.role === 'startup' && match.ticketSize && (
-                                <div className="mt-4 text-sm">
-                                    <span className="text-gray-600">Investment size: </span>
-                                    <span className="font-medium">{match.ticketSize}</span>
-                                </div>
-                            )}
-
-                            {userProfile?.role === 'investor' && match.fundingStage && (
-                                <div className="mt-4 text-sm">
-                                    <span className="text-gray-600">Looking for: </span>
-                                    <span className="font-medium">{match.fundingStage} funding</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </motion.div>
-            ))}
+                    </motion.div>
+                );
+            })}
         </div>
     );
 };
