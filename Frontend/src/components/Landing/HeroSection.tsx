@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useSectionInView } from '../../hooks/useSectionInView';
 import React from 'react';
 import { useNavigate } from "react-router-dom";
+import heroImage from "../../assets/KarmicDD-Landing.png"
 
 export const HeroSection: React.FC = () => {
     const ref = useSectionInView({ sectionName: 'Home', threshold: 0.7 });
@@ -122,7 +123,7 @@ export const HeroSection: React.FC = () => {
                         <div className="relative">
                             <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 transform rotate-1 scale-105 blur-sm"></div>
                             <img
-                                src="https://storage.googleapis.com/uxpilot-auth.appspot.com/44b395bc45-d90da5911cae8f1eebf6.png"
+                                src={heroImage}
                                 alt="Connecting Startups and Investors"
                                 className="relative rounded-xl shadow-2xl w-full object-cover"
                             />
