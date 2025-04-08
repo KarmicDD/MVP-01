@@ -5,7 +5,8 @@ import {
     createUpdateStartupProfile,
     createUpdateInvestorProfile,
     getStartupProfile,
-    getInvestorProfile
+    getInvestorProfile,
+    updateExtendedProfile
 } from '../controllers/profileController';
 import { authenticateJWT, authorizeRole } from '../middleware/auth';
 import StartupProfileModel, { StartupProfile } from '../models/Profile/StartupProfile';
@@ -45,6 +46,13 @@ router.get(
     authenticateJWT,
     authorizeRole(['investor']),
     getInvestorProfile
+);
+
+// Extended profile route - works for both startup and investor
+router.post(
+    '/extended',
+    authenticateJWT,
+    updateExtendedProfile
 );
 
 router.get('/check-profile', authenticateJWT, async (req, res): Promise<void> => {

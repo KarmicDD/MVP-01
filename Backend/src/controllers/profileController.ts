@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../config/db';
 import StartupProfileModel from '../models/Profile/StartupProfile';
 import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
+import ExtendedProfileModel from '../models/Profile/ExtendedProfile';
 
 // Get user type (for initial form display)
 export const getUserType = async (req: Request, res: Response): Promise<void> => {
@@ -162,7 +163,13 @@ export const getStartupProfile = async (req: Request, res: Response): Promise<vo
             return;
         }
 
-        res.json({ profile });
+        // Get extended profile data if it exists
+        const extendedProfile = await ExtendedProfileModel.findOne({ userId: req.user.userId });
+
+        res.json({
+            profile,
+            extendedProfile: extendedProfile || null
+        });
     } catch (error) {
         console.error('Get startup profile error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -184,9 +191,54 @@ export const getInvestorProfile = async (req: Request, res: Response): Promise<v
             return;
         }
 
-        res.json({ profile });
+        // Get extended profile data if it exists
+        const extendedProfile = await ExtendedProfileModel.findOne({ userId: req.user.userId });
+
+        res.json({
+            profile,
+            extendedProfile: extendedProfile || null
+        });
     } catch (error) {
         console.error('Get investor profile error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Create or update extended profile
+export const updateExtendedProfile = async (req: Request, res: Response): Promise<void> => {
+    try {
+        if (!req.user?.userId) {
+            res.status(401).json({ message: 'Unauthorized' });
+            return;
+        }
+
+        const {
+            avatarUrl,
+            socialLinks,
+            teamMembers,
+            investmentHistory
+        } = req.body;
+
+        // Store extended profile in MongoDB
+        const extendedProfile = await ExtendedProfileModel.findOneAndUpdate(
+            { userId: req.user.userId },
+            {
+                userId: req.user.userId,
+                avatarUrl: avatarUrl || '',
+                socialLinks: socialLinks || [],
+                teamMembers: teamMembers || [],
+                investmentHistory: investmentHistory || [],
+                updatedAt: new Date()
+            },
+            { upsert: true, new: true }
+        );
+
+        res.status(200).json({
+            message: 'Extended profile saved successfully',
+            extendedProfile
+        });
+    } catch (error) {
+        console.error('Update extended profile error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };

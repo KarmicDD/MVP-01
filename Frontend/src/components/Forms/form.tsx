@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HelpCircle, Loader } from 'lucide-react';
-import { fundingStages, industries, investmentCriteria, ticketSizes, employeeOptions } from '../../data/questions';
+import { fundingStages, industries, investmentCriteria, ticketSizes, employeeOptions } from '../../constants/questions';
 import api, { authService } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import MultiSelectTile from './MultiSelectTile';

@@ -1,6 +1,6 @@
 // src/context/active-section-context-types.ts
 import React, { createContext } from 'react';
-import { links } from '../data/data';
+import { links } from '../constants/data';
 
 // Types
 export type SectionName = typeof links[number]['name'];

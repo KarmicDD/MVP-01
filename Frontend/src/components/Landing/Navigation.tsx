@@ -3,8 +3,8 @@ import { Link as ScrollLink } from 'react-scroll';
 import { colours } from "../../utils/colours";
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { links } from '../../data/data';
-import { SectionName } from '../../data/data';
+import { links } from '../../constants/data';
+import { SectionName } from '../../constants/data';
 import { authService } from '../../services/api'; // Import authService
 import { useActiveSectionContext } from '../../context/active-section-hooks';
 

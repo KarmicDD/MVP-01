@@ -171,37 +171,81 @@ export const beliefSystemService = {
 };
 
 export const profileService = {
-    // Get startup profile
+    // Fix: Use correct endpoint "user-type" instead of "user"
+    getUserProfile: async () => {
+        try {
+            const response = await api.get('/profile/user-type', { withCredentials: true });
+            return response.data; // This returns userId, email, role directly
+        } catch (error) {
+            console.error('Error fetching user profile:', error);
+            throw error;
+        }
+    },
+
+    // Other profile methods
+    checkProfileCompleteness: async () => {
+        try {
+            const response = await api.get('/profile/check-profile', { withCredentials: true });
+            return response.data; // Returns { profileComplete: true/false }
+        } catch (error) {
+            console.error('Error checking profile completeness:', error);
+            throw error;
+        }
+    },
+
     getStartupProfile: async () => {
         try {
-            const response = await api.get('/profile/startup');
-            return response.data.profile;
+            const response = await api.get('/profile/startup', { withCredentials: true });
+            return response.data; // Returns { profile: {...} }
         } catch (error) {
             console.error('Error fetching startup profile:', error);
             throw error;
         }
     },
 
-    // Get investor profile
     getInvestorProfile: async () => {
         try {
-            const response = await api.get('/profile/investor');
-            return response.data.profile;
+            const response = await api.get('/profile/investor', { withCredentials: true });
+            return response.data; // Returns { profile: {...} }
         } catch (error) {
             console.error('Error fetching investor profile:', error);
             throw error;
         }
     },
 
-    // Check profile completeness - simplified to match actual API response
-    checkProfileCompleteness: async () => {
+    updateStartupProfile: async (profileData: any) => {
         try {
-            const response = await api.get('/profile/check-profile');
-            return {
-                isComplete: response.data.profileComplete
-            };
+            const response = await api.post('/profile/startup', profileData, {
+                withCredentials: true
+            });
+            return response.data; // Returns { message: '...', profile: {...} }
         } catch (error) {
-            console.error('Error checking profile completeness:', error);
+            console.error('Error updating startup profile:', error);
+            throw error;
+        }
+    },
+
+    updateInvestorProfile: async (profileData: any) => {
+        try {
+            const response = await api.post('/profile/investor', profileData, {
+                withCredentials: true
+            });
+            return response.data; // Returns { message: '...', profile: {...} }
+        } catch (error) {
+            console.error('Error updating investor profile:', error);
+            throw error;
+        }
+    },
+
+    // Extended profile methods
+    updateExtendedProfile: async (extendedData: any) => {
+        try {
+            const response = await api.post('/profile/extended', extendedData, {
+                withCredentials: true
+            });
+            return response.data; // Returns { message: '...', extendedProfile: {...} }
+        } catch (error) {
+            console.error('Error updating extended profile:', error);
             throw error;
         }
     }

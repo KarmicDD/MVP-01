@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ddFacts, upcomingFeatures } from '../../data/data';
+import { ddFacts, upcomingFeatures } from '../../constants/data';
 import { FaArrowLeft, FaLightbulb, FaMoon, FaSun } from 'react-icons/fa';
 import confetti from 'canvas-confetti';
 import { colours } from '../../utils/colours';

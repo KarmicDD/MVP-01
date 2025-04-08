@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import api from '../../../services/api';
-import { investorQuestions, startupQuestions } from '../../../data/questionsData';
+import { investorQuestions, startupQuestions } from '../../../constants/questionsData';
 import SummaryReview from './SummaryReview';
 import QuestionGroup from './QuestionGroup';
 import AppHeader from '../AppHeader ';

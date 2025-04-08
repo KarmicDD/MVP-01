@@ -12,6 +12,7 @@ import Dashboard from './pages/Dashboard';
 import QuestionnairePage from './pages/QuestionnairePage';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import ProfilePage from './pages/ProfilePage';
 
 // Protected route component with profile check
 const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) => {
@@ -154,6 +155,14 @@ function App() {
             }
           />
 
+
+          {/* // Add this to your routes */}
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          } />
+
           {/* Protected Routes */}
           <Route
             path="/dashboard"
@@ -173,5 +182,6 @@ function App() {
     </ActiveSectionContextProvider>
   );
 }
+
 
 export default App;

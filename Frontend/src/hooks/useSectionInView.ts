@@ -1,7 +1,7 @@
 // src/hooks/useSectionInView.ts
 import { useInView } from 'react-intersection-observer';
 import { useEffect } from 'react';
-import { SectionName } from '../data/data';
+import { SectionName } from '../constants/data';
 import { useActiveSectionContext } from '../context/active-section-hooks';
 
 interface UseSectionInViewProps {
