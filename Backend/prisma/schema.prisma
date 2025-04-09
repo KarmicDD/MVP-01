@@ -14,15 +14,28 @@ datasource db {
 }
 
 model User {
-  id             Int      @id @default(autoincrement())
-  user_id        String   @unique @default(uuid())
-  email          String   @unique
+  id             Int            @id @default(autoincrement())
+  user_id        String         @unique @default(uuid())
+  email          String         @unique
   password_hash  String?
   oauth_provider String?
   oauth_id       String?
   role           String // 'startup' or 'investor'
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @updatedAt
+  profileShares  ProfileShare[]
 
   @@map("users")
+}
+
+model ProfileShare {
+  id          Int      @id @default(autoincrement())
+  user        User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user_id     String
+  share_token String   @unique
+  expires_at  DateTime
+  created_at  DateTime @default(now())
+  view_count  Int      @default(0)
+
+  @@map("profile_shares")
 }

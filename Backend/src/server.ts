@@ -6,15 +6,7 @@ import errorHandler from './middleware/errorHandler';
 import dotenv from 'dotenv';
 
 // Routes import
-import authRoutes from './routes/authRoutes';
-import userRoutes from './routes/userRoutes';
-import profileRoutes from './routes/profileRoutes';
-import matchingRoutes from './routes/matchingRoutes';
-import compatiblityRoutes from './routes/compatibilityControllerRoutes';
-import questionnaireRoutes from './routes/questionnaireRoute';
-import beliefSystemRoutes from './routes/BelifSystemRoutes';
-import emailRoutes from './routes/emailRoutes';
-import searchRoutes from './routes/searchRoutes';
+import routes from './routes';
 
 import { connectMongoDBwithRetry, testPostgressConnection } from './config/db';
 import { resolve } from 'path';
@@ -68,16 +60,8 @@ const startServer = async () => {
         app.use(countRequest);
         app.use(trackTime);
 
-        // Define Routes  
-        app.use('/api/auth', authRoutes);
-        app.use('/api/users', userRoutes);
-        app.use('/api/profile', profileRoutes);
-        app.use('/api/matching', matchingRoutes);
-        app.use('/api/score', compatiblityRoutes);
-        app.use('/api/questionnaire', questionnaireRoutes);
-        app.use('/api/analysis', beliefSystemRoutes);
-        app.use('/api/email', emailRoutes);
-        app.use('/api/search', searchRoutes);
+        // Define Routes
+        app.use('/api', routes);
 
         // Statistics endpoint
         app.get('/api/stats', statsMiddleware);

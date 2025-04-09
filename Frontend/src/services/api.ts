@@ -170,6 +170,42 @@ export const beliefSystemService = {
     }
 };
 
+export const financialDueDiligenceService = {
+    getReport: async (startupId: string, investorId: string) => {
+        try {
+            const response = await api.get(`/financial/match/${startupId}/${investorId}`);
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching financial due diligence report:", error);
+            throw error;
+        }
+    },
+
+    exportReportPDF: async (startupId: string, investorId: string) => {
+        try {
+            const response = await api.get(`/financial/match/${startupId}/${investorId}/pdf`, {
+                responseType: 'blob'
+            });
+            return response.data;
+        } catch (error) {
+            console.error("Error exporting financial due diligence report:", error);
+            throw error;
+        }
+    },
+
+    shareReport: async (startupId: string, investorId: string, emailAddresses: string[]) => {
+        try {
+            const response = await api.post(`/financial/match/${startupId}/${investorId}/share`, {
+                emails: emailAddresses
+            });
+            return response.data;
+        } catch (error) {
+            console.error("Error sharing financial due diligence report:", error);
+            throw error;
+        }
+    }
+};
+
 export const profileService = {
     // Fix: Use correct endpoint "user-type" instead of "user"
     getUserProfile: async () => {
@@ -191,6 +227,163 @@ export const profileService = {
             console.error('Error checking profile completeness:', error);
             throw error;
         }
+    },
+
+    // Profile sharing methods
+    generateShareableLink: async () => {
+        try {
+            const response = await api.post('/profile/share/generate-link');
+            return response.data; // Returns { shareableUrl, expiresAt }
+        } catch (error) {
+            console.error('Error generating shareable link:', error);
+            throw error;
+        }
+    },
+
+    shareProfileViaEmail: async (emailAddresses: string[]) => {
+        try {
+            const response = await api.post('/profile/share/email', { emailAddresses });
+            return response.data; // Returns { message, shareableUrl, recipientCount }
+        } catch (error) {
+            console.error('Error sharing profile via email:', error);
+            throw error;
+        }
+    },
+
+    getSharedProfile: async (shareToken: string) => {
+        try {
+            const response = await api.get(`/profile/shared/${shareToken}`);
+            return response.data; // Returns { profile, extendedProfile, userType }
+        } catch (error) {
+            console.error('Error fetching shared profile:', error);
+            throw error;
+        }
+    },
+
+    // Document management methods
+    uploadDocument: async (file: File, metadata: { description?: string, documentType?: string, isPublic?: boolean }) => {
+        try {
+            const formData = new FormData();
+            formData.append('document', file);
+
+            if (metadata.description) {
+                formData.append('description', metadata.description);
+            }
+
+            if (metadata.documentType) {
+                formData.append('documentType', metadata.documentType);
+            }
+
+            if (metadata.isPublic !== undefined) {
+                formData.append('isPublic', String(metadata.isPublic));
+            }
+
+            const response = await api.post('/profile/documents/upload', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            console.error('Error uploading document:', error);
+            throw error;
+        }
+    },
+
+    getUserDocuments: async () => {
+        try {
+            const response = await api.get('/profile/documents');
+            return response.data.documents;
+        } catch (error) {
+            console.error('Error fetching user documents:', error);
+            throw error;
+        }
+    },
+
+    deleteDocument: async (documentId: string) => {
+        try {
+            const response = await api.delete(`/profile/documents/${documentId}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error deleting document:', error);
+            throw error;
+        }
+    },
+
+    updateDocumentMetadata: async (documentId: string, metadata: { description?: string, documentType?: string, isPublic?: boolean }) => {
+        try {
+            const response = await api.put(`/profile/documents/${documentId}`, metadata);
+            return response.data;
+        } catch (error) {
+            console.error('Error updating document metadata:', error);
+            throw error;
+        }
+    },
+
+    getDocumentDownloadUrl: (documentId: string) => {
+        return `${api.defaults.baseURL}/profile/documents/${documentId}/download`;
+    },
+
+    // Financial Due Diligence methods
+    uploadFinancialDocuments: async (files: File[]) => {
+        try {
+            const formData = new FormData();
+
+            files.forEach(file => {
+                formData.append('documents', file);
+            });
+
+            const response = await api.post('/financial/upload', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+
+            return response.data;
+        } catch (error) {
+            console.error('Error uploading financial documents:', error);
+            throw error;
+        }
+    },
+
+    generateFinancialReport: async (documentIds: string[], companyName: string, reportType: 'analysis' | 'audit') => {
+        try {
+            const response = await api.post('/financial/generate', {
+                documentIds,
+                companyName,
+                reportType
+            });
+
+            return response.data;
+        } catch (error) {
+            console.error('Error generating financial report:', error);
+            throw error;
+        }
+    },
+
+    getFinancialReports: async () => {
+        try {
+            const response = await api.get('/financial/reports');
+            return response.data.reports;
+        } catch (error) {
+            console.error('Error fetching financial reports:', error);
+            throw error;
+        }
+    },
+
+    getFinancialReport: async (reportId: string) => {
+        try {
+            const response = await api.get(`/financial/reports/${reportId}`);
+            return response.data.report;
+        } catch (error) {
+            console.error('Error fetching financial report:', error);
+            throw error;
+        }
+    },
+
+    getFinancialReportPdfUrl: (reportId: string) => {
+        return `${api.defaults.baseURL}/financial/reports/${reportId}/pdf`;
     },
 
     getStartupProfile: async () => {

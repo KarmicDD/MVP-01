@@ -6,7 +6,15 @@ import {
     createUpdateInvestorProfile,
     getStartupProfile,
     getInvestorProfile,
-    updateExtendedProfile
+    updateExtendedProfile,
+    generateShareableLink,
+    shareProfileViaEmail,
+    getSharedProfile,
+    uploadDocument,
+    getUserDocuments,
+    deleteDocument,
+    downloadDocument,
+    updateDocumentMetadata
 } from '../controllers/profileController';
 import { authenticateJWT, authorizeRole } from '../middleware/auth';
 import StartupProfileModel, { StartupProfile } from '../models/Profile/StartupProfile';
@@ -53,6 +61,54 @@ router.post(
     '/extended',
     authenticateJWT,
     updateExtendedProfile
+);
+
+// Profile sharing routes
+router.post(
+    '/share/generate-link',
+    authenticateJWT,
+    generateShareableLink
+);
+
+router.post(
+    '/share/email',
+    authenticateJWT,
+    shareProfileViaEmail
+);
+
+router.get(
+    '/shared/:shareToken',
+    getSharedProfile
+);
+
+// Document routes
+router.post(
+    '/documents/upload',
+    authenticateJWT,
+    uploadDocument
+);
+
+router.get(
+    '/documents',
+    authenticateJWT,
+    getUserDocuments
+);
+
+router.delete(
+    '/documents/:documentId',
+    authenticateJWT,
+    deleteDocument
+);
+
+router.get(
+    '/documents/:documentId/download',
+    downloadDocument
+);
+
+router.put(
+    '/documents/:documentId',
+    authenticateJWT,
+    updateDocumentMetadata
 );
 
 router.get('/check-profile', authenticateJWT, async (req, res): Promise<void> => {

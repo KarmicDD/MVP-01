@@ -300,11 +300,12 @@ const renderMatchCards = ({
                 return (
                     <motion.div
                         key={matchId}
-                        className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-300"
+                        className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        whileHover={{ y: -2 }}
+                        whileHover={{ y: -3, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
                         transition={{ duration: 0.3 }}
+                        onClick={() => onCardClick(matchId)}
                     >
                         {/* Card content */}
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-0">
@@ -414,21 +415,8 @@ const renderMatchCards = ({
                                 {/* Action buttons */}
                                 <div className="flex flex-wrap gap-3 mt-6">
                                     <motion.button
-                                        className="px-4 py-2 rounded-lg flex items-center justify-center text-white font-medium shadow-sm"
-                                        style={{ backgroundColor: colours.primaryBlue }}
+                                        className="px-4 py-2.5 rounded-lg flex items-center justify-center text-white font-medium shadow-md bg-gradient-to-r from-indigo-600 to-indigo-700"
                                         whileHover={{ scale: 1.03, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
-                                        whileTap={{ scale: 0.97 }}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onCardClick(matchId);
-                                        }}
-                                    >
-                                        View Compatibility <FiArrowRight className="ml-2" size={16} />
-                                    </motion.button>
-
-                                    <motion.button
-                                        className="px-4 py-2 rounded-lg border border-gray-200 flex items-center justify-center text-gray-700 font-medium bg-white"
-                                        whileHover={{ scale: 1.03, backgroundColor: "#f9fafb" }}
                                         whileTap={{ scale: 0.97 }}
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -439,17 +427,16 @@ const renderMatchCards = ({
                                     </motion.button>
 
                                     <motion.button
-                                        className="w-10 h-10 rounded-lg border border-gray-200 flex items-center justify-center text-gray-600 bg-white"
-                                        whileHover={{ scale: 1.03, backgroundColor: "#f9fafb" }}
+                                        className="px-4 py-2.5 rounded-lg border border-indigo-200 flex items-center justify-center text-indigo-700 font-medium bg-indigo-50 hover:bg-indigo-100 transition-colors"
+                                        whileHover={{ scale: 1.03 }}
                                         whileTap={{ scale: 0.97 }}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             // View full profile
                                             window.open(`/profile/${matchId}`, '_blank');
                                         }}
-                                        title="View full profile"
                                     >
-                                        <FiExternalLink size={16} />
+                                        View Profile <FiExternalLink className="ml-2" size={16} />
                                     </motion.button>
                                 </div>
                             </div>

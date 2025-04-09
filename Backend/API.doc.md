@@ -6,8 +6,9 @@
 3. Error Handling
 4. Questionnaire API
 5. Analysis API
-6. Search API
-7. Email API
+6. Financial Due Diligence API
+7. Search API
+8. Email API
 
 ## Introduction
 
@@ -335,6 +336,235 @@ Analyzes the belief system alignment between a startup and an investor.
   "analysisVersion": "2.3.1"
 }
 ```
+
+## Financial Due Diligence API
+
+Endpoints for financial analysis and audit reports compliant with Indian company standards.
+
+### Upload Financial Documents
+
+Upload financial documents for analysis.
+
+**Endpoint**: `POST /financial/upload`
+
+**Authentication**: Required
+
+**Content-Type**: `multipart/form-data`
+
+**Request Body**:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| documents | File[] | Array of files to upload (PDF, Excel, CSV, JSON) |
+| description | string | Optional description of the documents |
+
+**Response**:
+
+```json
+{
+  "message": "Financial documents uploaded successfully",
+  "documents": [
+    {
+      "id": "doc123456",
+      "fileName": "documents-1678901234567.pdf",
+      "originalName": "financial_statement_2025.pdf",
+      "fileType": "application/pdf",
+      "fileSize": 2457600
+    },
+    {
+      "id": "doc123457",
+      "fileName": "documents-1678901234568.xlsx",
+      "originalName": "cash_flow_projections.xlsx",
+      "fileType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "fileSize": 1548800
+    }
+  ]
+}
+```
+
+### Generate Financial Report
+
+Generate a financial analysis or audit report based on uploaded documents.
+
+**Endpoint**: `POST /financial/generate`
+
+**Authentication**: Required
+
+**Request Body**:
+
+```json
+{
+  "documentIds": ["doc123456", "doc123457"],
+  "companyName": "Tech Innovators Pvt Ltd",
+  "reportType": "analysis"
+}
+```
+
+**Response**:
+
+```json
+{
+  "message": "Financial report generated successfully",
+  "reportId": "report789012",
+  "report": {
+    "summary": "Tech Innovators Pvt Ltd shows strong growth potential with healthy gross margins and good unit economics. The company has a solid runway of 18 months based on current burn rate, but should focus on optimizing customer acquisition costs and reducing churn.",
+    "metrics": [
+      {
+        "name": "Burn Rate",
+        "value": "₹45,00,000/month",
+        "status": "warning",
+        "description": "Monthly cash outflow is higher than industry average.",
+        "trend": "up"
+      },
+      {
+        "name": "Runway",
+        "value": "18 months",
+        "status": "good",
+        "description": "Company has sufficient runway based on current burn rate.",
+        "trend": "stable"
+      },
+      {
+        "name": "Gross Margin",
+        "value": "68%",
+        "status": "good",
+        "description": "Healthy gross margin above industry average of 62%.",
+        "trend": "up",
+        "comparisonValue": "62%",
+        "comparisonLabel": "Industry Average"
+      }
+    ],
+    "recommendations": [
+      "Focus on reducing customer acquisition costs by optimizing marketing channels",
+      "Implement stricter cash flow management practices to extend runway",
+      "Consider raising additional capital in the next 6-9 months"
+    ],
+    "riskFactors": [
+      {
+        "category": "Cash Flow",
+        "description": "Current burn rate may lead to cash flow issues if growth slows.",
+        "severity": "medium",
+        "impact": "Could reduce runway by 30% if not addressed.",
+        "mitigation": "Implement stricter expense controls and prioritize revenue-generating activities."
+      },
+      {
+        "category": "Customer Concentration",
+        "description": "Heavy dependence on top 3 customers who account for 45% of revenue.",
+        "severity": "high",
+        "impact": "Loss of any major customer would significantly impact revenue and growth.",
+        "mitigation": "Diversify customer base and implement key account retention strategies."
+      }
+    ]
+  }
+}
+```
+
+### Get Financial Reports
+
+Retrieve a list of all financial reports for the authenticated user.
+
+**Endpoint**: `GET /financial/reports`
+
+**Authentication**: Required
+
+**Response**:
+
+```json
+{
+  "reports": [
+    {
+      "_id": "report789012",
+      "companyName": "Tech Innovators Pvt Ltd",
+      "reportType": "analysis",
+      "reportDate": "2025-03-15T10:30:45Z",
+      "generatedBy": "KarmicDD AI",
+      "status": "final",
+      "createdAt": "2025-03-15T10:30:45Z"
+    },
+    {
+      "_id": "report789013",
+      "companyName": "Tech Innovators Pvt Ltd",
+      "reportType": "audit",
+      "reportDate": "2025-03-10T14:22:30Z",
+      "generatedBy": "KarmicDD AI",
+      "status": "final",
+      "createdAt": "2025-03-10T14:22:30Z"
+    }
+  ]
+}
+```
+
+### Get Financial Report
+
+Retrieve a specific financial report by ID.
+
+**Endpoint**: `GET /financial/reports/:reportId`
+
+**Parameters**:
+- `reportId`: ID of the report to retrieve
+
+**Authentication**: Required
+
+**Response**:
+
+```json
+{
+  "report": {
+    "_id": "report789012",
+    "userId": "user123456",
+    "companyName": "Tech Innovators Pvt Ltd",
+    "reportType": "analysis",
+    "reportDate": "2025-03-15T10:30:45Z",
+    "generatedBy": "KarmicDD AI",
+    "summary": "Tech Innovators Pvt Ltd shows strong growth potential with healthy gross margins and good unit economics. The company has a solid runway of 18 months based on current burn rate, but should focus on optimizing customer acquisition costs and reducing churn.",
+    "metrics": [
+      {
+        "name": "Burn Rate",
+        "value": "₹45,00,000/month",
+        "status": "warning",
+        "description": "Monthly cash outflow is higher than industry average.",
+        "trend": "up"
+      },
+      {
+        "name": "Runway",
+        "value": "18 months",
+        "status": "good",
+        "description": "Company has sufficient runway based on current burn rate.",
+        "trend": "stable"
+      }
+    ],
+    "recommendations": [
+      "Focus on reducing customer acquisition costs by optimizing marketing channels",
+      "Implement stricter cash flow management practices to extend runway"
+    ],
+    "riskFactors": [
+      {
+        "category": "Cash Flow",
+        "description": "Current burn rate may lead to cash flow issues if growth slows.",
+        "severity": "medium",
+        "impact": "Could reduce runway by 30% if not addressed.",
+        "mitigation": "Implement stricter expense controls and prioritize revenue-generating activities."
+      }
+    ],
+    "documentSources": ["doc123456", "doc123457"],
+    "status": "final",
+    "createdAt": "2025-03-15T10:30:45Z",
+    "updatedAt": "2025-03-15T10:30:45Z"
+  }
+}
+```
+
+### Generate PDF Report
+
+Generate and download a PDF version of a financial report.
+
+**Endpoint**: `GET /financial/reports/:reportId/pdf`
+
+**Parameters**:
+- `reportId`: ID of the report to generate PDF for
+
+**Authentication**: Required
+
+**Response**: PDF file download
 
 ## Search API
 

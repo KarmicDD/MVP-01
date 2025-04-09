@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSearch, FiFilter, FiChevronDown, FiX, FiRefreshCw, FiArrowUp, FiArrowDown } from 'react-icons/fi';
+import { FiSearch, FiFilter, FiChevronDown, FiX, FiRefreshCw, FiArrowUp, FiArrowDown, FiHelpCircle } from 'react-icons/fi';
 import axios from 'axios';
 import { colours } from '../utils/colours';
 import ComingSoon from '../components/ComingSoon/ComingSoon';
@@ -22,7 +22,11 @@ import {
     PaginationType
 } from '../services/searchServices';
 import BeliefSystemAnalytics from '../components/Dashboard/Analytics/BeliefSystemAnalytics';
+import FinancialDueDiligence from '../components/Dashboard/Analytics/FinancialDueDiligence';
 import Pagination from '../components/Dashboard/MatchesPage/Pagination';
+import TutorialCards from '../components/Tutorial/TutorialCards';
+import useTutorial from '../hooks/useTutorial';
+import { dashboardTutorialSteps, analyticsTutorialSteps, financialDDTutorialSteps } from '../data/tutorialSteps';
 
 const Dashboard: React.FC = () => {
     // State - keeping your existing state
@@ -35,6 +39,29 @@ const Dashboard: React.FC = () => {
     const [location, setLocation] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [activeTab, setActiveTab] = useState<string>('matches');
+    const [analyticsTab, setAnalyticsTab] = useState<string>('belief');
+
+    // Tutorial hooks
+    const dashboardTutorial = useTutorial({
+        tutorialId: 'dashboard-tutorial',
+        steps: dashboardTutorialSteps,
+        autoStart: true,
+        showOnlyOnce: true
+    });
+
+    const analyticsTutorial = useTutorial({
+        tutorialId: 'analytics-tutorial',
+        steps: analyticsTutorialSteps,
+        autoStart: false,
+        showOnlyOnce: true
+    });
+
+    const financialDDTutorial = useTutorial({
+        tutorialId: 'financial-dd-tutorial',
+        steps: financialDDTutorialSteps,
+        autoStart: false,
+        showOnlyOnce: true
+    });
     const [bookmarkedMatches, setBookmarkedMatches] = useState<Set<string>>(new Set());
     const [compatibilityData, setCompatibilityData] = useState({
         breakdown: {
@@ -379,6 +406,15 @@ const Dashboard: React.FC = () => {
         visible: { y: 0, opacity: 1, transition: { duration: 0.3 } }
     };
 
+    // Effect to trigger financial DD tutorial when user switches to that tab
+    useEffect(() => {
+        if (analyticsTab === 'financial' && !financialDDTutorial.hasCompletedTutorial) {
+            setTimeout(() => {
+                financialDDTutorial.openTutorial();
+            }, 500);
+        }
+    }, [analyticsTab, financialDDTutorial]);
+
     // Render the component with improved UI
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -405,7 +441,7 @@ const Dashboard: React.FC = () => {
                         >
                             {/* Search and filters with improved UI */}
                             <motion.div
-                                className="mb-8"
+                                className="mb-8 search-filter-container"
                                 variants={itemVariants}
                             >
                                 <div className="bg-white rounded-xl shadow-lg p-6">
@@ -611,7 +647,7 @@ const Dashboard: React.FC = () => {
 
                             {/* Match cards - using your existing component */}
                             <motion.div
-                                className="mb-12"
+                                className="mb-12 matches-container"
                                 variants={itemVariants}
                             >
                                 {renderMatchCards({
@@ -640,7 +676,7 @@ const Dashboard: React.FC = () => {
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ duration: 0.4 }}
-                                    className="bg-white rounded-xl shadow-lg p-6 mb-8"
+                                    className="bg-white rounded-xl shadow-lg p-6 mb-8 compatibility-section"
                                 >
                                     <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b border-gray-100 pb-3">Match Analysis</h2>
 
@@ -683,19 +719,25 @@ const Dashboard: React.FC = () => {
                                 <h2 className="text-2xl font-bold mb-6 text-gray-800">Analytics & Insights</h2>
 
                                 {/* Analytics tabs with improved UI */}
-                                <div className="mb-8">
+                                <div className="mb-8 analytics-tabs">
                                     <nav className="flex space-x-1 overflow-x-auto scrollbar-hide">
-                                        {['Belief System Analysis', 'Performance Metrics', 'Match Trends'].map((tab, index) => (
+                                        {[
+                                            { id: 'belief', label: 'Belief System Analysis' },
+                                            { id: 'financial', label: 'Financial Due Diligence' },
+                                            { id: 'performance', label: 'Performance Metrics' },
+                                            { id: 'coming-soon', label: 'More Coming Soon' }
+                                        ].map((tab, index) => (
                                             <motion.button
-                                                key={tab}
-                                                className={`px-4 py-3 font-medium text-sm transition-all rounded-lg ${index === 0
+                                                key={tab.id}
+                                                onClick={() => setAnalyticsTab(tab.id)}
+                                                className={`px-4 py-3 font-medium text-sm transition-all rounded-lg ${analyticsTab === tab.id
                                                     ? 'bg-blue-50 text-blue-700 border border-blue-200'
                                                     : 'text-gray-600 hover:bg-gray-50'
                                                     }`}
                                                 whileHover={{ scale: 1.03 }}
                                                 whileTap={{ scale: 0.98 }}
                                             >
-                                                {tab}
+                                                {tab.label}
                                             </motion.button>
                                         ))}
                                     </nav>
@@ -721,18 +763,48 @@ const Dashboard: React.FC = () => {
                                     </div>
                                 </motion.div>
 
-                                {/* Belief System Analytics - keeping your existing component */}
-                                <motion.div variants={itemVariants}>
-                                    {userProfile && (
-                                        <BeliefSystemAnalytics
-                                            userProfile={{
-                                                ...userProfile,
-                                                role: userProfile.role as "startup" | "investor"
-                                            }}
-                                            selectedMatchId={selectedMatchId}
-                                        />
-                                    )}
-                                </motion.div>
+                                {/* Analytics content based on selected tab */}
+                                {analyticsTab === 'belief' && (
+                                    <motion.div variants={itemVariants} className="belief-system-container">
+                                        {userProfile && (
+                                            <BeliefSystemAnalytics
+                                                userProfile={{
+                                                    ...userProfile,
+                                                    role: userProfile.role as "startup" | "investor"
+                                                }}
+                                                selectedMatchId={selectedMatchId}
+                                            />
+                                        )}
+                                    </motion.div>
+                                )}
+
+                                {analyticsTab === 'financial' && (
+                                    <motion.div variants={itemVariants} className="financial-dd-container">
+                                        {userProfile && (
+                                            <FinancialDueDiligence
+                                                userProfile={{
+                                                    ...userProfile,
+                                                    role: userProfile.role as "startup" | "investor"
+                                                }}
+                                                selectedMatchId={selectedMatchId}
+                                            />
+                                        )}
+                                    </motion.div>
+                                )}
+
+                                {(analyticsTab === 'performance' || analyticsTab === 'coming-soon') && (
+                                    <motion.div variants={itemVariants}>
+                                        <div className="bg-gray-50 rounded-xl p-8 text-center border border-gray-200">
+                                            <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                </svg>
+                                            </div>
+                                            <h3 className="text-xl font-bold text-gray-800 mb-2">Coming Soon</h3>
+                                            <p className="text-gray-600 mb-6">We're working hard to bring you more advanced analytics features.</p>
+                                        </div>
+                                    </motion.div>
+                                )}
                             </motion.div>
                         </motion.div>
                     )}
@@ -754,6 +826,53 @@ const Dashboard: React.FC = () => {
                     )}
                 </AnimatePresence>
             </main>
+
+            {/* Help button to open tutorial */}
+            <div className="fixed bottom-4 right-4 z-40">
+                <motion.button
+                    className="bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 flex items-center justify-center"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => {
+                        if (activeTab === 'matches') {
+                            dashboardTutorial.openTutorial();
+                        } else if (activeTab === 'analytics') {
+                            if (analyticsTab === 'financial') {
+                                financialDDTutorial.openTutorial();
+                            } else {
+                                analyticsTutorial.openTutorial();
+                            }
+                        }
+                    }}
+                >
+                    <FiHelpCircle size={24} />
+                </motion.button>
+            </div>
+
+            {/* Tutorial guides */}
+            <TutorialCards
+                steps={dashboardTutorialSteps}
+                isOpen={dashboardTutorial.isOpen}
+                onClose={dashboardTutorial.closeTutorial}
+                onComplete={dashboardTutorial.completeTutorial}
+                tutorialId="dashboard-tutorial"
+            />
+
+            <TutorialCards
+                steps={analyticsTutorialSteps}
+                isOpen={analyticsTutorial.isOpen}
+                onClose={analyticsTutorial.closeTutorial}
+                onComplete={analyticsTutorial.completeTutorial}
+                tutorialId="analytics-tutorial"
+            />
+
+            <TutorialCards
+                steps={financialDDTutorialSteps}
+                isOpen={financialDDTutorial.isOpen}
+                onClose={financialDDTutorial.closeTutorial}
+                onComplete={financialDDTutorial.completeTutorial}
+                tutorialId="financial-dd-tutorial"
+            />
         </div>
     );
 };

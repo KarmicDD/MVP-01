@@ -5,11 +5,13 @@ import { Rocket, TrendingUp, Sparkles, LucideLoader2 } from 'lucide-react';
 interface LoadingSpinnerProps {
     message?: string;
     submessage?: string;
+    size?: 'small' | 'medium' | 'large';
 }
 
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
-    message = "Preparing your journey",
-    submessage = "Setting up the perfect environment for your needs"
+    message = "Loading data",
+    submessage = "Please wait while we fetch your information",
+    size = 'large'
 }) => {
     const [currentIcon, setCurrentIcon] = useState<number>(0);
     const [loadingText, setLoadingText] = useState<string>(submessage);
@@ -42,9 +44,38 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
         return () => clearInterval(messageTimer);
     }, []);
 
+    // Determine size-based classes
+    const sizeClasses = {
+        small: {
+            container: "flex items-center justify-center",
+            spinner: "w-5 h-5",
+            hideElements: true
+        },
+        medium: {
+            container: "flex flex-col items-center justify-center p-4",
+            spinner: "w-12 h-12",
+            hideElements: false
+        },
+        large: {
+            container: "flex flex-col items-center justify-center p-6",
+            spinner: "w-20 h-20",
+            hideElements: false
+        }
+    };
+
+    // For small size, just return a simple spinner
+    if (size === 'small') {
+        return (
+            <div className="flex items-center justify-center">
+                <LucideLoader2 className="text-indigo-600 animate-spin" size={16} />
+                {message && <span className="ml-2 text-xs font-medium text-indigo-600">{message}</span>}
+            </div>
+        );
+    }
+
     return (
         <motion.div
-            className="flex flex-col items-center justify-center p-10"
+            className={sizeClasses[size].container}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -96,7 +127,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 
             {/* Main spinner container */}
             <motion.div
-                className="relative w-32 h-32 flex items-center justify-center"
+                className={`relative ${sizeClasses[size].spinner} flex items-center justify-center`}
                 whileHover={{ scale: 1.05 }}
                 transition={{ duration: 0.3 }}
             >
@@ -104,11 +135,11 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
                 <motion.div
                     className="absolute inset-0 rounded-full"
                     style={{
-                        background: `conic-gradient(from 0deg at 50% 50%, 
-              rgba(59, 130, 246, 0.8) 0%, 
-              rgba(59, 130, 246, 0.4) 25%, 
-              rgba(59, 130, 246, 0.1) 50%, 
-              rgba(59, 130, 246, 0.4) 75%, 
+                        background: `conic-gradient(from 0deg at 50% 50%,
+              rgba(59, 130, 246, 0.8) 0%,
+              rgba(59, 130, 246, 0.4) 25%,
+              rgba(59, 130, 246, 0.1) 50%,
+              rgba(59, 130, 246, 0.4) 75%,
               rgba(59, 130, 246, 0.8) 100%)`,
                         filter: "blur(3px)"
                     }}
@@ -161,7 +192,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 
                     {/* Central icon container */}
                     <motion.div
-                        className="relative w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg"
+                        className="relative w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg"
                         animate={{
                             boxShadow: ["0 0 0 rgba(59, 130, 246, 0.3)", "0 0 20px rgba(59, 130, 246, 0.6)", "0 0 0 rgba(59, 130, 246, 0.3)"]
                         }}
@@ -177,7 +208,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
                                     transition={{ duration: 0.5 }}
                                     className="relative"
                                 >
-                                    <Rocket size={32} className="text-blue-600" />
+                                    <Rocket size={24} className="text-blue-600" />
                                     <motion.div
                                         className="absolute -top-3 -right-3"
                                         animate={{ rotate: [0, 15, -15, 0] }}
@@ -195,7 +226,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
                                     transition={{ duration: 0.5 }}
                                     className="relative"
                                 >
-                                    <TrendingUp size={32} className="text-blue-600" />
+                                    <TrendingUp size={24} className="text-blue-600" />
                                     <motion.div
                                         className="absolute -top-3 -right-3"
                                         animate={{ rotate: [0, 15, -15, 0] }}
@@ -225,31 +256,33 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
             </motion.div>
 
             {/* Message */}
-            <motion.div
-                className="mt-6 text-center"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-            >
-                <motion.p
-                    className="text-xl font-medium bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2"
+            {!sizeClasses[size].hideElements && (
+                <motion.div
+                    className="mt-6 text-center"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
                 >
-                    {message}
-                </motion.p>
-
-                <AnimatePresence mode="wait">
                     <motion.p
-                        key={loadingText}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.5 }}
-                        className="text-gray-500"
+                        className="text-xl font-medium bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2"
                     >
-                        {loadingText}
+                        {message}
                     </motion.p>
-                </AnimatePresence>
-            </motion.div>
+
+                    <AnimatePresence mode="wait">
+                        <motion.p
+                            key={loadingText}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.5 }}
+                            className="text-gray-500"
+                        >
+                            {loadingText}
+                        </motion.p>
+                    </AnimatePresence>
+                </motion.div>
+            )}
         </motion.div>
     );
 };

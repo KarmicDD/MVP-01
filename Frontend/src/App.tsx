@@ -13,6 +13,7 @@ import QuestionnairePage from './pages/QuestionnairePage';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ProfilePage from './pages/ProfilePage';
+import SharedProfilePage from './pages/SharedProfilePage';
 
 // Protected route component with profile check
 const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) => {
@@ -162,6 +163,9 @@ function App() {
               <ProfilePage />
             </ProtectedRoute>
           } />
+
+          {/* Shared Profile Route - Public */}
+          <Route path="/shared-profile/:shareToken" element={<SharedProfilePage />} />
 
           {/* Protected Routes */}
           <Route
