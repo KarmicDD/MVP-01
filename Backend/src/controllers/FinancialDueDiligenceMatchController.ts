@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import FinancialDueDiligenceReport from '../models/Analytics/FinancialDueDiligenceReport';
-import DocumentModel from '../models/Profile/Document';
+import DocumentModel, { DocumentType } from '../models/Profile/Document';
 import ApiUsageModel from '../models/ApiUsageModel/ApiUsage';
 import StartupProfileModel from '../models/Profile/StartupProfile';
 import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
@@ -77,6 +77,8 @@ async function incrementApiUsage(userId: string): Promise<void> {
  * Analyze financial due diligence between a startup and an investor
  */
 export const analyzeFinancialDueDiligence = async (req: Request, res: Response): Promise<void> => {
+    // Get report type from query parameter, default to 'analysis'
+    const reportType = req.query.reportType === 'audit' ? 'audit' : 'analysis';
     try {
         console.log('Received request for financial due diligence analysis');
         console.log('Params:', req.params);
@@ -105,17 +107,20 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
             return;
         }
 
-        // Determine the user perspective based on their role
-        let perspective: 'startup' | 'investor';
+        // Get the perspective from query params or determine based on user role
+        let perspective: 'startup' | 'investor' = (req.query.perspective as 'startup' | 'investor') || 'startup';
 
-        // Check if the user is the startup or the investor
-        if (req.user.userId === startupId) {
-            perspective = 'startup';
-        } else if (req.user.userId === investorId) {
-            perspective = 'investor';
-        } else {
-            // Default perspective if not directly involved
-            perspective = 'investor';
+        // If no perspective is specified in query, determine based on user role
+        if (!req.query.perspective) {
+            // Check if the user is the startup or the investor
+            if (req.user.userId === startupId) {
+                perspective = 'startup';
+            } else if (req.user.userId === investorId) {
+                perspective = 'investor';
+            } else {
+                // Default perspective if not directly involved
+                perspective = 'investor';
+            }
         }
 
         console.log(`Using perspective: ${perspective}`);
@@ -148,6 +153,8 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 return;
             }
 
+            // Use the perspective determined earlier
+
             // Fetch startup data from MongoDB
             const startup = await StartupProfileModel.findOne({ userId: startupId });
             if (!startup) {
@@ -162,17 +169,86 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 return;
             }
 
-            // Fetch documents for the startup
+            // Define required financial document types
+            const requiredFinancialDocumentTypes: DocumentType[] = [
+                'financial_balance_sheet',
+                'financial_income_statement',
+                'financial_cash_flow',
+                'financial_tax_returns',
+                'financial_gst_returns',
+                'financial_bank_statements'
+            ];
+
+            // Additional startup-specific document types
+            const startupSpecificDocumentTypes: DocumentType[] = [
+                'financial_projections',
+                'financial_cap_table'
+            ];
+
+            // Additional investor-specific document types
+            const investorSpecificDocumentTypes: DocumentType[] = [
+                'financial_audit_report'
+            ];
+
+            // Determine which document types to look for based on perspective
+            const documentTypesToCheck = [
+                ...requiredFinancialDocumentTypes,
+                ...(perspective === 'startup' ? startupSpecificDocumentTypes : []),
+                ...(perspective === 'investor' ? investorSpecificDocumentTypes : [])
+            ];
+
+            // Fetch all financial documents for the entity being analyzed
+            // This will be the startup if perspective is 'startup', or the investor if perspective is 'investor'
+            const entityId = perspective === 'startup' ? startupId : investorId;
+
+            // Fetch documents for the entity
             const documents = await DocumentModel.find({
-                userId: startupId,
-                documentType: 'financial'
+                userId: entityId,
+                documentType: { $regex: /^financial_/ }
             });
 
+            // Gather all available information about the startup and investor
+            // Use optional chaining and type assertions to handle potential missing properties
+            const startupInfo = {
+                companyName: startup.companyName,
+                industry: startup.industry,
+                // Use optional properties that might not exist in all startup profiles
+                stage: (startup as any).stage,
+                foundingDate: (startup as any).foundingDate,
+                description: (startup as any).description,
+                teamSize: (startup as any).teamSize,
+                location: (startup as any).location,
+                website: (startup as any).website,
+                fundingRound: (startup as any).fundingRound,
+                fundingAmount: (startup as any).fundingAmount,
+                valuation: (startup as any).valuation
+            };
+
+            const investorInfo = {
+                name: (investor as any).name,
+                investmentStage: (investor as any).investmentStage,
+                investmentSize: (investor as any).investmentSize,
+                sectors: (investor as any).sectors,
+                location: (investor as any).location,
+                portfolio: (investor as any).portfolio
+            };
+
+            // Check which required documents are missing
+            const availableDocumentTypes = documents.map(doc => doc.documentType);
+            const missingDocumentTypes = documentTypesToCheck.filter(
+                docType => !availableDocumentTypes.includes(docType)
+            );
+
+            // If no documents are found at all
             if (documents.length === 0) {
-                // If no documents are found, return a mock response with an error code
+                // If no documents are found, return the startup and investor info
+                // so the frontend can display it and prompt for document upload
                 res.status(404).json({
-                    message: 'No financial documents found for this startup',
-                    errorCode: 'NO_FINANCIAL_DOCUMENTS'
+                    message: `No financial documents found for this ${perspective}`,
+                    errorCode: 'NO_FINANCIAL_DOCUMENTS',
+                    startupInfo: startupInfo,
+                    investorInfo: investorInfo,
+                    missingDocuments: documentTypesToCheck
                 });
                 return;
             }
@@ -183,21 +259,79 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
             console.log('Processing documents:', filePaths);
             const combinedContent = await enhancedDocumentProcessingService.processMultipleDocuments(filePaths);
 
-            // Extract financial data using Gemini
+            // Check if document processing was successful
+            if (!combinedContent || combinedContent.includes('Error: Failed to process this document')) {
+                console.log('Document processing failed');
+                res.status(400).json({
+                    message: 'Failed to process financial documents',
+                    errorCode: 'DOCUMENT_PROCESSING_FAILED'
+                });
+                return;
+            }
+
+
+
+            // Extract financial data using Gemini with enhanced context
             console.log('Extracting financial data using Gemini');
             const financialData = await enhancedDocumentProcessingService.extractFinancialData(
                 combinedContent,
-                startup.companyName,
-                'analysis'
+                perspective === 'startup' ? startup.companyName : investor.companyName,
+                reportType as 'analysis' | 'audit',
+                startupInfo,
+                investorInfo,
+                missingDocumentTypes // Pass missing document types to Gemini
             );
 
-            // Create a new financial due diligence report
+            // Process ratio analysis data to ensure all required fields are present
+            const processRatioData = (ratios: any[] = []) => {
+                return ratios.map(ratio => ({
+                    name: ratio.name || 'Unknown Ratio',
+                    value: ratio.value !== undefined ? ratio.value : null,
+                    industry_average: ratio.industry_average,
+                    description: ratio.description || 'No description available',
+                    status: ratio.status || 'warning'
+                }));
+            };
+
+            // Get ratio analysis from financial data or create empty structure
+            const ratioAnalysis = financialData.ratioAnalysis || {
+                liquidityRatios: [],
+                profitabilityRatios: [],
+                solvencyRatios: [],
+                efficiencyRatios: []
+            };
+
+            // Process each ratio category
+            const processedRatioAnalysis = {
+                liquidityRatios: processRatioData(ratioAnalysis.liquidityRatios),
+                profitabilityRatios: processRatioData(ratioAnalysis.profitabilityRatios),
+                solvencyRatios: processRatioData(ratioAnalysis.solvencyRatios),
+                efficiencyRatios: processRatioData(ratioAnalysis.efficiencyRatios)
+            };
+
+            // Check if we have actual financial data before saving to database
+            if (!financialData || !financialData.summary || financialData.summary.includes('failed to process') ||
+                financialData.summary.includes('could not be performed') ||
+                financialData.summary.includes('Error') ||
+                financialData.summary.includes('error')) {
+
+                console.log('Financial data appears to be a default/error report, not saving to database');
+
+                // Return error response
+                res.status(400).json({
+                    message: 'Failed to extract meaningful financial data from the documents',
+                    errorCode: 'FINANCIAL_DATA_EXTRACTION_FAILED'
+                });
+                return;
+            }
+
+            // Create a new financial due diligence report with all available data
             const financialReport = new FinancialDueDiligenceReport({
                 startupId: startupId,
                 investorId: investorId,
                 perspective: perspective,
                 companyName: startup.companyName,
-                reportType: 'analysis',
+                reportType: reportType,
                 generatedBy: 'KarmicDD AI',
                 summary: financialData.summary,
                 metrics: financialData.metrics || [],
@@ -205,12 +339,7 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 riskFactors: financialData.riskFactors || [],
                 complianceItems: financialData.complianceItems || [],
                 financialStatements: financialData.financialStatements || {},
-                ratioAnalysis: financialData.ratioAnalysis || {
-                    liquidityRatios: [],
-                    profitabilityRatios: [],
-                    solvencyRatios: [],
-                    efficiencyRatios: []
-                },
+                ratioAnalysis: processedRatioAnalysis,
                 taxCompliance: financialData.taxCompliance || {
                     gst: { status: 'compliant', details: 'Not evaluated' },
                     incomeTax: { status: 'compliant', details: 'Not evaluated' },
@@ -229,7 +358,7 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
             // Increment API usage
             await incrementApiUsage(req.user.userId);
 
-            // Return analysis data with current date as generation date
+            // Return complete analysis data with current date as generation date
             res.json({
                 summary: financialReport.summary,
                 metrics: financialReport.metrics,
@@ -240,103 +369,22 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 ratioAnalysis: financialReport.ratioAnalysis,
                 taxCompliance: financialReport.taxCompliance,
                 perspective: financialReport.perspective,
-                generatedDate: financialReport.createdAt
+                generatedDate: financialReport.createdAt,
+                startupInfo: startupInfo,  // Include all startup information
+                investorInfo: investorInfo  // Include all investor information
             });
         } catch (error) {
             console.error('Error in financial due diligence analysis:', error);
 
-            // If there's an error, fall back to a mock response
-            console.log('Falling back to mock response due to error');
-            const mockResponse = {
-                summary: "This is a mock financial due diligence report for testing purposes. The company shows strong growth potential with healthy gross margins and good unit economics. The company has a solid runway of 18 months based on current burn rate, but should focus on optimizing customer acquisition costs and reducing churn.",
-                metrics: [
-                    {
-                        name: "Burn Rate",
-                        value: "₹45,00,000/month",
-                        status: "warning",
-                        description: "Monthly cash outflow is higher than industry average."
-                    },
-                    {
-                        name: "Runway",
-                        value: "18 months",
-                        status: "good",
-                        description: "Company has sufficient runway based on current burn rate."
-                    },
-                    {
-                        name: "Gross Margin",
-                        value: "68%",
-                        status: "good",
-                        description: "Healthy gross margin above industry average of 62%."
-                    }
-                ],
-                recommendations: [
-                    "Focus on reducing customer acquisition costs by optimizing marketing channels and improving conversion rates.",
-                    "Implement stricter cash flow management practices to extend runway.",
-                    "Consider raising additional capital in the next 6-9 months to support growth initiatives."
-                ],
-                riskFactors: [
-                    {
-                        category: "Cash Flow",
-                        level: "medium",
-                        description: "Current burn rate may lead to cash flow issues if growth slows or funding is delayed.",
-                        impact: "Could reduce runway by 30% if not addressed."
-                    },
-                    {
-                        category: "Customer Concentration",
-                        level: "high",
-                        description: "Heavy dependence on top 3 customers who account for 45% of revenue.",
-                        impact: "Loss of any major customer would significantly impact revenue and growth."
-                    }
-                ],
-                perspective: perspective,
-                generatedDate: new Date()
-            };
+            // If there's an error, return an error response instead of a mock report
+            console.log('Document processing or analysis failed');
 
-            // Try to save the mock response to the database
-            try {
-                const companyName = "Mock Company (Error Fallback)";
-                const financialReport = new FinancialDueDiligenceReport({
-                    startupId: startupId,
-                    investorId: investorId,
-                    perspective: perspective,
-                    companyName: companyName,
-                    reportType: 'analysis',
-                    generatedBy: 'KarmicDD AI',
-                    summary: mockResponse.summary,
-                    metrics: mockResponse.metrics || [],
-                    recommendations: mockResponse.recommendations || [],
-                    riskFactors: mockResponse.riskFactors || [],
-                    complianceItems: [],
-                    financialStatements: {},
-                    ratioAnalysis: {
-                        liquidityRatios: [],
-                        profitabilityRatios: [],
-                        solvencyRatios: [],
-                        efficiencyRatios: []
-                    },
-                    taxCompliance: {
-                        gst: { status: 'compliant', details: 'Not evaluated' },
-                        incomeTax: { status: 'compliant', details: 'Not evaluated' },
-                        tds: { status: 'compliant', details: 'Not evaluated' }
-                    },
-                    documentSources: [],
-                    status: 'final',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Expire after 30 days
-                });
-
-                await financialReport.save();
-                console.log('Saved mock financial report to database as fallback');
-
-                // Increment API usage
-                await incrementApiUsage(req.user.userId);
-            } catch (saveError) {
-                console.error('Error saving mock financial report:', saveError);
-                // Continue even if saving fails
-            }
-
-            res.json(mockResponse);
+            // Return an error response with a specific error code
+            res.status(400).json({
+                message: 'Failed to process financial documents or extract financial data',
+                errorCode: 'FINANCIAL_ANALYSIS_FAILED',
+                error: error instanceof Error ? error.message : 'Unknown error occurred during financial analysis'
+            });
         }
     } catch (error) {
         console.error('Financial due diligence analysis error:', error);

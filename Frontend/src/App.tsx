@@ -14,6 +14,9 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ProfilePage from './pages/ProfilePage';
 import SharedProfilePage from './pages/SharedProfilePage';
+import { TutorialProvider } from './context/TutorialContext';
+import TutorialManager from './components/Tutorial/TutorialManager';
+import { allTutorials } from './data/tutorials';
 
 // Protected route component with profile check
 const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) => {
@@ -121,8 +124,6 @@ const DashboardRoute = () => {
 
   if (user?.role) {
     return <Dashboard />;
-  } else if (user?.role === 'investor') {
-    return <Dashboard />;
   } else {
     return <Navigate to="/" replace />;
   }
@@ -130,60 +131,64 @@ const DashboardRoute = () => {
 
 function App() {
   return (
-    <ActiveSectionContextProvider>
-      <Router>
-        <Routes>
-          {/* Default Landing Page */}
-          <Route path="/" element={<Landing />} />
+    <TutorialProvider initialTutorials={allTutorials}>
+      <ActiveSectionContextProvider>
+        <Router>
+          <Routes>
+            {/* Default Landing Page */}
+            <Route path="/" element={<Landing />} />
 
-          {/* Forms Route - Protected but accessible before dashboard */}
-          <Route path="/forms" element={<FormsRoute />} />
+            {/* Forms Route - Protected but accessible before dashboard */}
+            <Route path="/forms" element={<FormsRoute />} />
 
-          {/* Auth Routes */}
-          <Route path="/auth" element={<AuthRoute />} />
-          <Route path="/auth/callback" element={<OAuthCallback />} />
-          <Route path="/auth/select-role" element={<OAuthCallback />} />
+            {/* Auth Routes */}
+            <Route path="/auth" element={<AuthRoute />} />
+            <Route path="/auth/callback" element={<OAuthCallback />} />
+            <Route path="/auth/select-role" element={<OAuthCallback />} />
 
-          {/* Open Routes */}
-          <Route path="/coming-soon" element={<ComingSoon />} /> {/* Anyone can access */}
-          <Route path="/loading" element={<LoadingSpinner />} /> {/* Anyone can access */}
-          <Route
-            path="/question"
-            element={
+            {/* Open Routes */}
+            <Route path="/coming-soon" element={<ComingSoon />} /> {/* Anyone can access */}
+            <Route path="/loading" element={<LoadingSpinner />} /> {/* Anyone can access */}
+            <Route
+              path="/question"
+              element={
+                <ProtectedRoute>
+                  <QuestionnairePage />
+                </ProtectedRoute>
+              }
+            />
+
+
+            {/* // Add this to your routes */}
+            <Route path="/profile" element={
               <ProtectedRoute>
-                <QuestionnairePage />
+                <ProfilePage />
               </ProtectedRoute>
-            }
-          />
+            } />
 
+            {/* Shared Profile Route - Public */}
+            <Route path="/shared-profile/:shareToken" element={<SharedProfilePage />} />
 
-          {/* // Add this to your routes */}
-          <Route path="/profile" element={
-            <ProtectedRoute>
-              <ProfilePage />
-            </ProtectedRoute>
-          } />
+            {/* Protected Routes */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DashboardRoute />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Shared Profile Route - Public */}
-          <Route path="/shared-profile/:shareToken" element={<SharedProfilePage />} />
-
-          {/* Protected Routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardRoute />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Redirect all unknown routes to Landing */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        {/* Add ToastContainer for notifications */}
-        <ToastContainer position="bottom-right" />
-      </Router>
-    </ActiveSectionContextProvider>
+            {/* Redirect all unknown routes to Landing */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          {/* Add ToastContainer for notifications */}
+          <ToastContainer position="bottom-right" />
+        </Router>
+        {/* Tutorial Manager */}
+        <TutorialManager tutorials={allTutorials} />
+      </ActiveSectionContextProvider>
+    </TutorialProvider>
   );
 }
 

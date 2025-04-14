@@ -560,6 +560,9 @@ export const uploadDocument = async (req: Request & { file?: any }, res: Respons
 
             const { description, documentType, isPublic } = req.body;
 
+            // Store relative path instead of absolute path
+            const relativePath = path.relative(path.join(__dirname, '../..'), req.file.path);
+
             // Create document record in MongoDB
             const document = new DocumentModel({
                 userId: req.user!.userId,
@@ -567,7 +570,7 @@ export const uploadDocument = async (req: Request & { file?: any }, res: Respons
                 originalName: req.file.originalname,
                 fileType: req.file.mimetype,
                 fileSize: req.file.size,
-                filePath: req.file.path,
+                filePath: relativePath, // Store relative path
                 description: description || '',
                 documentType: documentType || 'other',
                 isPublic: isPublic === 'true'
@@ -651,9 +654,12 @@ export const deleteDocument = async (req: Request, res: Response): Promise<void>
             return;
         }
 
+        // Convert relative path to absolute path
+        const absolutePath = path.join(__dirname, '../..', document.filePath);
+
         // Delete the file from the filesystem
-        if (fs.existsSync(document.filePath)) {
-            fs.unlinkSync(document.filePath);
+        if (fs.existsSync(absolutePath)) {
+            fs.unlinkSync(absolutePath);
         }
 
         // Delete the document record
@@ -685,8 +691,11 @@ export const downloadDocument = async (req: Request, res: Response): Promise<voi
             return;
         }
 
+        // Convert relative path to absolute path
+        const absolutePath = path.join(__dirname, '../..', document.filePath);
+
         // Check if the file exists
-        if (!fs.existsSync(document.filePath)) {
+        if (!fs.existsSync(absolutePath)) {
             res.status(404).json({ message: 'File not found' });
             return;
         }
@@ -696,7 +705,7 @@ export const downloadDocument = async (req: Request, res: Response): Promise<voi
         res.setHeader('Content-Disposition', `attachment; filename="${document.originalName}"`);
 
         // Stream the file
-        const fileStream = fs.createReadStream(document.filePath);
+        const fileStream = fs.createReadStream(absolutePath);
         fileStream.pipe(res);
     } catch (error) {
         console.error('Download document error:', error);
@@ -731,7 +740,11 @@ export const updateDocumentMetadata = async (req: Request, res: Response): Promi
 
         // Update the document
         document.description = description || document.description;
-        if (documentType) document.documentType = documentType as 'pitch_deck' | 'financial' | 'other';
+        if (documentType) {
+            // Import DocumentType from the Document model to ensure type compatibility
+            const validDocType = documentType as import('../models/Profile/Document').DocumentType;
+            document.documentType = validDocType;
+        }
         if (isPublic !== undefined) document.isPublic = isPublic === true || isPublic === 'true';
 
         await document.save();

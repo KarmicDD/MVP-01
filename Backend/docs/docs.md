@@ -32,7 +32,7 @@ This architecture optimizes for both data consistency and flexibility while main
   ```json
   {
     "user": {
-      "user_id": "fc85a964-7183-4fb5-9546-253d23d3",
+      "userId": "fc85a964-7183-4fb5-9546-253d23d3",
       "email": "user@example.com",
       "role": "pending"
     },
@@ -58,7 +58,7 @@ This architecture optimizes for both data consistency and flexibility while main
   ```json
   {
     "user": {
-      "user_id": "fc85a964-7183-4fb5-9546-253d23d3",
+      "userId": "fc85a964-7183-4fb5-9546-253d23d3",
       "email": "user@example.com",
       "role": "pending",
       "isNewUser": true  // Present only for new users
@@ -85,7 +85,7 @@ This architecture optimizes for both data consistency and flexibility while main
 ## API Endpoints
 
 ### User Type
-- **Endpoint**: `GET /api/profile/user`
+- **Endpoint**: `GET /api/profile/user-type`
 - **Auth Required**: Yes
 - **Response**:
   ```json
@@ -108,7 +108,7 @@ This architecture optimizes for both data consistency and flexibility while main
     "industry": "SaaS",
     "fundingStage": "Seed",
     "employeeCount": "1-10",
-    "location": "San Francisco",
+    "location": "Bangalore, India",
     "pitch": "We're building the future of..."
   }
   ```
@@ -122,7 +122,7 @@ This architecture optimizes for both data consistency and flexibility while main
       "industry": "SaaS",
       "fundingStage": "Seed",
       "employeeCount": "1-10",
-      "location": "San Francisco",
+      "location": "Bangalore, India",
       "pitch": "We're building the future of..."
     }
   }
@@ -144,7 +144,7 @@ This architecture optimizes for both data consistency and flexibility while main
     "companyName": "Venture Capital Inc.",
     "industriesOfInterest": ["SaaS", "AI", "Fintech"],
     "preferredStages": ["Seed", "Series A"],
-    "ticketSize": "$500K-2M",
+    "ticketSize": "₹50L - ₹2Cr",
     "investmentCriteria": ["Strong Team", "Product-Market Fit"],
     "pastInvestments": "Previously invested in..."
   }
@@ -158,7 +158,7 @@ This architecture optimizes for both data consistency and flexibility while main
       "companyName": "Venture Capital Inc.",
       "industriesOfInterest": ["SaaS", "AI", "Fintech"],
       "preferredStages": ["Seed", "Series A"],
-      "ticketSize": "$500K-2M",
+      "ticketSize": "₹50L - ₹2Cr",
       "investmentCriteria": ["Strong Team", "Product-Market Fit"],
       "pastInvestments": "Previously invested in..."
     }
@@ -170,32 +170,88 @@ This architecture optimizes for both data consistency and flexibility while main
 - **Auth Required**: Yes
 - **Response**: Returns profile object
 
+### Extended Profile
+- **Endpoint**: `POST /api/profile/extended`
+- **Auth Required**: Yes
+- **Request Body**:
+  ```json
+  {
+    "avatarUrl": "https://example.com/avatar.jpg",
+    "socialLinks": [
+      { "platform": "LinkedIn", "url": "https://linkedin.com/company/mycompany" }
+    ],
+    "teamMembers": [
+      { "name": "John Doe", "role": "CEO" }
+    ],
+    "investmentHistory": [
+      { "companyName": "Startup X", "year": "2024", "amount": "₹1Cr" }
+    ]
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "message": "Extended profile updated successfully",
+    "extendedProfile": {
+      "avatarUrl": "https://example.com/avatar.jpg",
+      "socialLinks": [
+        { "platform": "LinkedIn", "url": "https://linkedin.com/company/mycompany" }
+      ],
+      "teamMembers": [
+        { "name": "John Doe", "role": "CEO" }
+      ],
+      "investmentHistory": [
+        { "companyName": "Startup X", "year": "2024", "amount": "₹1Cr" }
+      ]
+    }
+  }
+  ```
+
 ### Compatibility Analysis
 
 #### Get Single Match Compatibility
-- **Endpoint**: `GET /api/compatibility/:startupId/:investorId`
+- **Endpoint**: `GET /api/analysis/belief-system/:startupId/:investorId`
 - **Auth Required**: Yes
 - **Response**:
   ```json
   {
-    "overallScore": 75,
-    "breakdown": {
-      "missionAlignment": 80,
-      "investmentPhilosophy": 70,
-      "sectorFocus": 90,
-      "fundingStageAlignment": 75,
-      "valueAddMatch": 60
+    "overallMatch": 75,
+    "compatibility": {
+      "visionAlignment": 80,
+      "coreValues": 70,
+      "businessGoals": 75,
+      "operationalStyle": 68,
+      "riskTolerance": 82
     },
-    "insights": [
-      "Strong alignment in industry focus",
-      "Good match in funding stage requirements",
-      "Complementary long-term vision"
-    ]
+    "strengths": [
+      {
+        "area": "Long-term Vision",
+        "score": 85,
+        "description": "Both parties share ambitious goals for market transformation"
+      },
+      {
+        "area": "Innovation Focus",
+        "score": 78,
+        "description": "Strong alignment on prioritizing R&D and creative solutions"
+      }
+    ],
+    "risks": {
+      "marketFitRisk": {
+        "level": "Low",
+        "score": 15,
+        "description": "Strong alignment between investor expertise and startup market"
+      },
+      "operationalRisk": {
+        "level": "Medium",
+        "score": 45,
+        "description": "Potential misalignment in growth pace expectations"
+      }
+    }
   }
   ```
 
 #### Batch Analyze Compatibility
-- **Endpoint**: `GET /api/compatibility/batch?role=startup` or `GET /api/compatibility/batch?role=investor`
+- **Endpoint**: `GET /api/matching/compatibility?role=startup` or `GET /api/matching/compatibility?role=investor`
 - **Auth Required**: Yes
 - **Response**:
   ```json
@@ -205,19 +261,28 @@ This architecture optimizes for both data consistency and flexibility while main
         "investorId": "abc123",  // or startupId if role=investor
         "companyName": "Venture Capital Inc.",
         "compatibility": {
-          "overallScore": 85,
-          "breakdown": {
-            "missionAlignment": 90,
-            "investmentPhilosophy": 80,
-            "sectorFocus": 95,
-            "fundingStageAlignment": 85,
-            "valueAddMatch": 75
+          "overallMatch": 85,
+          "compatibility": {
+            "visionAlignment": 90,
+            "coreValues": 80,
+            "businessGoals": 85,
+            "operationalStyle": 75,
+            "riskTolerance": 90
           },
-          "insights": [
-            "Perfect match in industry focus",
-            "Strong alignment on funding expectations",
-            "Complementary vision for growth"
-          ]
+          "strengths": [
+            {
+              "area": "Long-term Vision",
+              "score": 92,
+              "description": "Perfect alignment in growth vision and market focus"
+            }
+          ],
+          "risks": {
+            "marketFitRisk": {
+              "level": "Low",
+              "score": 10,
+              "description": "Excellent alignment between investor expertise and startup market"
+            }
+          }
         }
       },
       // More matches...
@@ -248,11 +313,12 @@ This architecture optimizes for both data consistency and flexibility while main
     "matches": [
       {
         "investorId": "def456",
-        "email": "investor@example.com",
+        "companyName": "Venture Capital Inc.",
         "matchScore": 85,
         "industriesOfInterest": ["SaaS", "AI"],
         "preferredStages": ["Seed", "Series A"],
-        "ticketSize": "$500K-2M"
+        "ticketSize": "₹50L - ₹2Cr",
+        "location": "Mumbai, India" 
       },
       // More matches...
     ]
@@ -269,31 +335,86 @@ This architecture optimizes for both data consistency and flexibility while main
       {
         "startupId": "abc123",
         "companyName": "Tech Innovators",
-        "email": "startup@example.com",
         "matchScore": 85,
         "industry": "SaaS",
         "fundingStage": "Seed",
-        "location": "San Francisco"
+        "location": "Bangalore, India"
       },
       // More matches...
     ]
   }
   ```
 
+### Financial Due Diligence
+
+#### Upload Financial Documents
+- **Endpoint**: `POST /api/financial/upload`
+- **Auth Required**: Yes
+- **Request Body**: Form data with documents files
+- **Response**:
+  ```json
+  {
+    "message": "Financial documents uploaded successfully",
+    "documents": [
+      {
+        "id": "doc123456",
+        "fileName": "documents-1678901234567.pdf",
+        "originalName": "financial_statement_2025.pdf",
+        "fileType": "application/pdf",
+        "fileSize": 2457600
+      }
+    ]
+  }
+  ```
+
+#### Generate Financial Report
+- **Endpoint**: `POST /api/financial/generate`
+- **Auth Required**: Yes
+- **Request Body**:
+  ```json
+  {
+    "documentIds": ["doc123456", "doc123457"],
+    "companyName": "Tech Innovators Pvt Ltd",
+    "reportType": "analysis"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "message": "Financial report generated successfully",
+    "reportId": "report789012",
+    "report": {
+      "summary": "Tech Innovators Pvt Ltd shows strong growth potential with healthy gross margins...",
+      "metrics": [
+        {
+          "name": "Burn Rate",
+          "value": "₹45,00,000/month",
+          "status": "warning",
+          "description": "Monthly cash outflow is higher than industry average.",
+          "trend": "up"
+        }
+      ],
+      "recommendations": [
+        "Focus on reducing customer acquisition costs by optimizing marketing channels"
+      ]
+    }
+  }
+  ```
+
 ## Data Models
 
 ### User
-- `user_id`: String (UUID)
+- `userId`: String (UUID)
 - `email`: String
-- `password_hash`: String (optional)
-- `oauth_provider`: String (optional)
-- `oauth_id`: String (optional)
+- `passwordHash`: String (optional)
+- `oauthProvider`: String (optional)
+- `oauthId`: String (optional)
 - `role`: String ('startup', 'investor', or 'pending')
-- `created_at`: DateTime
-- `updated_at`: DateTime
+- `createdAt`: DateTime
+- `updatedAt`: DateTime
 
 ### Startup Profile
-- `userId`: String (references user_id)
+- `userId`: String (references userId)
 - `companyName`: String
 - `industry`: String
 - `fundingStage`: String
@@ -303,7 +424,7 @@ This architecture optimizes for both data consistency and flexibility while main
 - `additionalInfo`: Object (flexible field for future extensions)
 
 ### Investor Profile
-- `userId`: String (references user_id)
+- `userId`: String (references userId)
 - `companyName`: String
 - `industriesOfInterest`: String[]
 - `preferredStages`: String[]
@@ -312,13 +433,38 @@ This architecture optimizes for both data consistency and flexibility while main
 - `pastInvestments`: String (optional)
 - `additionalInfo`: Object (flexible field for future extensions)
 
+### Extended Profile
+- `userId`: String (references userId)
+- `avatarUrl`: String (optional)
+- `socialLinks`: Array of Objects (optional)
+- `teamMembers`: Array of Objects (optional)
+- `investmentHistory`: Array of Objects (optional)
+
+### Financial Report
+- `reportId`: String (UUID)
+- `userId`: String (references userId)
+- `companyName`: String
+- `reportType`: String ('analysis' or 'audit')
+- `reportDate`: DateTime
+- `generatedBy`: String
+- `summary`: String
+- `metrics`: Array of Objects
+- `recommendations`: Array of Strings
+- `riskFactors`: Array of Objects
+- `documentSources`: Array of Strings
+- `status`: String ('draft', 'final')
+- `createdAt`: DateTime
+- `updatedAt`: DateTime
+
 ## Error Handling
 
 All API endpoints follow a consistent error response format:
 
 ```json
 {
-  "message": "Error description here"
+  "message": "Error description here",
+  "error": "Detailed error information",
+  "code": "ERROR_CODE"
 }
 ```
 
@@ -327,6 +473,7 @@ Common HTTP status codes:
 - `401`: Unauthorized - Authentication required
 - `403`: Forbidden - Insufficient permissions
 - `404`: Not Found - Resource doesn't exist
+- `429`: Too Many Requests - Rate limit exceeded
 - `500`: Server Error - Backend issue
 
 ## Example Requests
@@ -365,7 +512,7 @@ if (user.role === 'pending') {
       industry: 'SaaS',
       fundingStage: 'Seed',
       employeeCount: '1-10',
-      location: 'San Francisco',
+      location: 'Bangalore, India',
       pitch: 'We're building the future of...'
     })
   });
@@ -380,7 +527,7 @@ if (user.role === 'pending') {
 ```javascript
 // Get compatibility between a startup and investor
 const getCompatibility = async (startupId, investorId) => {
-  const response = await fetch(`/api/compatibility/${startupId}/${investorId}`, {
+  const response = await fetch(`/api/analysis/belief-system/${startupId}/${investorId}`, {
     headers: {
       'Authorization': `Bearer ${localStorage.getItem('token')}`
     }
@@ -391,7 +538,7 @@ const getCompatibility = async (startupId, investorId) => {
 
 // Batch analyze compatibility for current user (investor)
 const getBatchCompatibility = async () => {
-  const response = await fetch('/api/compatibility/batch?role=investor', {
+  const response = await fetch('/api/matching/compatibility?role=investor', {
     headers: {
       'Authorization': `Bearer ${localStorage.getItem('token')}`
     }
@@ -399,6 +546,28 @@ const getBatchCompatibility = async () => {
   
   const { matches } = await response.json();
   return matches;
+};
+```
+
+### Financial Due Diligence
+
+```javascript
+// Generate financial report
+const generateFinancialReport = async (documentIds, companyName) => {
+  const response = await fetch('/api/financial/generate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    },
+    body: JSON.stringify({
+      documentIds,
+      companyName,
+      reportType: 'analysis'
+    })
+  });
+  
+  return await response.json();
 };
 ```
 
@@ -413,7 +582,7 @@ const headers = {
 };
 
 // Use these headers with all authorized requests
-const response = await fetch('/api/profile/user', { headers });
+const response = await fetch('/api/profile/user-type', { headers });
 ```
 
-This documentation provides a comprehensive guide for your frontend developer to integrate with the updated backend architecture while maintaining all existing functionality.
+This documentation provides a comprehensive guide for frontend developers to integrate with the backend architecture.

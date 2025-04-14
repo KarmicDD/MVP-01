@@ -237,8 +237,8 @@
   ```json
   {
     "message": "Profile share link generated successfully",
-    "shareableUrl": "http://localhost:3000/shared-profile/abc123def456",
-    "expiresAt": "2023-12-31T23:59:59.999Z"
+    "shareableUrl": "https://karmic-dd.com/shared-profile/abc123def456",
+    "expiresAt": "2025-12-31T23:59:59.999Z"
   }
   ```
 
@@ -257,7 +257,7 @@
   ```json
   {
     "message": "Profile shared successfully",
-    "shareableUrl": "http://localhost:3000/shared-profile/abc123def456",
+    "shareableUrl": "https://karmic-dd.com/shared-profile/abc123def456",
     "recipientCount": 2
   }
   ```
@@ -297,12 +297,12 @@
         "fileType": "application/pdf",
         "description": "Our latest pitch deck",
         "documentType": "pitch_deck",
-        "createdAt": "2023-01-01T12:00:00.000Z"
+        "createdAt": "2025-01-01T12:00:00.000Z"
       }
     ],
     "shareInfo": {
-      "createdAt": "2023-01-01T12:00:00.000Z",
-      "expiresAt": "2023-12-31T23:59:59.999Z",
+      "createdAt": "2025-01-01T12:00:00.000Z",
+      "expiresAt": "2025-12-31T23:59:59.999Z",
       "viewCount": 5
     }
   }
@@ -348,7 +348,7 @@
         "description": "Our latest pitch deck",
         "documentType": "pitch_deck",
         "isPublic": true,
-        "createdAt": "2023-01-01T12:00:00.000Z"
+        "createdAt": "2025-01-01T12:00:00.000Z"
       }
     ]
   }
@@ -397,8 +397,8 @@
       "description": "Updated description",
       "documentType": "pitch_deck",
       "isPublic": true,
-      "createdAt": "2023-01-01T12:00:00.000Z",
-      "updatedAt": "2023-01-02T12:00:00.000Z"
+      "createdAt": "2025-01-01T12:00:00.000Z",
+      "updatedAt": "2025-04-12T12:00:00.000Z"
     }
   }
   ```
@@ -419,7 +419,7 @@
       {
         "id": "doc_id",
         "fileName": "financial_statement.pdf",
-        "originalName": "Financial Statement 2022.pdf",
+        "originalName": "Financial Statement 2025.pdf",
         "fileType": "application/pdf",
         "fileSize": 1024000
       }
@@ -466,7 +466,41 @@
           "severity": "medium",
           "impact": "Could reduce runway by 30% if not addressed."
         }
-      ]
+      ],
+      "ratioAnalysis": {
+        "liquidityRatios": [
+          {
+            "name": "Current Ratio",
+            "value": 1.8,
+            "industry_average": 2.0,
+            "description": "Ability to pay short-term obligations.",
+            "status": "warning"
+          }
+        ],
+        "profitabilityRatios": [
+          {
+            "name": "Gross Margin",
+            "value": 0.68,
+            "industry_average": 0.62,
+            "description": "Percentage of revenue retained after direct costs.",
+            "status": "good"
+          }
+        ]
+      },
+      "taxCompliance": {
+        "gst": {
+          "status": "partial",
+          "details": "GST returns have been filed on time, but supporting documentation is incomplete."
+        },
+        "incomeTax": {
+          "status": "compliant",
+          "details": "Income tax filings are up to date and complete."
+        },
+        "tds": {
+          "status": "non-compliant",
+          "details": "TDS deductions have been made, but there are delays in filing TDS returns."
+        }
+      }
     }
   }
   ```
@@ -485,11 +519,11 @@
         "userId": "user_id",
         "companyName": "My Startup",
         "reportType": "analysis",
-        "reportDate": "2023-01-01T12:00:00.000Z",
+        "reportDate": "2025-04-01T12:00:00.000Z",
         "generatedBy": "KarmicDD AI",
         "summary": "Financial analysis summary...",
         "status": "final",
-        "createdAt": "2023-01-01T12:00:00.000Z"
+        "createdAt": "2025-04-01T12:00:00.000Z"
       }
     ]
   }
@@ -508,7 +542,7 @@
       "userId": "user_id",
       "companyName": "My Startup",
       "reportType": "analysis",
-      "reportDate": "2023-01-01T12:00:00.000Z",
+      "reportDate": "2025-04-01T12:00:00.000Z",
       "generatedBy": "KarmicDD AI",
       "summary": "Financial analysis summary...",
       "metrics": [
@@ -533,7 +567,7 @@
       ],
       "documentSources": ["doc_id1", "doc_id2"],
       "status": "final",
-      "createdAt": "2023-01-01T12:00:00.000Z"
+      "createdAt": "2025-04-01T12:00:00.000Z"
     }
   }
   ```
@@ -544,3 +578,94 @@
 - **Description**: Generate a PDF version of a financial report
 - **Authentication**: Required
 - **Response**: PDF file
+
+### Financial Due Diligence Match Analysis
+- **URL**: `/api/financial/match/:startupId/:investorId/generate`
+- **Method**: `POST`
+- **Description**: Generate financial due diligence analysis between a startup and investor
+- **Authentication**: Required
+- **Request Body**:
+  ```json
+  {
+    "reportType": "analysis", // or "audit"
+    "perspective": "startup" // or "investor"
+  }
+  ```
+- **Response**: 
+  ```json
+  {
+    "summary": "Financial due diligence analysis summary...",
+    "metrics": [
+      {
+        "name": "Burn Rate",
+        "value": "₹10L/month",
+        "status": "warning",
+        "description": "Monthly cash outflow is higher than industry average."
+      }
+    ],
+    "recommendations": ["Implement stricter expense controls."],
+    "riskFactors": [
+      {
+        "category": "Cash Flow",
+        "level": "medium",
+        "description": "Current burn rate may lead to cash flow issues.",
+        "impact": "Could reduce runway by 30%."
+      }
+    ],
+    "startupInfo": {
+      "companyName": "Tech Startup",
+      "industry": "SaaS",
+      "stage": "Seed",
+      "location": "Bangalore"
+    },
+    "investorInfo": {
+      "name": "VC Firm",
+      "sectors": ["SaaS", "Fintech"],
+      "investmentStage": "Seed"
+    },
+    "perspective": "startup",
+    "generatedDate": "2025-04-14T12:00:00.000Z"
+  }
+  ```
+
+### Get Financial Due Diligence Match Report
+- **URL**: `/api/financial/match/:startupId/:investorId`
+- **Method**: `GET`
+- **Description**: Get financial due diligence report between a startup and investor
+- **Authentication**: Required
+- **Query Parameters**:
+  - `reportType`: Optional, "analysis" or "audit" (default: "analysis")
+  - `perspective`: Optional, "startup" or "investor" (default: based on requesting user's role)
+- **Response**: Same as Financial Due Diligence Match Analysis response
+
+### Share Financial Due Diligence Report
+- **URL**: `/api/financial/match/:startupId/:investorId/share`
+- **Method**: `POST`
+- **Description**: Share financial due diligence report via email
+- **Authentication**: Required
+- **Request Body**:
+  ```json
+  {
+    "emails": ["recipient1@example.com", "recipient2@example.com"]
+  }
+  ```
+- **Response**: 
+  ```json
+  {
+    "message": "Financial due diligence report shared successfully",
+    "recipients": ["recipient1@example.com", "recipient2@example.com"]
+  }
+  ```
+
+### Export Financial Due Diligence Report as PDF
+- **URL**: `/api/financial/match/:startupId/:investorId/pdf`
+- **Method**: `GET`
+- **Description**: Export financial due diligence report as PDF
+- **Authentication**: Required
+- **Response**: PDF file or error message
+  ```json
+  {
+    "message": "Financial due diligence report PDF generated successfully",
+    "reportId": "report_id"
+  }
+  ```

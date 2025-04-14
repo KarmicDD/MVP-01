@@ -304,22 +304,79 @@ import BeliefSystemAnalytics from '../components/Dashboard/Analytics/BeliefSyste
 - `userProfile`: User profile object
 - `selectedMatchId`: ID of the selected match
 
-### FinancialDueDiligence
-Component for displaying financial due diligence reports.
+### Financial Due Diligence Components
 
-**Usage:**
+#### FinancialDueDiligence
+
+**Location**: `src/components/Dashboard/Analytics/FinancialDueDiligence.tsx`
+
+**Description**: Main component that handles the financial due diligence interface between startups and investors. It provides options to choose between financial analysis and audit reports, displays available financial documents, and manages report generation.
+
+**Props**:
+- `userProfile`: Object containing the user's profile information
+  - `userId`: User ID
+  - `role`: User role ('startup' or 'investor')
+- `selectedMatchId`: ID of the selected match (startup or investor)
+
+**State**:
+- `isGenerating`: Boolean indicating if a report is being generated
+- `selectedReportType`: Either 'analysis' or 'audit'
+- `financialReports`: Array of previously generated reports
+- `showReportsList`: Boolean to control visibility of previous reports list
+- `entityName`: Name of the entity whose documents are being analyzed
+
+**Key Features**:
+- Automatically determines startupId and investorId based on user role and selected match
+- Checks for financial document availability before allowing report generation
+- Provides UI for generating both financial analysis and audit reports
+- Displays previously generated reports with download options
+- Shows available financial documents that will be used for analysis
+- Handles error states and loading states appropriately
+
+#### FinancialDueDiligenceReportContent
+
+**Location**: `src/components/Dashboard/Analytics/FinancialDueDiligenceReportContent.tsx`
+
+**Description**: Component for displaying financial due diligence reports. Renders different sections based on the report type and available data.
+
+**Props**:
+- `report`: Financial due diligence report object
+- `formatDate`: Function to format dates consistently
+- `handleExportPDF`: Function to export the report as PDF
+- `handleShareReport`: Function to share the report via email
+- `isCompact`: Optional boolean to display a more compact version of the report
+
+**Key Features**:
+- Renders a comprehensive financial report with:
+  - Executive summary section
+  - Key financial metrics with status indicators (good/warning/critical)
+  - Recommendations section
+  - Risk factors section with severity indicators
+  - Compliance items section for audit reports
+  - Financial ratio analysis (liquidity, profitability, solvency, efficiency)
+  - Tax compliance assessment (GST, Income Tax, TDS)
+  - Company and investor information sections
+  - Missing documents section with recommendations
+- Uses color coding to indicate status (green for good, yellow for warning, red for critical)
+- Provides export to PDF and report sharing functionality
+- Uses framer-motion for animation effects
+
+**Example Usage**:
 ```tsx
-import FinancialDueDiligence from '../components/Dashboard/Analytics/FinancialDueDiligence';
-
-<FinancialDueDiligence
-  userProfile={userProfile}
-  selectedMatchId={selectedMatchId}
+<FinancialDueDiligenceReportContent
+  report={report}
+  formatDate={(date) => new Date(date).toLocaleDateString()}
+  handleExportPDF={handleExportPDF}
+  handleShareReport={handleShareReport}
+  isCompact={false}
 />
 ```
 
-**Props:**
-- `userProfile`: User profile object
-- `selectedMatchId`: ID of the selected match
+**Implementation Notes**:
+- Uses React Icons (Fi* components) for visual indicators
+- Implements responsive design with grid layouts
+- Report sections are conditionally rendered based on available data
+- Helper functions for status color determination
 
 ### Pagination
 Component for handling pagination in lists.

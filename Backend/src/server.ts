@@ -67,7 +67,7 @@ const startServer = async () => {
         app.get('/api/stats', statsMiddleware);
 
         app.get('/', (req: Request, res: Response) => {
-            res.json({ message: 'Welcome to Karmic Dating API' });
+            res.json({ message: 'Welcome to KarmicDD API' });
         });
 
         // Error handler middleware

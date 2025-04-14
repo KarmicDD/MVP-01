@@ -1,4 +1,4 @@
-# StartupMatch API Documentation
+# KarmicDD API Documentation
 
 ## Table of Contents
 1. Introduction
@@ -12,9 +12,9 @@
 
 ## Introduction
 
-This documentation describes the REST API endpoints for the StartupMatch platform. The API enables interaction with profiles, questionnaires, matching algorithms, and search functionality to connect startups with potential investors.
+This documentation describes the REST API endpoints for the KarmicDD platform. The API enables interaction with profiles, questionnaires, matching algorithms, and search functionality to connect startups with potential investors.
 
-**Base URL**: `https://api.startupmatch.com/api`
+**Base URL**: `https://api.karmic-dd.com/api`
 
 ## Authentication
 
@@ -66,7 +66,7 @@ Check if a user has completed their questionnaire.
 {
   "isComplete": true,
   "status": "submitted",
-  "completedAt": "2025-03-10T15:30:45Z",
+  "completedAt": "2025-04-10T15:30:45Z",
   "progressPercentage": 100
 }
 ```
@@ -77,7 +77,7 @@ or if not completed:
 {
   "isComplete": false,
   "status": "draft",
-  "lastUpdated": "2025-03-09T10:15:20Z",
+  "lastUpdated": "2025-04-09T10:15:20Z",
   "progressPercentage": 60
 }
 ```
@@ -122,7 +122,7 @@ Retrieve a user's questionnaire responses.
       "investorInvolvement": "collaborative"
     }
   },
-  "completedAt": "2025-02-28T09:45:32Z",
+  "completedAt": "2025-04-02T09:45:32Z",
   "version": "2.1"
 }
 ```
@@ -158,7 +158,7 @@ Save draft responses for a questionnaire without submitting.
   "message": "Questionnaire draft saved successfully",
   "status": "draft",
   "progressPercentage": 65,
-  "lastUpdated": "2025-03-11T14:22:18Z",
+  "lastUpdated": "2025-04-11T14:22:18Z",
   "remainingSections": ["growth", "finance"]
 }
 ```
@@ -190,7 +190,7 @@ Submit final responses for a questionnaire.
 {
   "message": "Questionnaire submitted successfully",
   "status": "submitted",
-  "completedAt": "2025-03-11T14:30:45Z",
+  "completedAt": "2025-04-11T14:30:45Z",
   "analysisResults": {
     "categories": {
       "Product Strategy": 85,
@@ -228,11 +228,11 @@ Check if a user has completed the necessary questionnaires for analysis.
   "questionnaires": {
     "startup": {
       "status": "submitted",
-      "completedAt": "2025-03-05T12:30:45Z"
+      "completedAt": "2025-04-05T12:30:45Z"
     },
     "profile": {
       "status": "completed",
-      "completedAt": "2025-03-01T10:15:20Z"
+      "completedAt": "2025-04-01T10:15:20Z"
     }
   },
   "eligibleForMatching": true
@@ -332,7 +332,7 @@ Analyzes the belief system alignment between a startup and an investor.
     }
   },
   "perspective": "investor",
-  "generatedAt": "2025-03-11T12:34:56.789Z",
+  "generatedAt": "2025-04-11T12:34:56.789Z",
   "analysisVersion": "2.3.1"
 }
 ```
@@ -475,19 +475,19 @@ Retrieve a list of all financial reports for the authenticated user.
       "_id": "report789012",
       "companyName": "Tech Innovators Pvt Ltd",
       "reportType": "analysis",
-      "reportDate": "2025-03-15T10:30:45Z",
+      "reportDate": "2025-04-15T10:30:45Z",
       "generatedBy": "KarmicDD AI",
       "status": "final",
-      "createdAt": "2025-03-15T10:30:45Z"
+      "createdAt": "2025-04-15T10:30:45Z"
     },
     {
       "_id": "report789013",
       "companyName": "Tech Innovators Pvt Ltd",
       "reportType": "audit",
-      "reportDate": "2025-03-10T14:22:30Z",
+      "reportDate": "2025-04-10T14:22:30Z",
       "generatedBy": "KarmicDD AI",
       "status": "final",
-      "createdAt": "2025-03-10T14:22:30Z"
+      "createdAt": "2025-04-10T14:22:30Z"
     }
   ]
 }
@@ -513,7 +513,7 @@ Retrieve a specific financial report by ID.
     "userId": "user123456",
     "companyName": "Tech Innovators Pvt Ltd",
     "reportType": "analysis",
-    "reportDate": "2025-03-15T10:30:45Z",
+    "reportDate": "2025-04-15T10:30:45Z",
     "generatedBy": "KarmicDD AI",
     "summary": "Tech Innovators Pvt Ltd shows strong growth potential with healthy gross margins and good unit economics. The company has a solid runway of 18 months based on current burn rate, but should focus on optimizing customer acquisition costs and reducing churn.",
     "metrics": [
@@ -547,8 +547,8 @@ Retrieve a specific financial report by ID.
     ],
     "documentSources": ["doc123456", "doc123457"],
     "status": "final",
-    "createdAt": "2025-03-15T10:30:45Z",
-    "updatedAt": "2025-03-15T10:30:45Z"
+    "createdAt": "2025-04-15T10:30:45Z",
+    "updatedAt": "2025-04-15T10:30:45Z"
   }
 }
 ```
@@ -608,7 +608,7 @@ Search for startups using multiple filter criteria.
       "industry": "Software & Technology",
       "fundingStage": "Seed",
       "employeeCount": "6-10",
-      "location": "San Francisco, CA",
+      "location": "Bangalore, India",
       "pitch": "We are building the next generation of...",
       "matchScore": 87,
       "matchCategories": {
@@ -617,10 +617,9 @@ Search for startups using multiple filter criteria.
         "Team": 88
       },
       "createdAt": "2025-01-15T00:00:00.000Z",
-      "lastActive": "2025-03-10T14:25:16.000Z",
+      "lastActive": "2025-04-10T14:25:16.000Z",
       "hasCompletedQuestionnaire": true
-    },
-    // More startup results...
+    }
   ],
   "pagination": {
     "total": 42,
@@ -682,10 +681,10 @@ Search for investors using multiple filter criteria.
       "firmType": "Venture Capital",
       "industriesOfInterest": ["Healthcare & Biotech", "Clean Technology"],
       "preferredStages": ["Series A", "Series B+"],
-      "ticketSize": "$1M - $5M",
+      "ticketSize": "₹1Cr - ₹5Cr",
       "investmentCriteria": ["Strong Team", "Market Size", "Innovation"],
-      "location": "Boston, MA",
-      "investmentRegions": ["North America", "Europe"],
+      "location": "Mumbai, India",
+      "investmentRegions": ["India", "Southeast Asia"],
       "matchScore": 82,
       "matchCategories": {
         "Industry": 95,
@@ -694,10 +693,9 @@ Search for investors using multiple filter criteria.
       },
       "recentInvestments": 3,
       "createdAt": "2025-02-20T00:00:00.000Z",
-      "lastActive": "2025-03-09T11:42:30.000Z",
+      "lastActive": "2025-04-09T11:42:30.000Z",
       "hasCompletedQuestionnaire": true
-    },
-    // More investor results...
+    }
   ],
   "pagination": {
     "total": 28,
@@ -762,12 +760,12 @@ Retrieve all available options for filter dropdowns.
     "251+"
   ],
   "ticketSizes": [
-    "$10K - $50K",
-    "$50K - $250K",
-    "$250K - $1M",
-    "$1M - $5M",
-    "$5M - $20M",
-    "$20M+"
+    "₹10L - ₹50L",
+    "₹50L - ₹2.5Cr",
+    "₹2.5Cr - ₹10Cr",
+    "₹10Cr - ₹50Cr",
+    "₹50Cr - ₹200Cr",
+    "₹200Cr+"
   ],
   "investmentCriteria": [
     "Strong Team",
@@ -780,21 +778,23 @@ Retrieve all available options for filter dropdowns.
     "Global Potential"
   ],
   "investmentRegions": [
-    "North America",
+    "India",
+    "Southeast Asia",
+    "East Asia",
+    "Middle East",
     "Europe",
-    "Asia-Pacific",
-    "Latin America",
+    "North America",
     "Africa",
-    "Middle East"
+    "Latin America"
   ],
   "revenueRanges": [
     "Pre-revenue",
-    "$1 - $100K",
-    "$100K - $500K",
-    "$500K - $1M",
-    "$1M - $5M",
-    "$5M - $20M",
-    "$20M+"
+    "₹1L - ₹10L",
+    "₹10L - ₹50L",
+    "₹50L - ₹1Cr",
+    "₹1Cr - ₹5Cr",
+    "₹5Cr - ₹20Cr",
+    "₹20Cr+"
   ]
 }
 ```
@@ -818,7 +818,7 @@ Send a welcome email to a newly registered user.
   "recipientEmail": "user@example.com",
   "recipientName": "John Doe",
   "userType": "startup",
-  "customMessage": "Welcome to our platform! We're excited to have you on board.",
+  "customMessage": "Welcome to KarmicDD! We're excited to have you on board.",
   "includeTutorial": true
 }
 ```
@@ -829,11 +829,11 @@ Send a welcome email to a newly registered user.
 {
   "success": true,
   "messageId": "email-123456",
-  "sentAt": "2025-03-11T14:35:26Z",
+  "sentAt": "2025-04-11T14:35:26Z",
   "deliveryStatus": "queued",
   "trackingInfo": {
     "trackingId": "track-789012",
-    "trackingUrl": "https://api.startupmatch.com/api/email/track/track-789012"
+    "trackingUrl": "https://api.karmic-dd.com/api/email/track/track-789012"
   }
 }
 ```
@@ -847,4 +847,3 @@ Send a welcome email to a newly registered user.
   "error": "Invalid email address format",
   "code": "EMAIL_INVALID_ADDRESS"
 }
-```

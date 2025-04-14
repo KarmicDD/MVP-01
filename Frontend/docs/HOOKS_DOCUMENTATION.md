@@ -294,61 +294,142 @@ function TutorialComponent() {
 
 ### useFinancialDueDiligence
 
-The `useFinancialDueDiligence` hook provides financial due diligence functionality.
+The `useFinancialDueDiligence` hook provides financial due diligence functionality between startups and investors.
 
 **Location**: `src/hooks/useFinancialDueDiligence.ts`
 
 **Usage**:
 ```tsx
-import useFinancialDueDiligence from '../hooks/useFinancialDueDiligence';
+import { useFinancialDueDiligence } from '../hooks/useFinancialDueDiligence';
 
 function FinancialDueDiligenceComponent({ startupId, investorId }) {
   const {
-    financialData,
+    report,
     loading,
     error,
-    fetchFinancialData,
-    shareReport,
-    exportReportPdf
-  } = useFinancialDueDiligence(startupId, investorId);
+    documentsAvailable,
+    checkingDocuments,
+    entityDocuments,
+    handleExportPDF,
+    handleShareReport,
+    generateReport,
+    formatDate,
+    reportRef
+  } = useFinancialDueDiligence(startupId, investorId, 'analysis', 'startup');
   
-  if (loading) return <LoadingSpinner />;
-  if (error) return <ErrorMessage error={error} />;
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
   
   return (
-    <div>
-      <h1>Financial Due Diligence</h1>
-      <button onClick={() => fetchFinancialData()}>Refresh</button>
-      <button onClick={() => shareReport(['example@example.com'])}>Share</button>
-      <button onClick={() => exportReportPdf()}>Export PDF</button>
-      
-      <h2>Summary</h2>
-      <p>{financialData.summary}</p>
-      
-      <h2>Metrics</h2>
-      <ul>
-        {financialData.metrics.map(metric => (
-          <li key={metric.name}>
-            {metric.name}: {metric.value} - {metric.description}
-          </li>
-        ))}
-      </ul>
+    <div ref={reportRef}>
+      {report ? (
+        <div>
+          <h1>Financial Due Diligence</h1>
+          <div className="report-actions">
+            <button onClick={handleExportPDF}>Export PDF</button>
+            <button onClick={handleShareReport}>Share Report</button>
+          </div>
+          
+          <h2>Summary</h2>
+          <p>{report.summary}</p>
+          
+          <h2>Key Metrics</h2>
+          <ul>
+            {report.metrics.map((metric, index) => (
+              <li key={index}>
+                {metric.name}: {metric.value} - {metric.description}
+                <span className={`status ${metric.status}`}>{metric.status}</span>
+              </li>
+            ))}
+          </ul>
+          
+          {/* Additional report sections would be rendered here */}
+        </div>
+      ) : documentsAvailable === false ? (
+        <div>
+          <p>No financial documents available. Please upload documents first.</p>
+        </div>
+      ) : (
+        <div>
+          <button 
+            onClick={generateReport} 
+            disabled={!documentsAvailable}
+          >
+            Generate Report
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 ```
 
 **Parameters**:
-- `startupId`: ID of the startup
-- `investorId`: ID of the investor
+- `startupId`: ID of the startup (required)
+- `investorId`: ID of the investor (required)
+- `reportType`: Type of report to generate - "analysis" or "audit" (default: "analysis")
+- `perspective`: Perspective to use for the report - "startup" or "investor" (default: inferred from user role)
 
 **Returns**:
-- `financialData`: Financial due diligence data
+- `report`: Financial due diligence report data
 - `loading`: Boolean indicating if data is loading
-- `error`: Error object if an error occurred
-- `fetchFinancialData()`: Function to fetch financial data
-- `shareReport(emails)`: Function to share the report via email
-- `exportReportPdf()`: Function to export the report as PDF
+- `error`: Error message if an error occurred
+- `documentsAvailable`: Boolean indicating if financial documents are available
+- `checkingDocuments`: Boolean indicating if document availability is being checked
+- `entityDocuments`: Array of available financial documents
+- `handleExportPDF`: Function to export the report as PDF
+- `handleShareReport`: Function to share the report via email
+- `generateReport`: Function to generate a new report
+- `formatDate`: Function to format dates consistently
+- `reportRef`: React ref to attach to the report container element for PDF export
+
+**Types**:
+
+```typescript
+// Key types used by this hook:
+interface FinancialMetric {
+  name: string;
+  value: string | number;
+  status: 'good' | 'warning' | 'critical';
+  description: string;
+}
+
+interface RiskFactor {
+  category: string;
+  level: 'high' | 'medium' | 'low';
+  description: string;
+  impact: string;
+}
+
+interface FinancialDueDiligenceReport {
+  summary: string;
+  metrics: FinancialMetric[];
+  recommendations: string[];
+  riskFactors: RiskFactor[];
+  complianceItems?: ComplianceItem[];
+  ratioAnalysis?: {
+    liquidityRatios: FinancialRatio[];
+    profitabilityRatios: FinancialRatio[];
+    solvencyRatios: FinancialRatio[];
+    efficiencyRatios: FinancialRatio[];
+  };
+  taxCompliance?: {
+    gst: { status: 'compliant' | 'partial' | 'non-compliant'; details: string };
+    incomeTax: { status: 'compliant' | 'partial' | 'non-compliant'; details: string };
+    tds: { status: 'compliant' | 'partial' | 'non-compliant'; details: string };
+  };
+  missingDocuments?: {
+    list: string[];
+    impact: string;
+    recommendations: string[];
+  };
+  perspective: string;
+  generatedDate: string;
+  startupInfo?: StartupInfo;
+  investorInfo?: InvestorInfo;
+  reportType?: 'analysis' | 'audit';
+}
+```
 
 ### useFinancialReports
 
@@ -361,7 +442,14 @@ The `useFinancialReports` hook provides financial report management functionalit
 import { useFinancialReports } from '../hooks/useFinancialReports';
 
 function FinancialReportsComponent() {
-  const { reports, loading, error, generateReport } = useFinancialReports();
+  const { 
+    reports, 
+    loading, 
+    error, 
+    generateReport, 
+    getReport, 
+    exportReportPdf 
+  } = useFinancialReports();
   
   const handleGenerateReport = async () => {
     try {
@@ -376,8 +464,8 @@ function FinancialReportsComponent() {
     }
   };
   
-  if (loading) return <LoadingSpinner />;
-  if (error) return <ErrorMessage error={error} />;
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
   
   return (
     <div>
@@ -385,8 +473,15 @@ function FinancialReportsComponent() {
       <button onClick={handleGenerateReport}>Generate New Report</button>
       <ul>
         {reports.map(report => (
-          <li key={report._id}>
-            {report.companyName} - {report.reportType} - {report.createdAt}
+          <li key={report._id} className="report-item">
+            <div>
+              <h3>{report.companyName}</h3>
+              <p>{report.reportType} - {new Date(report.createdAt).toLocaleDateString()}</p>
+            </div>
+            <div className="report-actions">
+              <button onClick={() => getReport(report._id)}>View</button>
+              <button onClick={() => exportReportPdf(report._id)}>Download PDF</button>
+            </div>
           </li>
         ))}
       </ul>
@@ -398,8 +493,9 @@ function FinancialReportsComponent() {
 **Returns**:
 - `reports`: Array of financial reports
 - `loading`: Boolean indicating if reports are loading
-- `error`: Error object if an error occurred
+- `error`: Error string if an error occurred
 - `generateReport(options)`: Function to generate a new report
+  - `options`: Object containing `documentIds`, `companyName`, and `reportType`
 - `getReport(reportId)`: Function to get a specific report
 - `exportReportPdf(reportId)`: Function to export a report as PDF
 

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiEdit2, FiSave, FiX, FiMapPin, FiUsers, FiShare2, FiLink, FiMail, FiCopy, FiCheck } from 'react-icons/fi';
 import { colours } from '../../utils/colours';
 import AvatarUpload from './AvatarUpload';
-import LoadingSpinner from '../Loading';
+// import LoadingSpinner from '../Loading'; // Imported but not used
 import SimpleSpinner from '../SimpleSpinner';
 import { profileService } from '../../services/api';
 import { toast } from 'react-hot-toast';

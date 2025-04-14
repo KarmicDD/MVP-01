@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     FiBookmark,
     FiMessageSquare,
-    FiArrowRight,
+
     FiInfo,
     FiCheckCircle,
     FiExternalLink,
@@ -27,6 +27,7 @@ interface RenderMatchCardsProps {
     connectWithMatch: (matchId: string) => void;
     toggleBookmark: (matchId: string) => void;
     onCardClick: (matchId: string) => void;
+    selectedMatchId?: string | null;
 }
 
 // Improved ReadMore component with smooth animations
@@ -221,6 +222,7 @@ const renderMatchCards = ({
     connectWithMatch,
     toggleBookmark,
     onCardClick,
+    selectedMatchId,
 }: RenderMatchCardsProps) => {
     if (loading) {
         return (
@@ -297,10 +299,15 @@ const renderMatchCards = ({
                         : "This startup hasn't provided detailed information about their venture.";
                 }
 
+                // Check if this match is currently selected
+                const isSelected = selectedMatchId === matchId;
+
                 return (
                     <motion.div
                         key={matchId}
-                        className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300"
+                        className={`bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 ${isSelected
+                            ? 'border-2 border-blue-500 ring-2 ring-blue-200'
+                            : 'border border-gray-100'}`}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         whileHover={{ y: -3, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}

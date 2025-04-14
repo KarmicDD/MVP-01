@@ -68,13 +68,16 @@ export const uploadFinancialDocuments = async (req: Request & { files?: any }, r
         const uploadedDocuments = [];
 
         for (const file of files) {
+            // Store relative path instead of absolute path
+            const relativePath = path.relative(path.join(__dirname, '../..'), file.path);
+
             const document = new DocumentModel({
                 userId: req.user.userId,
                 fileName: file.filename,
                 originalName: file.originalname,
                 fileType: file.mimetype,
                 fileSize: file.size,
-                filePath: file.path,
+                filePath: relativePath, // Store relative path
                 description: req.body.description || '',
                 documentType: 'financial',
                 isPublic: false

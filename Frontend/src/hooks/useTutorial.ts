@@ -1,80 +1,120 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import { useTutorialContext } from '../context/TutorialContext';
 
-interface TutorialStep {
-  id: string;
-  title: string;
-  content: string;
-  position?: 'top' | 'right' | 'bottom' | 'left' | 'center';
-  element?: string;
-  image?: string;
-}
-
-interface TutorialOptions {
-  tutorialId: string;
-  steps: TutorialStep[];
+interface UseTutorialOptions {
   autoStart?: boolean;
   showOnlyOnce?: boolean;
 }
 
-export const useTutorial = ({ tutorialId, steps, autoStart = true, showOnlyOnce = true }: TutorialOptions) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [hasCompletedTutorial, setHasCompletedTutorial] = useState(false);
+/**
+ * Custom hook for using tutorials in components
+ * @param tutorialId The ID of the tutorial to use
+ * @param options Configuration options
+ * @returns Tutorial control functions and state
+ */
+export const useTutorial = (tutorialId: string, options: UseTutorialOptions = {}) => {
+  // Use a try-catch block to handle any potential errors with the context
+  try {
+    const {
+      showTutorial,
+      hideTutorial,
+      nextStep,
+      previousStep,
+      markCompleted,
+      activeTutorial,
+      completedTutorials,
+      currentStep,
+      totalSteps,
+      getCurrentTutorial,
+      getCurrentStep,
+      tutorials // Get tutorials here, from the same hook call
+    } = useTutorialContext();
 
-  // Check if the tutorial has been completed before
-  useEffect(() => {
-    const completedTutorials = JSON.parse(localStorage.getItem('completedTutorials') || '{}');
-    if (completedTutorials[tutorialId]) {
-      setHasCompletedTutorial(true);
-    }
-  }, [tutorialId]);
+    const { autoStart = false, showOnlyOnce = true } = options;
 
-  // Auto-start the tutorial if enabled and not completed
-  useEffect(() => {
-    if (autoStart && !hasCompletedTutorial) {
-      // Small delay to ensure the UI is fully rendered
-      const timer = setTimeout(() => {
-        setIsOpen(true);
-      }, 1000);
+    // Check if this tutorial is currently active
+    const isActive = activeTutorial === tutorialId;
 
-      return () => clearTimeout(timer);
-    }
-  }, [autoStart, hasCompletedTutorial]);
+    // Check if this tutorial has been completed (with safety check)
+    const isCompleted = Array.isArray(completedTutorials) && completedTutorials.includes(tutorialId);
 
-  const openTutorial = () => {
-    setIsOpen(true);
-  };
+    // Auto-start the tutorial if configured
+    useEffect(() => {
+      if (autoStart && !isActive && (!showOnlyOnce || !isCompleted)) {
+        // Small delay to ensure the component is fully mounted and tutorials are registered
+        const timer = setTimeout(() => {
+          // Check if the tutorial exists before showing it
+          if (tutorialId in (tutorials || {})) {
+            showTutorial(tutorialId);
+          } else {
+            console.warn(`Auto-start: Tutorial with ID "${tutorialId}" not found. Make sure it's registered.`);
+          }
+        }, 1000); // Increased delay to ensure tutorials are registered
 
-  const closeTutorial = () => {
-    setIsOpen(false);
-  };
+        return () => clearTimeout(timer);
+      }
+    }, [autoStart, isActive, isCompleted, showOnlyOnce, showTutorial, tutorialId, tutorials]);
 
-  const completeTutorial = () => {
-    if (showOnlyOnce) {
-      // Mark this tutorial as completed
-      const completedTutorials = JSON.parse(localStorage.getItem('completedTutorials') || '{}');
-      completedTutorials[tutorialId] = true;
-      localStorage.setItem('completedTutorials', JSON.stringify(completedTutorials));
-      setHasCompletedTutorial(true);
-    }
-  };
+    // Function to open this specific tutorial
+    const openTutorial = () => {
+      // Check if the tutorial exists in the context before showing it
+      if (tutorialId in (tutorials || {})) {
+        showTutorial(tutorialId);
+      } else {
+        console.warn(`Tutorial with ID "${tutorialId}" not found. Make sure it's registered.`);
+      }
+    };
 
-  const resetTutorial = () => {
-    // Remove this tutorial from completed list
-    const completedTutorials = JSON.parse(localStorage.getItem('completedTutorials') || '{}');
-    delete completedTutorials[tutorialId];
-    localStorage.setItem('completedTutorials', JSON.stringify(completedTutorials));
-    setHasCompletedTutorial(false);
-  };
+    // Function to close this specific tutorial
+    const closeTutorial = () => {
+      if (isActive) {
+        hideTutorial();
+      }
+    };
 
-  return {
-    isOpen,
-    hasCompletedTutorial,
-    openTutorial,
-    closeTutorial,
-    completeTutorial,
-    resetTutorial,
-    steps
-  };
+    // Function to complete this specific tutorial
+    const completeTutorial = () => {
+      markCompleted(tutorialId);
+      hideTutorial();
+    };
+
+    // Function to reset this specific tutorial's completion status
+    const resetTutorial = () => {
+      // This is handled at the context level with resetTutorials
+      // We would need to extend the context to support resetting individual tutorials
+    };
+
+    return {
+      isActive,
+      isCompleted,
+      currentStep: isActive ? currentStep : 0,
+      totalSteps: isActive ? totalSteps : 0,
+      openTutorial,
+      closeTutorial,
+      completeTutorial,
+      resetTutorial,
+      nextStep: isActive ? nextStep : () => { },
+      previousStep: isActive ? previousStep : () => { },
+      tutorial: getCurrentTutorial(),
+      step: getCurrentStep()
+    };
+  } catch (error) {
+    console.error('Error in useTutorial hook:', error);
+
+    // Return a fallback object with no-op functions
+    return {
+      isActive: false,
+      isCompleted: false,
+      currentStep: 0,
+      totalSteps: 0,
+      openTutorial: () => { },
+      closeTutorial: () => { },
+      completeTutorial: () => { },
+      resetTutorial: () => { },
+      nextStep: () => { },
+      previousStep: () => { },
+      tutorial: null,
+      step: null
+    };
+  }
 };
-
-export default useTutorial;

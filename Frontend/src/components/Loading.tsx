@@ -16,10 +16,10 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     const [currentIcon, setCurrentIcon] = useState<number>(0);
     const [loadingText, setLoadingText] = useState<string>(submessage);
     const loadingMessages = [
-        "Setting up the perfect environment for your needs",
-        "Analyzing market opportunities",
-        "Preparing your dashboard insights",
-        "Connecting with potential matches"
+        "Please wait while we retrieve your profile information",
+        "Loading your profile data",
+        "Retrieving your account information",
+        "Almost ready..."
     ];
 
     // Cycle between icons
@@ -53,12 +53,12 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
         },
         medium: {
             container: "flex flex-col items-center justify-center p-4",
-            spinner: "w-12 h-12",
+            spinner: "w-10 h-10", // Reduced from w-12 h-12
             hideElements: false
         },
         large: {
             container: "flex flex-col items-center justify-center p-6",
-            spinner: "w-20 h-20",
+            spinner: "w-16 h-16", // Reduced from w-20 h-20
             hideElements: false
         }
     };
@@ -264,7 +264,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
                     transition={{ delay: 0.3 }}
                 >
                     <motion.p
-                        className="text-xl font-medium bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2"
+                        className="text-lg font-medium bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2"
                     >
                         {message}
                     </motion.p>

@@ -315,8 +315,8 @@ const ProfilePage: React.FC = () => {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
                 <LoadingSpinner
-                    message="Loading Your Profile"
-                    submessage="Please wait while we retrieve your profile information"
+                    message="Loading Profile"
+                    submessage="Please wait while we retrieve your information"
                     size="medium"
                 />
             </div>
@@ -394,8 +394,8 @@ const ProfilePage: React.FC = () => {
                         transition={{ duration: 0.5 }}
                     >
                         <LoadingSpinner
-                            message="Loading Your Profile"
-                            submessage="Please wait while we retrieve your profile information"
+                            message="Loading Profile"
+                            submessage="Please wait while we retrieve your information"
                             size="medium"
                         />
                     </motion.div>

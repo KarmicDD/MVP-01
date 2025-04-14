@@ -99,7 +99,7 @@ const ComplianceItemSchema = new Schema({
 
 const FinancialRatioSchema = new Schema({
   name: { type: String, required: true },
-  value: { type: Number, required: true },
+  value: { type: Number, required: false }, // Make value optional
   industry_average: { type: Number },
   description: { type: String, required: true },
   status: { type: String, enum: ['good', 'warning', 'critical'], required: true }

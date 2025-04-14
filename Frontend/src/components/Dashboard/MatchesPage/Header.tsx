@@ -5,7 +5,8 @@ import { colours } from '../../../utils/colours';
 import { FiUser, FiBell, FiChevronDown, FiSettings, FiLogOut, FiGrid, FiBarChart2, FiMessageCircle, FiCalendar } from 'react-icons/fi';
 import { Logo } from '../../Auth/Logo';
 import { profileService } from '../../../services/api';
-import TutorialManager from '../../Tutorial/TutorialManager';
+import TutorialButton from '../../Tutorial/TutorialButton';
+
 
 interface HeaderProps {
     activeTab: string;
@@ -237,46 +238,11 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
 
     const profileCompleteness = getProfileCompleteness();
 
-    // Define tutorial steps
-    const tutorialSteps = [
-        {
-            id: 'welcome',
-            title: 'Welcome to KarmicDD',
-            content: 'This tutorial will guide you through the main features of the dashboard.',
-            position: 'center' as const
-        },
-        {
-            id: 'navigation',
-            title: 'Navigation Tabs',
-            content: 'Use these tabs to navigate between different sections of the dashboard.',
-            element: '.dashboard-tabs',
-            position: 'bottom' as const
-        },
-        {
-            id: 'profile',
-            title: 'Your Profile',
-            content: 'Click here to access your profile settings and account options.',
-            element: '.profile-menu-trigger',
-            position: 'bottom' as const
-        },
-        {
-            id: 'notifications',
-            title: 'Notifications',
-            content: 'View your notifications and updates here.',
-            element: '.notification-trigger',
-            position: 'bottom' as const
-        }
-    ];
+
 
     return (
         <>
-            {/* Tutorial Manager */}
-            <TutorialManager
-                steps={tutorialSteps}
-                tutorialId="dashboard-main"
-                buttonPosition="bottom-right"
-                showOnFirstVisit={true}
-            />
+
 
             <motion.header
                 className={`sticky top-0 z-50 bg-white transition-all duration-300 ${scrolled ? 'shadow-md' : 'shadow-sm'}`}
@@ -338,6 +304,13 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
 
                         {/* User Actions */}
                         <div className="flex items-center space-x-3">
+                            {/* Help Button */}
+                            <TutorialButton
+                                tutorialId="dashboard-tutorial"
+                                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                                buttonText=""
+                            />
+
                             {/* Notifications */}
                             <div className="relative notification-menu notification-trigger">
                                 <motion.button

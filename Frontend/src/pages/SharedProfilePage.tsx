@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiArrowLeft, FiAlertCircle } from 'react-icons/fi';
+import { FiArrowLeft, FiAlertCircle, FiMapPin } from 'react-icons/fi';
 import { profileService } from '../services/api';
-import { toast } from 'react-hot-toast';
+// We don't need toast in this component
+// import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../components/Loading';
 import { colours } from '../utils/colours';
 
@@ -27,7 +28,7 @@ const SharedProfilePage: React.FC = () => {
       try {
         setLoading(true);
         const response = await profileService.getSharedProfile(shareToken);
-        
+
         setProfileData(response.profile);
         setExtendedData(response.extendedProfile);
         setUserType(response.userType);
@@ -120,12 +121,12 @@ const SharedProfilePage: React.FC = () => {
                 boxShadow: 'inset 0 0 30px rgba(0,0,0,0.2)'
               }}
             />
-            
+
             {/* Decorative elements */}
             <svg className="absolute inset-0 w-full h-full z-0 opacity-10" viewBox="0 0 100 100" preserveAspectRatio="none">
               <defs>
                 <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                  <path d="M 10 0 L 0 0 0 10" fill="none" stroke="white" strokeWidth="0.5"/>
+                  <path d="M 10 0 L 0 0 0 10" fill="none" stroke="white" strokeWidth="0.5" />
                 </pattern>
                 <pattern id="circles" width="20" height="20" patternUnits="userSpaceOnUse">
                   <circle cx="10" cy="10" r="2" fill="white" />
@@ -134,13 +135,13 @@ const SharedProfilePage: React.FC = () => {
               <rect width="100%" height="100%" fill="url(#grid)" />
               <rect width="100%" height="100%" fill="url(#circles)" />
             </svg>
-            
+
             {/* Shared banner */}
             <div className="absolute top-4 right-4 bg-white bg-opacity-90 px-4 py-2 rounded-full shadow-md flex items-center">
               <span className="text-sm font-medium text-gray-700">Shared Profile</span>
             </div>
           </div>
-          
+
           <div className="px-8 -mt-16 pb-8">
             <div className="flex flex-col sm:flex-row items-center sm:items-end sm:justify-between">
               <div className="flex flex-col items-center sm:items-start sm:flex-row sm:space-x-6">
@@ -153,7 +154,7 @@ const SharedProfilePage: React.FC = () => {
                   >
                     <div className="absolute inset-0 bg-white rounded-full shadow-xl transform -translate-x-1.5 -translate-y-1.5 z-0"></div>
                     <div className="absolute inset-0 bg-gradient-to-br from-white to-gray-100 rounded-full shadow-lg z-0"></div>
-                    <motion.div 
+                    <motion.div
                       className="absolute inset-0 bg-gradient-to-br from-transparent to-gray-200 rounded-full z-0 opacity-50"
                       animate={{ opacity: [0.3, 0.5, 0.3] }}
                       transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
@@ -161,9 +162,9 @@ const SharedProfilePage: React.FC = () => {
                     <div className="relative z-10">
                       <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-white">
                         {extendedData?.avatarUrl ? (
-                          <img 
-                            src={extendedData.avatarUrl} 
-                            alt="Profile" 
+                          <img
+                            src={extendedData.avatarUrl}
+                            alt="Profile"
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -177,7 +178,7 @@ const SharedProfilePage: React.FC = () => {
                     </div>
                   </motion.div>
                 </div>
-                
+
                 <motion.div
                   className="text-center sm:text-left mt-2 sm:mt-0"
                   initial={{ opacity: 0, y: 10 }}
@@ -187,7 +188,7 @@ const SharedProfilePage: React.FC = () => {
                   <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                     {userType === 'startup' ? profileData?.companyName : profileData?.companyName}
                   </h1>
-                  
+
                   <div className="mt-2 flex flex-wrap justify-center sm:justify-start gap-2">
                     {profileData?.location && (
                       <div className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">
@@ -195,7 +196,7 @@ const SharedProfilePage: React.FC = () => {
                         {profileData.location}
                       </div>
                     )}
-                    
+
                     {/* Role badge */}
                     <motion.span
                       className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium shadow-sm"
@@ -212,7 +213,7 @@ const SharedProfilePage: React.FC = () => {
                 </motion.div>
               </div>
             </div>
-            
+
             {/* Profile description */}
             {userType === 'startup' && profileData?.pitch && (
               <motion.div
@@ -225,7 +226,7 @@ const SharedProfilePage: React.FC = () => {
                 <p className="text-gray-700">{profileData.pitch}</p>
               </motion.div>
             )}
-            
+
             {/* Key information */}
             <motion.div
               className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4"
@@ -241,14 +242,14 @@ const SharedProfilePage: React.FC = () => {
                       <p className="text-gray-700">{profileData.industry}</p>
                     </div>
                   )}
-                  
+
                   {profileData?.fundingStage && (
                     <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                       <h3 className="text-sm font-medium text-gray-500 mb-2">Funding Stage</h3>
                       <p className="text-gray-700">{profileData.fundingStage}</p>
                     </div>
                   )}
-                  
+
                   {profileData?.employeeCount && (
                     <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                       <h3 className="text-sm font-medium text-gray-500 mb-2">Team Size</h3>
@@ -270,7 +271,7 @@ const SharedProfilePage: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   {profileData?.preferredStages?.length > 0 && (
                     <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                       <h3 className="text-sm font-medium text-gray-500 mb-2">Preferred Stages</h3>
@@ -283,7 +284,7 @@ const SharedProfilePage: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   {profileData?.ticketSize && (
                     <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                       <h3 className="text-sm font-medium text-gray-500 mb-2">Ticket Size</h3>
@@ -293,7 +294,7 @@ const SharedProfilePage: React.FC = () => {
                 </>
               )}
             </motion.div>
-            
+
             {/* Social links */}
             {extendedData?.socialLinks?.length > 0 && (
               <motion.div
@@ -320,7 +321,7 @@ const SharedProfilePage: React.FC = () => {
             )}
           </div>
         </motion.div>
-        
+
         {/* Call to action */}
         <motion.div
           className="bg-white rounded-xl shadow-lg p-6 text-center border border-gray-200"

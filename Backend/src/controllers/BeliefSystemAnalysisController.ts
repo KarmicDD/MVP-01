@@ -6,6 +6,7 @@ import StartupProfileModel from '../models/Profile/StartupProfile';
 import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
 import ApiUsageModel from '../models/ApiUsageModel/ApiUsage';
 import BeliefSystemAnalysisModel from '../models/BeliefSystemAnalysisModel';
+import { cleanJsonResponse } from '../utils/jsonHelper';
 import QuestionnaireSubmissionModel from '../models/question/QuestionnaireSubmission';
 
 // Load environment variables
@@ -50,19 +51,7 @@ interface BeliefSystemAnalysis {
     };
 }
 
-/**
- * Helper function to extract JSON from potentially markdown-wrapped response
- */
-function cleanJsonResponse(text: string): string {
-    const jsonRegex = /```(?:json)?\s*([\s\S]*?)\s*```/;
-    const match = text.match(jsonRegex);
-
-    if (match && match[1]) {
-        return match[1].trim();
-    }
-
-    return text.trim();
-}
+// Using the cleanJsonResponse utility function from utils/jsonHelper.ts
 
 /**
  * Helper function to check and update API usage limits
@@ -249,9 +238,9 @@ async function getBeliefSystemAnalysis(
 ): Promise<BeliefSystemAnalysis> {
     const prompt = `
     You are a specialized investment advisor analyzing the belief system alignment between a startup and an investor.
-    
+
     TASK: Analyze the belief system alignment between the following startup and investor from the perspective of the ${perspective}.
-    
+
     RESPONSE FORMAT: Return ONLY valid JSON with this exact structure:
     {
       "overallMatch": (number between 0-100),
@@ -281,16 +270,16 @@ async function getBeliefSystemAnalysis(
         "growthMetrics": "Description"
       }
     }
-    
+
     ANALYSIS GUIDELINES:
     - Focus on underlying belief systems, values, and strategic approaches
     - Consider both explicit stated values and implicit values from descriptions
     - Evaluate risks based on potential misalignments in approach, expectations, or market understanding
     - Provide actionable recommendations that address the specific risks identified
     - Consider strategic, operational, and cultural compatibility
-    
+
     DATA:
-    
+
     Startup:
     - Company: ${startup.companyName}
     - Industry: ${startup.industry}
@@ -299,7 +288,7 @@ async function getBeliefSystemAnalysis(
     - Location: ${startup.location || 'N/A'}
     - Pitch: ${startup.pitch || 'N/A'}
     - Questionnaire Responses: ${JSON.stringify(startupQuestionnaire)}
-    
+
     Investor:
     - Company: ${investor.companyName}
     - Industries: ${investor.industriesOfInterest.join(', ')}

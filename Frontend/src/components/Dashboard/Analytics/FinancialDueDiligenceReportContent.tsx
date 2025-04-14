@@ -16,7 +16,8 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
   formatDate,
   handleExportPDF,
   handleShareReport,
-  isCompact = false
+  // isCompact is passed from parent but not used in this component
+  // Keeping the prop for future use
 }) => {
   // Helper function to get status color
   const getStatusColor = (status: string) => {
@@ -65,19 +66,21 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
           </div>
           <div className="flex space-x-2">
             <motion.button
-              className="px-3 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg text-white flex items-center"
+              className="px-3 py-2 bg-white bg-opacity-30 hover:bg-opacity-50 rounded-lg text-white flex items-center shadow-sm"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleShareReport}
+              title="Share this report"
             >
               <FiShare2 className="mr-2" />
               Share
             </motion.button>
             <motion.button
-              className="px-3 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg text-white flex items-center"
+              className="px-3 py-2 bg-white bg-opacity-30 hover:bg-opacity-50 rounded-lg text-white flex items-center shadow-sm"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleExportPDF}
+              title="Download as PDF"
             >
               <FiDownload className="mr-2" />
               Export PDF
@@ -119,11 +122,10 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                     <FiAlertCircle className="text-red-500" />
                   )}
                 </div>
-                <div className={`text-lg font-bold ${
-                  metric.status === 'good' ? 'text-green-600' : 
-                  metric.status === 'warning' ? 'text-yellow-600' : 
-                  'text-red-600'
-                }`}>
+                <div className={`text-lg font-bold ${metric.status === 'good' ? 'text-green-600' :
+                  metric.status === 'warning' ? 'text-yellow-600' :
+                    'text-red-600'
+                  }`}>
                   {metric.value}
                 </div>
                 {metric.description && (
@@ -250,11 +252,10 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                       <div key={index} className="border-b border-gray-100 pb-2 last:border-0 last:pb-0">
                         <div className="flex justify-between items-center">
                           <span className="text-sm font-medium">{ratio.name}</span>
-                          <span className={`text-sm font-bold ${
-                            ratio.status === 'good' ? 'text-green-600' : 
-                            ratio.status === 'warning' ? 'text-yellow-600' : 
-                            'text-red-600'
-                          }`}>
+                          <span className={`text-sm font-bold ${ratio.status === 'good' ? 'text-green-600' :
+                            ratio.status === 'warning' ? 'text-yellow-600' :
+                              'text-red-600'
+                            }`}>
                             {ratio.value}
                           </span>
                         </div>
@@ -279,11 +280,10 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                       <div key={index} className="border-b border-gray-100 pb-2 last:border-0 last:pb-0">
                         <div className="flex justify-between items-center">
                           <span className="text-sm font-medium">{ratio.name}</span>
-                          <span className={`text-sm font-bold ${
-                            ratio.status === 'good' ? 'text-green-600' : 
-                            ratio.status === 'warning' ? 'text-yellow-600' : 
-                            'text-red-600'
-                          }`}>
+                          <span className={`text-sm font-bold ${ratio.status === 'good' ? 'text-green-600' :
+                            ratio.status === 'warning' ? 'text-yellow-600' :
+                              'text-red-600'
+                            }`}>
                             {ratio.value}
                           </span>
                         </div>
@@ -346,8 +346,85 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
           </div>
         )}
 
+        {/* Company and Investor Information */}
+        {(report.startupInfo || report.investorInfo) && (
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Additional Information</h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Startup Information */}
+              {report.startupInfo && (
+                <div className="bg-white p-4 rounded-lg border border-gray-200">
+                  <h4 className="font-medium text-gray-800 mb-2 flex items-center">
+                    <FiBarChart2 className="mr-2 text-indigo-600" />
+                    Startup Information
+                  </h4>
+                  <div className="space-y-2">
+                    <p className="text-sm"><span className="font-medium">Company:</span> {report.startupInfo.companyName}</p>
+                    <p className="text-sm"><span className="font-medium">Industry:</span> {report.startupInfo.industry}</p>
+                    {report.startupInfo.stage && <p className="text-sm"><span className="font-medium">Stage:</span> {report.startupInfo.stage}</p>}
+                    {report.startupInfo.foundingDate && <p className="text-sm"><span className="font-medium">Founded:</span> {report.startupInfo.foundingDate}</p>}
+                    {report.startupInfo.teamSize && <p className="text-sm"><span className="font-medium">Team Size:</span> {report.startupInfo.teamSize}</p>}
+                    {report.startupInfo.location && <p className="text-sm"><span className="font-medium">Location:</span> {report.startupInfo.location}</p>}
+                    {report.startupInfo.fundingRound && <p className="text-sm"><span className="font-medium">Funding Round:</span> {report.startupInfo.fundingRound}</p>}
+                    {report.startupInfo.fundingAmount && <p className="text-sm"><span className="font-medium">Funding Amount:</span> {report.startupInfo.fundingAmount}</p>}
+                    {report.startupInfo.valuation && <p className="text-sm"><span className="font-medium">Valuation:</span> {report.startupInfo.valuation}</p>}
+                  </div>
+                </div>
+              )}
+
+              {/* Investor Information */}
+              {report.investorInfo && (
+                <div className="bg-white p-4 rounded-lg border border-gray-200">
+                  <h4 className="font-medium text-gray-800 mb-2 flex items-center">
+                    <FiDollarSign className="mr-2 text-indigo-600" />
+                    Investor Information
+                  </h4>
+                  <div className="space-y-2">
+                    {report.investorInfo.name && <p className="text-sm"><span className="font-medium">Name:</span> {report.investorInfo.name}</p>}
+                    {report.investorInfo.investmentStage && <p className="text-sm"><span className="font-medium">Investment Stage:</span> {report.investorInfo.investmentStage}</p>}
+                    {report.investorInfo.investmentSize && <p className="text-sm"><span className="font-medium">Investment Size:</span> {report.investorInfo.investmentSize}</p>}
+                    {report.investorInfo.sectors && <p className="text-sm"><span className="font-medium">Sectors:</span> {typeof report.investorInfo.sectors === 'string' ? report.investorInfo.sectors : report.investorInfo.sectors.join(', ')}</p>}
+                    {report.investorInfo.location && <p className="text-sm"><span className="font-medium">Location:</span> {report.investorInfo.location}</p>}
+                    {report.investorInfo.portfolio && <p className="text-sm"><span className="font-medium">Portfolio:</span> {typeof report.investorInfo.portfolio === 'string' ? report.investorInfo.portfolio : report.investorInfo.portfolio.join(', ')}</p>}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Missing Documents Section */}
+        {report.missingDocuments && report.missingDocuments.list.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+              <FiFileText className="mr-2" />
+              Missing Documents
+            </h3>
+            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+              <p className="text-sm text-gray-700 mb-3">
+                {report.missingDocuments.impact}
+              </p>
+
+              <h4 className="font-medium text-gray-800 mb-2">Missing Document List:</h4>
+              <ul className="list-disc pl-5 mb-4 space-y-1">
+                {report.missingDocuments.list.map((doc, index) => (
+                  <li key={index} className="text-sm text-gray-700">{doc}</li>
+                ))}
+              </ul>
+
+              <h4 className="font-medium text-gray-800 mb-2">Recommendations:</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                {report.missingDocuments.recommendations.map((rec, index) => (
+                  <li key={index} className="text-sm text-gray-700">{rec}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
-        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
+        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center mt-6">
           <p className="text-sm text-gray-600">
             This report was generated by KarmicDD's AI-powered Financial Due Diligence system.
             <br />

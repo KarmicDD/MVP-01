@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
+import { cleanJsonResponse } from '../utils/jsonHelper';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
 import MatchAnalysisModel from '../models/MatchAnalysisSchema';
@@ -36,19 +37,7 @@ interface CompatibilityScore {
     insights: string[];
 }
 
-/**
- * Helper function to extract JSON from potentially markdown-wrapped response
- */
-function cleanJsonResponse(text: string): string {
-    const jsonRegex = /```(?:json)?\s*([\s\S]*?)\s*```/;
-    const match = text.match(jsonRegex);
-
-    if (match && match[1]) {
-        return match[1].trim();
-    }
-
-    return text.trim();
-}
+// Using the cleanJsonResponse utility function from utils/jsonHelper.ts
 
 /**
  * Helper function to check and update API usage limits
@@ -398,9 +387,9 @@ async function getCompatibilityAnalysis(
 ): Promise<CompatibilityScore> {
     const prompt = `
     You are a specialized investment advisor analyzing the compatibility between a startup and an investor.
-    
+
     TASK: Analyze the compatibility between the following startup and investor from the perspective of the ${perspective}.
-    
+
     RESPONSE FORMAT: Return ONLY valid JSON with this exact structure:
     {
       "overallScore": (number between 0-100),
@@ -413,7 +402,7 @@ async function getCompatibilityAnalysis(
       },
       "insights": [(array of 3 string insights)]
     }
-    
+
     INSIGHT GUIDELINES:
     - Write from the ${perspective}'s perspective (use "you" when referring to the ${perspective})
     - Each insight must be specific, detailed, and actionable
@@ -422,16 +411,16 @@ async function getCompatibilityAnalysis(
     - Consider strategic value beyond industry matching (expertise transfer, network benefits, etc.)
     - Include at least one potential growth opportunity this pairing enables for ${perspective === 'startup' ? 'your company' : 'your portfolio'}
     - Each insight should be 1-3 sentences, detailed enough to be useful but concise
-    
+
     SCORING GUIDELINES:
     - missionAlignment: How well the startup's mission aligns with investor's philosophy
     - investmentPhilosophy: Compatibility between investor's approach and startup's needs
     - sectorFocus: How well the startup's industry matches investor's focus areas
     - fundingStageAlignment: Match between startup's current stage and investor's preferred stages
     - valueAddMatch: How well the investor's non-financial support meets startup's needs
-    
+
     DATA:
-    
+
     Startup:
     - Company: ${startup.companyName}
     - Industry: ${startup.industry}
@@ -439,7 +428,7 @@ async function getCompatibilityAnalysis(
     - Employees: ${startup.employeeCount || 'N/A'}
     - Location: ${startup.location || 'N/A'}
     - Pitch: ${startup.pitch || 'N/A'}
-    
+
     Investor:
     - Company: ${investor.companyName}
     - Industries: ${investor.industriesOfInterest.join(', ')}

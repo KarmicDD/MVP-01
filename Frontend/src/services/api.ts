@@ -1,6 +1,7 @@
 // src/services/api.ts
 import axios from 'axios';
 
+// Use environment variable or fallback to localhost for development
 const API_URL = 'http://localhost:5000/api';
 
 // Define interfaces for auth services
@@ -171,9 +172,9 @@ export const beliefSystemService = {
 };
 
 export const financialDueDiligenceService = {
-    getReport: async (startupId: string, investorId: string) => {
+    getReport: async (startupId: string, investorId: string, reportType: 'analysis' | 'audit' = 'analysis') => {
         try {
-            const response = await api.get(`/financial/match/${startupId}/${investorId}`);
+            const response = await api.get(`/financial/match/${startupId}/${investorId}?reportType=${reportType}`);
             return response.data;
         } catch (error) {
             console.error("Error fetching financial due diligence report:", error);
@@ -440,6 +441,29 @@ export const profileService = {
         } catch (error) {
             console.error('Error updating extended profile:', error);
             throw error;
+        }
+    },
+
+    // Get user type (startup or investor)
+    getUserType: async () => {
+        try {
+            const response = await api.get('/profile/user-type');
+            // The API returns { userId, email, role } but we need { userType }
+            return { userType: response.data.role }; // Convert to expected format
+        } catch (error) {
+            console.error('Error fetching user type:', error);
+            throw error;
+        }
+    },
+
+    // Get profile for a specific entity (startup or investor)
+    getProfile: async (entityId: string, entityType: 'startup' | 'investor') => {
+        try {
+            const response = await api.get(`/profile/${entityType}/${entityId}`);
+            return response.data.profile;
+        } catch (error) {
+            console.error(`Error fetching ${entityType} profile:`, error);
+            return null;
         }
     }
 };

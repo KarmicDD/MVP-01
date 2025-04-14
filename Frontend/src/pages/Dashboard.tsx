@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSearch, FiFilter, FiChevronDown, FiX, FiRefreshCw, FiArrowUp, FiArrowDown, FiHelpCircle } from 'react-icons/fi';
 import axios from 'axios';
-import { colours } from '../utils/colours';
 import ComingSoon from '../components/ComingSoon/ComingSoon';
 import { useNavigate } from 'react-router-dom';
-import CompatibilityBreakdown from '../components/Dashboard/MatchesPage/CompatibilityBreakdown';
-import AIRecommendations from '../components/Dashboard/MatchesPage/AIRecomendations';
-import renderMatchCards from '../components/Dashboard/MatchesPage/MatchCards/renderMarchCards';
 import Header from '../components/Dashboard/MatchesPage/Header';
 import { Match, UserProfile } from '../types/Dashboard.types';
-import LoadingSpinner from '../components/Loading';
 import api from '../services/api';
 import {
     searchStartups,
@@ -21,12 +15,22 @@ import {
     type SearchResults,
     PaginationType
 } from '../services/searchServices';
-import BeliefSystemAnalytics from '../components/Dashboard/Analytics/BeliefSystemAnalytics';
-import FinancialDueDiligence from '../components/Dashboard/Analytics/FinancialDueDiligence';
-import Pagination from '../components/Dashboard/MatchesPage/Pagination';
-import TutorialCards from '../components/Tutorial/TutorialCards';
-import useTutorial from '../hooks/useTutorial';
-import { dashboardTutorialSteps, analyticsTutorialSteps, financialDDTutorialSteps } from '../data/tutorialSteps';
+import { useTutorial } from '../hooks/useTutorial';
+// import TutorialButton from '../components/Tutorial/TutorialButton'; // Imported but not used
+
+
+// Define a custom pagination type for our components
+interface ComponentPaginationType {
+    page: number;
+    pages: number;
+    total: number;
+}
+
+// Import new modular components
+import SearchFilters from '../components/Dashboard/SearchFilters';
+import MatchesList from '../components/Dashboard/MatchesList';
+import CompatibilitySection from '../components/Dashboard/CompatibilitySection';
+import AnalyticsTabs from '../components/Dashboard/AnalyticsTabs';
 
 const Dashboard: React.FC = () => {
     // State - keeping your existing state
@@ -41,27 +45,14 @@ const Dashboard: React.FC = () => {
     const [activeTab, setActiveTab] = useState<string>('matches');
     const [analyticsTab, setAnalyticsTab] = useState<string>('belief');
 
-    // Tutorial hooks
-    const dashboardTutorial = useTutorial({
-        tutorialId: 'dashboard-tutorial',
-        steps: dashboardTutorialSteps,
+    // Use the tutorial hook with auto-start for first-time users
+    // openTutorial is not used but we still need the hook for auto-start functionality
+    const { } = useTutorial('dashboard-tutorial', {
         autoStart: true,
         showOnlyOnce: true
     });
 
-    const analyticsTutorial = useTutorial({
-        tutorialId: 'analytics-tutorial',
-        steps: analyticsTutorialSteps,
-        autoStart: false,
-        showOnlyOnce: true
-    });
 
-    const financialDDTutorial = useTutorial({
-        tutorialId: 'financial-dd-tutorial',
-        steps: financialDDTutorialSteps,
-        autoStart: false,
-        showOnlyOnce: true
-    });
     const [bookmarkedMatches, setBookmarkedMatches] = useState<Set<string>>(new Set());
     const [compatibilityData, setCompatibilityData] = useState({
         breakdown: {
@@ -72,7 +63,8 @@ const Dashboard: React.FC = () => {
             valueAddMatch: 0,
         },
         overallScore: 0,
-        insights: [] as string[]
+        insights: [] as string[],
+        perspective: null as any // Add perspective property to the state
     });
     const [, setCompatibilityError] = useState<string | null>(null);
     const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
@@ -185,60 +177,24 @@ const Dashboard: React.FC = () => {
 
             console.log(`Fetching compatibility data for startup=${startupId} and investor=${investorId}`);
 
-            // Use the correct endpoint format with path parameters
-            const endpoint = `${API_URL}/score/compatibility/${startupId}/${investorId}`;
+            // Use the correct endpoint format with the full API path
+            const response = await api.get(`${API_URL}/score/compatibility/${startupId}/${investorId}`);
 
-            // Make the API request
-            const response = await api.get(endpoint, { headers });
-            console.log('Compatibility data received:', response.data);
-
+            // Process and set the compatibility data
             setCompatibilityData({
-                breakdown: response.data.breakdown || {
-                    missionAlignment: 75,
-                    investmentPhilosophy: 82,
-                    sectorFocus: 90,
-                    fundingStageAlignment: 65,
-                    valueAddMatch: 78,
-                },
-                overallScore: response.data.overallScore || 78,
-                insights: response.data.insights || [
-                    "Strong alignment in sector focus and vision",
-                    "Investment philosophy matches your growth plans",
-                    "Consider discussing funding timeline expectations",
-                    "Potential for strategic mentorship beyond funding"
-                ]
+                breakdown: response.data.breakdown,
+                overallScore: response.data.overallScore,
+                insights: response.data.insights,
+                perspective: response.data.perspective
             });
+
             setLoadingCompatibility(false);
-        } catch (err) {
+        } catch (err: unknown) {
             console.error('Error fetching compatibility data:', err);
-
-            // Set compatibility error instead of general error
-            if (axios.isAxiosError(err) && err.response && err.response.status === 404) {
-                setCompatibilityError("Compatibility data not found. Both profiles must have completed questionnaires.");
-            } else {
-                setCompatibilityError("Failed to load compatibility data. Please try again later.");
-            }
-
-            // Reset loading state
+            setCompatibilityError(
+                (err as any).response?.data?.message || 'Failed to load compatibility data. Please try again.'
+            );
             setLoadingCompatibility(false);
-
-            // Use fallback data if API fails
-            setCompatibilityData({
-                breakdown: {
-                    missionAlignment: 75,
-                    investmentPhilosophy: 82,
-                    sectorFocus: 90,
-                    fundingStageAlignment: 65,
-                    valueAddMatch: 78,
-                },
-                overallScore: 78,
-                insights: [
-                    "Strong alignment in sector focus and vision",
-                    "Investment philosophy matches your growth plans",
-                    "Consider discussing funding timeline expectations",
-                    "Potential for strategic mentorship beyond funding"
-                ]
-            });
         }
     };
 
@@ -348,19 +304,11 @@ const Dashboard: React.FC = () => {
         localStorage.setItem('bookmarkedMatches', JSON.stringify([...newBookmarks]));
     };
 
-    const handleMatchCardClick = (matchId: string) => {
-        fetchCompatibilityData(matchId);
-    };
-
-    // Connect with match
-    const connectWithMatch = async (matchId: string) => {
-        try {
-            // This would normally send a connection request to the API
-            // For now, we'll just show an alert
-            alert(`Connection request sent to match ${matchId}`);
-        } catch (err) {
-            console.error('Error connecting with match:', err);
-            setError('Failed to send connection request. Please try again later.');
+    // Create a function that both updates the selected match ID and fetches compatibility data
+    const handleMatchSelection = (matchId: string | null) => {
+        setSelectedMatchId(matchId);
+        if (matchId) {
+            fetchCompatibilityData(matchId);
         }
     };
 
@@ -369,23 +317,6 @@ const Dashboard: React.FC = () => {
         setStage('');
         setLocation('');
         setSearchQuery('');
-    };
-
-    const handleSortChange = (newSortBy: string) => {
-        // If clicking the same field, toggle order
-        if (newSortBy === sortBy) {
-            const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
-            console.log(`Toggling sort order for ${sortBy}: ${sortOrder} → ${newOrder}`);
-            setSortOrder(newOrder);
-        } else {
-            // If choosing a new field, default to descending (highest values first)
-            console.log(`Changing sort from ${sortBy} to ${newSortBy}, order: desc`);
-            setSortBy(newSortBy);
-            setSortOrder('desc');
-        }
-
-        // Fetch with new sort settings next time (after state updates)
-        setTimeout(() => fetchMatches(1), 0);
     };
 
     // Animation variants for framer-motion
@@ -406,14 +337,7 @@ const Dashboard: React.FC = () => {
         visible: { y: 0, opacity: 1, transition: { duration: 0.3 } }
     };
 
-    // Effect to trigger financial DD tutorial when user switches to that tab
-    useEffect(() => {
-        if (analyticsTab === 'financial' && !financialDDTutorial.hasCompletedTutorial) {
-            setTimeout(() => {
-                financialDDTutorial.openTutorial();
-            }, 500);
-        }
-    }, [analyticsTab, financialDDTutorial]);
+
 
     // Render the component with improved UI
     return (
@@ -440,373 +364,64 @@ const Dashboard: React.FC = () => {
                             variants={containerVariants}
                         >
                             {/* Search and filters with improved UI */}
-                            <motion.div
-                                className="mb-8 search-filter-container"
-                                variants={itemVariants}
-                            >
-                                <div className="bg-white rounded-xl shadow-lg p-6">
-                                    <div className="flex flex-col md:flex-row gap-4">
-                                        <form onSubmit={handleSearchSubmit} className="relative flex-1">
-                                            <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
-                                            <input
-                                                type="text"
-                                                placeholder="Search matches..."
-                                                className="w-full pl-12 pr-12 py-3.5 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                                                value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
-                                            />
-                                            {searchQuery && (
-                                                <button
-                                                    type="button"
-                                                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                                    onClick={() => {
-                                                        setSearchQuery('');
-                                                        // Optionally fetch without the search term
-                                                        fetchMatches(1);
-                                                    }}
-                                                >
-                                                    <FiX />
-                                                </button>
-                                            )}
-                                            <button type="submit" className="hidden">Search</button>
-                                        </form>
+                            <SearchFilters
+                                searchQuery={searchQuery}
+                                setSearchQuery={setSearchQuery}
+                                industry={industry}
+                                setIndustry={setIndustry}
+                                stage={stage}
+                                setStage={setStage}
+                                location={location}
+                                setLocation={setLocation}
+                                filterOptions={filterOptions}
+                                handleSearchSubmit={handleSearchSubmit}
+                                handleFilterChange={handleFilterChange}
+                                handleClearFilters={clearFilters}
+                                fetchMatches={fetchMatches}
+                                isFilterOpen={filtersOpen}
+                                setIsFilterOpen={setFiltersOpen}
+                                itemVariants={itemVariants}
+                            />
 
-                                        <motion.button
-                                            className="px-5 py-3.5 rounded-lg flex items-center justify-center font-medium text-white shadow-md"
-                                            style={{ backgroundColor: colours.primaryBlue }}
-                                            whileHover={{ scale: 1.03, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}
-                                            whileTap={{ scale: 0.98 }}
-                                            onClick={() => setFiltersOpen(!filtersOpen)}
-                                        >
-                                            <FiFilter className="mr-2" />
-                                            {filtersOpen ? 'Hide Filters' : 'Show Filters'}
-                                            <FiChevronDown className={`ml-2 transition-transform duration-300 ${filtersOpen ? 'rotate-180' : ''}`} />
-                                        </motion.button>
-                                    </div>
+                            <MatchesList
+                                matches={filteredMatches}
+                                loading={loading}
+                                error={error}
+                                sortBy={sortBy}
+                                sortOrder={sortOrder}
+                                setSortBy={setSortBy}
+                                setSortOrder={setSortOrder}
+                                pagination={pagination ? {
+                                    page: pagination.page,
+                                    pages: pagination.pages,
+                                    total: pagination.total
+                                } : { page: 1, pages: 1, total: 0 } as ComponentPaginationType}
+                                handlePageChange={handlePageChange}
+                                selectedMatchId={selectedMatchId}
+                                setSelectedMatchId={handleMatchSelection}
+                                bookmarkedMatches={bookmarkedMatches}
+                                toggleBookmark={toggleBookmark}
+                                userRole={userProfile?.role || ''}
+                                itemVariants={itemVariants}
+                            />
 
-                                    {/* Expandable filters */}
-                                    <AnimatePresence>
-                                        {filtersOpen && (
-                                            <motion.div
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: "auto", opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                transition={{ duration: 0.3 }}
-                                                className="overflow-hidden"
-                                            >
-                                                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                    <div className="space-y-2">
-                                                        <label className="block text-sm font-medium text-gray-700">Industry</label>
-                                                        <select
-                                                            className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                            value={industry}
-                                                            onChange={(e) => handleFilterChange('industry', e.target.value)}
-                                                        >
-                                                            <option value="">All Industries</option>
-                                                            {filterOptions.industries.map(ind => (
-                                                                <option key={ind} value={ind}>{ind}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-
-                                                    <div className="space-y-2">
-                                                        <label className="block text-sm font-medium text-gray-700">Funding Stage</label>
-                                                        <select
-                                                            className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                            value={stage}
-                                                            onChange={(e) => handleFilterChange('fundingStage', e.target.value)}
-                                                        >
-                                                            <option value="">All Stages</option>
-                                                            {filterOptions.fundingStages.map(stage => (
-                                                                <option key={stage} value={stage}>{stage}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-
-                                                    <div className="space-y-2">
-                                                        <div className="space-y-2">
-                                                            <label className="block text-sm font-medium text-gray-700">Location</label>
-                                                            <select
-                                                                className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                value={location}
-                                                                onChange={(e) => setLocation(e.target.value)}
-                                                            >
-                                                                <option value="">All Locations</option>
-                                                                {filterOptions.investmentRegions && filterOptions.investmentRegions.map(loc => (
-                                                                    <option key={loc} value={loc}>{loc}</option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="mt-6 flex justify-end">
-                                                    <motion.button
-                                                        className="flex items-center text-sm text-gray-600 hover:text-gray-900"
-                                                        whileHover={{ scale: 1.05 }}
-                                                        whileTap={{ scale: 0.98 }}
-                                                        onClick={clearFilters}
-                                                    >
-                                                        <FiRefreshCw className="mr-1" />
-                                                        Clear Filters
-                                                    </motion.button>
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-
-                                    {/* Filter summary */}
-                                    <AnimatePresence>
-                                        {(industry || stage || location) && (
-                                            <motion.div
-                                                initial={{ opacity: 0, y: -10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0 }}
-                                                className="mt-4 flex flex-wrap gap-2"
-                                            >
-                                                {industry && (
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                        Industry: {industry}
-                                                        <button onClick={() => setIndustry('')} className="ml-1 text-blue-500 hover:text-blue-700">
-                                                            <FiX size={14} />
-                                                        </button>
-                                                    </span>
-                                                )}
-                                                {stage && (
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                                        Stage: {stage}
-                                                        <button onClick={() => setStage('')} className="ml-1 text-purple-500 hover:text-purple-700">
-                                                            <FiX size={14} />
-                                                        </button>
-                                                    </span>
-                                                )}
-                                                {location && (
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                        Location: {location}
-                                                        <button onClick={() => setLocation('')} className="ml-1 text-green-500 hover:text-green-700">
-                                                            <FiX size={14} />
-                                                        </button>
-                                                    </span>
-                                                )}
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-                            </motion.div>
-
-                            {/* Match results counter with sort controls */}
-                            <motion.div
-                                className="mb-4"
-                                variants={itemVariants}
-                            >
-                                <div className="flex justify-between items-center">
-                                    <h2 className="text-xl font-bold text-gray-800">
-                                        {loading ? 'Loading matches...' : `${pagination?.total || filteredMatches.length} matches found`}
-                                    </h2>
-
-                                    {/* Add simple sort controls */}
-                                    {!loading && filteredMatches.length > 0 && (
-                                        <div className="flex items-center space-x-2">
-                                            <span className="text-sm text-gray-600">Sort by:</span>
-                                            <select
-                                                value={sortBy}
-                                                onChange={(e) => handleSortChange(e.target.value)}
-                                                className="px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            >
-                                                <option value="matchScore">Match Score</option>
-                                                <option value="companyName">Name</option>
-                                                <option value="location">Location</option>
-                                                {userProfile?.role === 'startup' ? (
-                                                    <>
-                                                        <option value="ticketSize">Investment Size</option>
-                                                        <option value="portfolioSize">Portfolio Size</option>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <option value="fundingStage">Funding Stage</option>
-                                                        <option value="industry">Industry</option>
-                                                    </>
-                                                )}
-                                            </select>
-                                            <button
-                                                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                                                className={`p-1.5 rounded-md ${sortOrder === 'desc' ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200'
-                                                    } hover:bg-gray-100`}
-                                                title={sortOrder === 'asc' ? "Sort Ascending (A to Z, Low to High)" : "Sort Descending (Z to A, High to Low)"}
-                                            >
-                                                {sortOrder === 'asc' ? (
-                                                    <FiArrowUp className={`text-${sortOrder === 'asc' ? 'blue' : 'gray'}-600`} />
-                                                ) : (
-                                                    <FiArrowDown className={`text-${sortOrder === 'desc' ? 'blue' : 'gray'}-600`} />
-                                                )}
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            </motion.div>
-
-                            {/* Match cards - using your existing component */}
-                            <motion.div
-                                className="mb-12 matches-container"
-                                variants={itemVariants}
-                            >
-                                {renderMatchCards({
-                                    loading,
-                                    error,
-                                    filteredMatches,
-                                    bookmarkedMatches,
-                                    userProfile,
-                                    connectWithMatch,
-                                    toggleBookmark,
-                                    onCardClick: handleMatchCardClick,
-                                })}
-                            </motion.div>
-
-                            {pagination && (
-                                <Pagination
-                                    currentPage={pagination.page}
-                                    totalPages={pagination.pages}
-                                    onPageChange={handlePageChange}
-                                />
-                            )}
-
-                            {/* Match analysis with improved UI */}
-                            {selectedMatchId && (
-                                <motion.section
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.4 }}
-                                    className="bg-white rounded-xl shadow-lg p-6 mb-8 compatibility-section"
-                                >
-                                    <h2 className="text-2xl font-bold mb-6 text-gray-800 border-b border-gray-100 pb-3">Match Analysis</h2>
-
-                                    {/* Remove error display and always show compatibility data */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        {loadingCompatibility ? (
-                                            <div className="col-span-2 flex justify-center py-12">
-                                                <LoadingSpinner />
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <div className="bg-gray-50 rounded-lg p-5">
-                                                    <CompatibilityBreakdown
-                                                        breakdown={compatibilityData.breakdown}
-                                                        overallScore={compatibilityData.overallScore}
-                                                        insights={compatibilityData.insights}
-                                                    />
-                                                </div>
-                                                <div className="bg-gray-50 rounded-lg p-5">
-                                                    <AIRecommendations />
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
-                                </motion.section>
-                            )}
+                            <CompatibilitySection
+                                selectedMatchId={selectedMatchId}
+                                loadingCompatibility={loadingCompatibility}
+                                compatibilityData={compatibilityData}
+                                itemVariants={itemVariants}
+                            />
                         </motion.div>
                     )}
 
                     {activeTab === 'analytics' && (
-                        <motion.div
-                            key="analytics"
-                            initial="hidden"
-                            animate="visible"
-                            exit={{ opacity: 0 }}
-                            variants={containerVariants}
-                            className="mt-6"
-                        >
-                            <motion.div variants={itemVariants} className="bg-white rounded-xl shadow-lg p-6 mb-8">
-                                <h2 className="text-2xl font-bold mb-6 text-gray-800">Analytics & Insights</h2>
-
-                                {/* Analytics tabs with improved UI */}
-                                <div className="mb-8 analytics-tabs">
-                                    <nav className="flex space-x-1 overflow-x-auto scrollbar-hide">
-                                        {[
-                                            { id: 'belief', label: 'Belief System Analysis' },
-                                            { id: 'financial', label: 'Financial Due Diligence' },
-                                            { id: 'performance', label: 'Performance Metrics' },
-                                            { id: 'coming-soon', label: 'More Coming Soon' }
-                                        ].map((tab, index) => (
-                                            <motion.button
-                                                key={tab.id}
-                                                onClick={() => setAnalyticsTab(tab.id)}
-                                                className={`px-4 py-3 font-medium text-sm transition-all rounded-lg ${analyticsTab === tab.id
-                                                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                                    : 'text-gray-600 hover:bg-gray-50'
-                                                    }`}
-                                                whileHover={{ scale: 1.03 }}
-                                                whileTap={{ scale: 0.98 }}
-                                            >
-                                                {tab.label}
-                                            </motion.button>
-                                        ))}
-                                    </nav>
-                                </div>
-
-                                {/* Match selection notice */}
-                                <motion.div
-                                    variants={itemVariants}
-                                    className="bg-blue-50 border border-blue-100 rounded-lg p-5 mb-8"
-                                >
-                                    <div className="flex items-start">
-                                        <div className="flex-shrink-0">
-                                            <svg className="h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                                            </svg>
-                                        </div>
-                                        <div className="ml-3">
-                                            <h3 className="text-md font-medium text-blue-800">Analysis Instructions</h3>
-                                            <div className="mt-2 text-sm text-blue-700">
-                                                <p>Select a match from the Matches tab to view belief system analysis and compatibility insights.</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </motion.div>
-
-                                {/* Analytics content based on selected tab */}
-                                {analyticsTab === 'belief' && (
-                                    <motion.div variants={itemVariants} className="belief-system-container">
-                                        {userProfile && (
-                                            <BeliefSystemAnalytics
-                                                userProfile={{
-                                                    ...userProfile,
-                                                    role: userProfile.role as "startup" | "investor"
-                                                }}
-                                                selectedMatchId={selectedMatchId}
-                                            />
-                                        )}
-                                    </motion.div>
-                                )}
-
-                                {analyticsTab === 'financial' && (
-                                    <motion.div variants={itemVariants} className="financial-dd-container">
-                                        {userProfile && (
-                                            <FinancialDueDiligence
-                                                userProfile={{
-                                                    ...userProfile,
-                                                    role: userProfile.role as "startup" | "investor"
-                                                }}
-                                                selectedMatchId={selectedMatchId}
-                                            />
-                                        )}
-                                    </motion.div>
-                                )}
-
-                                {(analyticsTab === 'performance' || analyticsTab === 'coming-soon') && (
-                                    <motion.div variants={itemVariants}>
-                                        <div className="bg-gray-50 rounded-xl p-8 text-center border border-gray-200">
-                                            <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                                <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                                </svg>
-                                            </div>
-                                            <h3 className="text-xl font-bold text-gray-800 mb-2">Coming Soon</h3>
-                                            <p className="text-gray-600 mb-6">We're working hard to bring you more advanced analytics features.</p>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </motion.div>
-                        </motion.div>
+                        <AnalyticsTabs
+                            analyticsTab={analyticsTab}
+                            setAnalyticsTab={setAnalyticsTab}
+                            userProfile={userProfile!}
+                            selectedMatchId={selectedMatchId}
+                            itemVariants={itemVariants}
+                        />
                     )}
 
                     {activeTab !== 'matches' && activeTab !== 'analytics' && (
@@ -827,52 +442,7 @@ const Dashboard: React.FC = () => {
                 </AnimatePresence>
             </main>
 
-            {/* Help button to open tutorial */}
-            <div className="fixed bottom-4 right-4 z-40">
-                <motion.button
-                    className="bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-700 flex items-center justify-center"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => {
-                        if (activeTab === 'matches') {
-                            dashboardTutorial.openTutorial();
-                        } else if (activeTab === 'analytics') {
-                            if (analyticsTab === 'financial') {
-                                financialDDTutorial.openTutorial();
-                            } else {
-                                analyticsTutorial.openTutorial();
-                            }
-                        }
-                    }}
-                >
-                    <FiHelpCircle size={24} />
-                </motion.button>
-            </div>
 
-            {/* Tutorial guides */}
-            <TutorialCards
-                steps={dashboardTutorialSteps}
-                isOpen={dashboardTutorial.isOpen}
-                onClose={dashboardTutorial.closeTutorial}
-                onComplete={dashboardTutorial.completeTutorial}
-                tutorialId="dashboard-tutorial"
-            />
-
-            <TutorialCards
-                steps={analyticsTutorialSteps}
-                isOpen={analyticsTutorial.isOpen}
-                onClose={analyticsTutorial.closeTutorial}
-                onComplete={analyticsTutorial.completeTutorial}
-                tutorialId="analytics-tutorial"
-            />
-
-            <TutorialCards
-                steps={financialDDTutorialSteps}
-                isOpen={financialDDTutorial.isOpen}
-                onClose={financialDDTutorial.closeTutorial}
-                onComplete={financialDDTutorial.completeTutorial}
-                tutorialId="financial-dd-tutorial"
-            />
         </div>
     );
 };

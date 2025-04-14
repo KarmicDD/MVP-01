@@ -38,16 +38,20 @@ export class DocumentProcessingService {
         try {
             const options: PDFExtractOptions = {};
             const data = await pdfExtractAsync(filePath, options);
-            
+
             // Combine all page content
             let textContent = '';
-            data.pages.forEach(page => {
-                page.content.forEach(item => {
-                    textContent += item.str + ' ';
+            if (data && typeof data === 'object' && 'pages' in data && Array.isArray(data.pages)) {
+                data.pages.forEach((page: any) => {
+                    if (page && typeof page === 'object' && 'content' in page && Array.isArray(page.content)) {
+                        page.content.forEach((item: any) => {
+                            textContent += item.str + ' ';
+                        });
+                    }
+                    textContent += '\n\n';
                 });
-                textContent += '\n\n';
-            });
-            
+            }
+
             return textContent;
         } catch (error) {
             console.error('Error extracting PDF text:', error);
@@ -64,30 +68,30 @@ export class DocumentProcessingService {
         try {
             // For PPT files, we'll use a simple approach to extract text
             // In a production environment, you might want to use a more robust solution
-            
+
             // Read the file as binary
             const fileBuffer = await readFileAsync(filePath);
-            
+
             // Use Gemini to extract text from the PPT
             const prompt = `
             I have a PowerPoint presentation file. Please extract all the text content from it.
             The file is in binary format, so I'll provide it as base64.
-            
+
             Please extract all text including:
             - Slide titles
             - Bullet points
             - Notes
             - Tables
             - Charts descriptions
-            
+
             Format the output as plain text, preserving the structure of the slides.
             `;
-            
+
             const result = await model.generateContent([
                 prompt,
-                { fileData: { data: fileBuffer.toString('base64'), mimeType: 'application/vnd.ms-powerpoint' } }
+                { fileData: { mime_type: 'application/vnd.ms-powerpoint', data: fileBuffer.toString('base64') } as any }
             ]);
-            
+
             const response = await result.response;
             return response.text();
         } catch (error) {
@@ -106,14 +110,14 @@ export class DocumentProcessingService {
             // Read the Excel file
             const workbook = XLSX.readFile(filePath);
             const result: Record<string, any[]> = {};
-            
+
             // Extract data from each sheet
             workbook.SheetNames.forEach(sheetName => {
                 const worksheet = workbook.Sheets[sheetName];
                 const data = XLSX.utils.sheet_to_json(worksheet);
                 result[sheetName] = data;
             });
-            
+
             return JSON.stringify(result, null, 2);
         } catch (error) {
             console.error('Error extracting Excel data:', error);
@@ -130,12 +134,12 @@ export class DocumentProcessingService {
         try {
             // Read the CSV file
             const content = await readFileAsync(filePath, 'utf8');
-            
+
             // Parse CSV to JSON using XLSX
             const workbook = XLSX.read(content, { type: 'string' });
             const worksheet = workbook.Sheets[workbook.SheetNames[0]];
             const data = XLSX.utils.sheet_to_json(worksheet);
-            
+
             return JSON.stringify(data, null, 2);
         } catch (error) {
             console.error('Error extracting CSV data:', error);
@@ -150,7 +154,7 @@ export class DocumentProcessingService {
      */
     async processDocument(filePath: string): Promise<string> {
         const fileExtension = path.extname(filePath).toLowerCase();
-        
+
         switch (fileExtension) {
             case '.pdf':
                 return this.extractPdfText(filePath);
@@ -176,7 +180,7 @@ export class DocumentProcessingService {
         const contentPromises = filePaths.map(async (filePath) => {
             const fileExtension = path.extname(filePath).toLowerCase();
             const fileName = path.basename(filePath);
-            
+
             try {
                 const content = await this.processDocument(filePath);
                 return `--- Document: ${fileName} ---\n\n${content}\n\n`;
@@ -185,7 +189,7 @@ export class DocumentProcessingService {
                 return `--- Document: ${fileName} ---\n\nError: Failed to process this document\n\n`;
             }
         });
-        
+
         const contents = await Promise.all(contentPromises);
         return contents.join('\n');
     }

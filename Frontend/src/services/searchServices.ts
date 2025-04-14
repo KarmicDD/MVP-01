@@ -31,6 +31,7 @@ export interface FilterOptions {
     investmentCriteria: string[];
     investmentRegions: string[];
     revenueRanges: string[];
+    locations?: string[];
 }
 
 // Search results pagination type

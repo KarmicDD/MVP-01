@@ -12,7 +12,7 @@
 
 ## Introduction
 
-This documentation provides detailed information about the backend services used in the KarmicDD platform. These services handle various aspects of the application, from document processing to AI-powered analysis.
+This documentation provides detailed information about the backend services used in the KarmicDD platform. These services handle various aspects of the application, from document processing to AI-powered analysis for Indian startups and investors.
 
 ## Document Processing Services
 
@@ -229,6 +229,36 @@ async sendTemplatedEmail(to: string, templateName: string, data: any): Promise<b
 
 **Returns**: Boolean indicating if the email was sent successfully
 
+#### sendProfileShareEmail
+Sends an email with a profile share link.
+
+```typescript
+async sendProfileShareEmail(to: string[], shareableUrl: string, senderName: string): Promise<number>
+```
+
+**Parameters**:
+- `to`: Array of recipient email addresses
+- `shareableUrl`: Shareable profile URL
+- `senderName`: Name of the sender
+
+**Returns**: Number of emails sent successfully
+
+#### sendWelcomeEmail
+Sends a welcome email to a newly registered user.
+
+```typescript
+async sendWelcomeEmail(to: string, name: string, userType: string, customMessage?: string, includeTutorial?: boolean): Promise<boolean>
+```
+
+**Parameters**:
+- `to`: Recipient email address
+- `name`: Recipient name
+- `userType`: Type of user ("startup" or "investor")
+- `customMessage`: Optional custom message
+- `includeTutorial`: Whether to include tutorial information
+
+**Returns**: Boolean indicating if the email was sent successfully
+
 ## Matching Services
 
 ### MatchingService
@@ -284,7 +314,7 @@ async calculateCompatibilityScore(startupId: string, investorId: string): Promis
 
 ### FinancialDueDiligenceService
 
-The `FinancialDueDiligenceService` handles financial due diligence analysis.
+The `FinancialDueDiligenceService` handles financial due diligence analysis using Indian accounting standards.
 
 **Location**: `src/services/FinancialDueDiligenceService.ts`
 
@@ -341,11 +371,83 @@ async generatePdfReport(reportId: string): Promise<Buffer>
 
 **Returns**: PDF buffer
 
+#### validateIndianComplianceRequirements
+Validates if the company meets Indian regulatory compliance requirements.
+
+```typescript
+async validateIndianComplianceRequirements(financialData: FinancialData): Promise<ComplianceValidationResult>
+```
+
+**Parameters**:
+- `financialData`: Structured financial data
+
+**Returns**: Compliance validation result
+
+### FinancialDueDiligenceMatchController
+
+The `FinancialDueDiligenceMatchController` provides API endpoints for financial due diligence between startups and investors.
+
+**Location**: `src/controllers/FinancialDueDiligenceMatchController.ts`
+
+**Methods**:
+
+#### analyzeFinancialDueDiligence
+Analyzes financial due diligence between a startup and an investor.
+
+```typescript
+async analyzeFinancialDueDiligence(req: Request, res: Response): Promise<void>
+```
+
+**Parameters**:
+- `req`: HTTP request object with startupId and investorId parameters
+- `res`: HTTP response object
+
+**Returns**: JSON response with financial due diligence analysis
+
+#### getFinancialDueDiligenceReport
+Gets a financial due diligence report between a startup and an investor.
+
+```typescript
+async getFinancialDueDiligenceReport(req: Request, res: Response): Promise<void>
+```
+
+**Parameters**:
+- `req`: HTTP request object with startupId and investorId parameters
+- `res`: HTTP response object
+
+**Returns**: JSON response with financial due diligence report
+
+#### shareFinancialDueDiligenceReport
+Shares a financial due diligence report via email.
+
+```typescript
+async shareFinancialDueDiligenceReport(req: Request, res: Response): Promise<void>
+```
+
+**Parameters**:
+- `req`: HTTP request object with startupId, investorId parameters and emails in the body
+- `res`: HTTP response object
+
+**Returns**: JSON response confirming the report was shared
+
+#### exportFinancialDueDiligenceReportPdf
+Exports a financial due diligence report as PDF.
+
+```typescript
+async exportFinancialDueDiligenceReportPdf(req: Request, res: Response): Promise<void>
+```
+
+**Parameters**:
+- `req`: HTTP request object with startupId and investorId parameters
+- `res`: HTTP response object
+
+**Returns**: PDF file or JSON error response
+
 ## Belief System Analysis Services
 
 ### BeliefSystemAnalysisService
 
-The `BeliefSystemAnalysisService` handles belief system alignment analysis.
+The `BeliefSystemAnalysisService` handles belief system alignment analysis between startups and investors.
 
 **Location**: `src/services/BeliefSystemAnalysisService.ts`
 
@@ -355,12 +457,14 @@ The `BeliefSystemAnalysisService` handles belief system alignment analysis.
 Analyzes belief system alignment between a startup and an investor.
 
 ```typescript
-async analyzeBeliefSystemAlignment(startupId: string, investorId: string): Promise<BeliefSystemAlignment>
+async analyzeBeliefSystemAlignment(startupId: string, investorId: string, perspective?: string, detail?: string): Promise<BeliefSystemAlignment>
 ```
 
 **Parameters**:
 - `startupId`: ID of the startup
 - `investorId`: ID of the investor
+- `perspective`: Optional perspective ("startup" or "investor")
+- `detail`: Optional detail level ("basic", "standard", or "comprehensive")
 
 **Returns**: Belief system alignment analysis
 
@@ -375,6 +479,18 @@ async getBeliefSystemProfile(userId: string): Promise<BeliefSystemProfile>
 - `userId`: ID of the user
 
 **Returns**: Belief system profile
+
+#### generateRiskMitigationRecommendations
+Generates risk mitigation recommendations based on belief system alignment analysis.
+
+```typescript
+async generateRiskMitigationRecommendations(alignment: BeliefSystemAlignment): Promise<RiskMitigationRecommendation[]>
+```
+
+**Parameters**:
+- `alignment`: Belief system alignment analysis
+
+**Returns**: Array of risk mitigation recommendations
 
 ## Search Services
 
@@ -394,7 +510,7 @@ async searchStartups(options: SearchOptions): Promise<SearchResults>
 ```
 
 **Parameters**:
-- `options`: Search options
+- `options`: Search options including industry, fundingStage, employeeCount, location, revenue, foundedDate, hasQuestionnaire, matchScore, keywords, page, limit, sortBy, sortOrder, and fields
 
 **Returns**: Search results with pagination and filter info
 
@@ -406,7 +522,7 @@ async searchInvestors(options: SearchOptions): Promise<SearchResults>
 ```
 
 **Parameters**:
-- `options`: Search options
+- `options`: Search options including industry, fundingStage, ticketSize, investmentCriterion, location, investmentRegion, portfolioSize, hasQuestionnaire, matchScore, keywords, page, limit, sortBy, sortOrder, and fields
 
 **Returns**: Search results with pagination and filter info
 
@@ -417,4 +533,4 @@ Retrieves all available options for filter dropdowns.
 async getFilterOptions(): Promise<FilterOptions>
 ```
 
-**Returns**: Filter options
+**Returns**: Filter options including industries, fundingStages, employeeOptions, ticketSizes, investmentCriteria, investmentRegions, and revenueRanges

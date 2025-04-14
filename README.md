@@ -107,8 +107,8 @@ To start using KarmicDD:
 2. Run the following commands:
    ```bash
    npm install
-   tsc -b
-   node dist/server.ts
+   npm run build
+   npm run dev
    ```
 3. In a separate terminal, navigate to the Frontend folder and run:
    ```bash
