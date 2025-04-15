@@ -1,0 +1,295 @@
+paths:
+  /email/welcome:
+    post:
+      tags:
+        - Email
+      summary: Send welcome email
+      description: Send a welcome email to a new user
+      operationId: sendWelcomeEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: Recipient email address
+              required:
+                - email
+            example:
+              email: user@example.com
+      responses:
+        '200':
+          description: Welcome email sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Welcome email sent successfully
+                  id:
+                    type: string
+                    description: Email ID for tracking
+              example:
+                message: Welcome email sent successfully
+                id: email_123456
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Email address is required
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Failed to send welcome email
+                  error:
+                    type: string
+
+  /email/newsletter:
+    post:
+      tags:
+        - Email
+      summary: Send newsletter signup confirmation
+      description: Send a confirmation email for newsletter signup
+      operationId: sendNewsletterSignup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: Recipient email address
+              required:
+                - email
+            example:
+              email: user@example.com
+      responses:
+        '200':
+          description: Newsletter signup email sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Newsletter signup email sent successfully
+                  id:
+                    type: string
+                    description: Email ID for tracking
+              example:
+                message: Newsletter signup email sent successfully
+                id: email_123456
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Email address is required
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Failed to send newsletter signup email
+                  error:
+                    type: string
+
+  /email/contact:
+    post:
+      tags:
+        - Email
+      summary: Send contact form
+      description: Send a message from the contact form
+      operationId: sendContactForm
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Sender's name
+                email:
+                  type: string
+                  format: email
+                  description: Sender's email address
+                subject:
+                  type: string
+                  description: Email subject
+                message:
+                  type: string
+                  description: Email message content
+              required:
+                - name
+                - email
+                - subject
+                - message
+            example:
+              name: John Doe
+              email: john.doe@example.com
+              subject: Partnership Inquiry
+              message: I'm interested in partnering with KarmicDD for our startup accelerator program.
+      responses:
+        '200':
+          description: Contact form sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Contact form sent successfully
+                  id:
+                    type: string
+                    description: Email ID for tracking
+              example:
+                message: Contact form sent successfully
+                id: email_123456
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: All fields are required
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Failed to send contact form
+                  error:
+                    type: string
+
+  /email/notification:
+    post:
+      tags:
+        - Email
+      summary: Send notification email
+      description: Send a notification email to a user
+      operationId: sendNotificationEmail
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                recipientId:
+                  type: string
+                  format: uuid
+                  description: ID of the recipient user
+                notificationType:
+                  type: string
+                  enum: [match, message, profile_view, report]
+                  description: Type of notification
+                data:
+                  type: object
+                  additionalProperties: true
+                  description: Additional data for the notification
+              required:
+                - recipientId
+                - notificationType
+            example:
+              recipientId: 123e4567-e89b-12d3-a456-426614174000
+              notificationType: match
+              data:
+                matchId: 234e5678-e89b-12d3-a456-426614174000
+                matchScore: 85
+                matchName: Example Startup
+      responses:
+        '200':
+          description: Notification email sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Notification email sent successfully
+                  id:
+                    type: string
+                    description: Email ID for tracking
+              example:
+                message: Notification email sent successfully
+                id: email_123456
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Required fields missing
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Recipient not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Recipient not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Failed to send notification email
+                  error:
+                    type: string

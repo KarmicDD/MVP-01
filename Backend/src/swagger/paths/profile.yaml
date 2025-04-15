@@ -1,0 +1,684 @@
+paths:
+  /profile/user-type:
+    get:
+      tags:
+        - Profile
+      summary: Get user type
+      description: Get the user type (role) for the authenticated user
+      operationId: getUserType
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User type retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userType:
+                    type: string
+                    enum: [startup, investor]
+                    description: User's role in the system
+              example:
+                userType: startup
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /profile/startup:
+    post:
+      tags:
+        - Profile
+      summary: Create or update startup profile
+      description: Create or update a startup profile for the authenticated user
+      operationId: createUpdateStartupProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                companyName:
+                  type: string
+                  description: Name of the startup
+                industry:
+                  type: string
+                  description: Industry the startup operates in
+                fundingStage:
+                  type: string
+                  enum: [pre-seed, seed, series-a, series-b, series-c, growth]
+                  description: Current funding stage of the startup
+                location:
+                  type: string
+                  description: Location of the startup
+                employeeCount:
+                  type: string
+                  enum: [1-10, 11-50, 51-200, 201-500, 501+]
+                  description: Number of employees
+                revenue:
+                  type: string
+                  enum: [pre-revenue, 0-10L, 10L-50L, 50L-1Cr, 1Cr-10Cr, 10Cr+]
+                  description: Annual revenue range in Indian currency
+                website:
+                  type: string
+                  format: uri
+                  description: Company website URL
+                description:
+                  type: string
+                  description: Brief description of the startup
+                mission:
+                  type: string
+                  description: Company mission statement
+                vision:
+                  type: string
+                  description: Company vision statement
+                foundingDate:
+                  type: string
+                  format: date
+                  description: Date when the company was founded
+              required:
+                - companyName
+                - industry
+            example:
+              companyName: Example Startup
+              industry: Technology
+              fundingStage: seed
+              location: Bangalore, India
+              employeeCount: 1-10
+              revenue: pre-revenue
+              website: https://example.com
+              description: An innovative tech startup
+              mission: To revolutionize the industry
+              vision: To become a global leader
+              foundingDate: 2023-01-01
+      responses:
+        '200':
+          description: Profile created or updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Startup profile updated successfully
+                  profile:
+                    $ref: '#/components/schemas/StartupProfile'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Invalid profile data
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Not a startup user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Access denied
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    get:
+      tags:
+        - Profile
+      summary: Get startup profile
+      description: Retrieve the startup profile for the authenticated user
+      operationId: getStartupProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profile:
+                    $ref: '#/components/schemas/StartupProfile'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Not a startup user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Access denied
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Startup profile not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /profile/investor:
+    post:
+      tags:
+        - Profile
+      summary: Create or update investor profile
+      description: Create or update an investor profile for the authenticated user
+      operationId: createUpdateInvestorProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firmName:
+                  type: string
+                  description: Name of the investment firm
+                investorType:
+                  type: string
+                  enum: [angel, vc, pe, family-office, corporate]
+                  description: Type of investor
+                location:
+                  type: string
+                  description: Location of the investor
+                preferredIndustries:
+                  type: array
+                  items:
+                    type: string
+                  description: Industries the investor is interested in
+                preferredFundingStages:
+                  type: array
+                  items:
+                    type: string
+                    enum: [pre-seed, seed, series-a, series-b, series-c, growth]
+                  description: Funding stages the investor is interested in
+                ticketSize:
+                  type: string
+                  enum: [0-10L, 10L-50L, 50L-1Cr, 1Cr-10Cr, 10Cr+]
+                  description: Investment ticket size range in Indian currency
+                investmentCriteria:
+                  type: array
+                  items:
+                    type: string
+                  description: Investment criteria and preferences
+                website:
+                  type: string
+                  format: uri
+                  description: Firm website URL
+                description:
+                  type: string
+                  description: Brief description of the investment firm
+              required:
+                - firmName
+                - investorType
+            example:
+              firmName: Example Ventures
+              investorType: vc
+              location: Mumbai, India
+              preferredIndustries: [Technology, Healthcare, Fintech]
+              preferredFundingStages: [seed, series-a]
+              ticketSize: 1Cr-10Cr
+              investmentCriteria: [Sustainable, Tech-enabled, B2B]
+              website: https://example-ventures.com
+              description: A venture capital firm focused on early-stage startups
+      responses:
+        '200':
+          description: Profile created or updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Investor profile updated successfully
+                  profile:
+                    $ref: '#/components/schemas/InvestorProfile'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Invalid profile data
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Not an investor user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Access denied
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    get:
+      tags:
+        - Profile
+      summary: Get investor profile
+      description: Retrieve the investor profile for the authenticated user
+      operationId: getInvestorProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profile:
+                    $ref: '#/components/schemas/InvestorProfile'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Not an investor user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Access denied
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Investor profile not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /profile/extended:
+    post:
+      tags:
+        - Profile
+      summary: Update extended profile
+      description: Update extended profile information for the authenticated user
+      operationId: updateExtendedProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                socialLinks:
+                  type: object
+                  properties:
+                    linkedin:
+                      type: string
+                      format: uri
+                    twitter:
+                      type: string
+                      format: uri
+                    facebook:
+                      type: string
+                      format: uri
+                    instagram:
+                      type: string
+                      format: uri
+                  description: Social media links
+                contactInfo:
+                  type: object
+                  properties:
+                    phone:
+                      type: string
+                    address:
+                      type: string
+                  description: Contact information
+                additionalInfo:
+                  type: object
+                  additionalProperties: true
+                  description: Additional profile information
+            example:
+              socialLinks:
+                linkedin: https://linkedin.com/in/example
+                twitter: https://twitter.com/example
+              contactInfo:
+                phone: +91 9876543210
+                address: 123 Main St, Bangalore, India
+              additionalInfo:
+                interests: [AI, Blockchain, IoT]
+                languages: [English, Hindi]
+      responses:
+        '200':
+          description: Extended profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Extended profile updated successfully
+                  profile:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                      userId:
+                        type: string
+                        format: uuid
+                      socialLinks:
+                        type: object
+                      contactInfo:
+                        type: object
+                      additionalInfo:
+                        type: object
+                      updatedAt:
+                        type: string
+                        format: date-time
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /profile/share/generate-link:
+    post:
+      tags:
+        - Profile
+      summary: Generate shareable profile link
+      description: Generate a shareable link for the user's profile
+      operationId: generateShareableLink
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Shareable link generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Shareable link generated successfully
+                  shareableUrl:
+                    type: string
+                    format: uri
+                    example: https://api.karmic-dd.com/api/profile/share/abc123
+                  expiresAt:
+                    type: string
+                    format: date-time
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Profile not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /profile/share/email:
+    post:
+      tags:
+        - Profile
+      summary: Share profile via email
+      description: Share the user's profile via email with specified recipients
+      operationId: shareProfileViaEmail
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                emails:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+                  description: List of recipient email addresses
+                message:
+                  type: string
+                  description: Optional personal message to include
+              required:
+                - emails
+            example:
+              emails: [recipient1@example.com, recipient2@example.com]
+              message: Check out my startup profile!
+      responses:
+        '200':
+          description: Profile shared successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Profile shared successfully
+                  shareableUrl:
+                    type: string
+                    format: uri
+                  recipientCount:
+                    type: integer
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Email addresses are required
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Profile not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /profile/share/{shareId}:
+    get:
+      tags:
+        - Profile
+      summary: Get shared profile
+      description: Retrieve a profile using a shareable link ID
+      operationId: getSharedProfile
+      parameters:
+        - name: shareId
+          in: path
+          description: Shareable link ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Shared profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profile:
+                    oneOf:
+                      - $ref: '#/components/schemas/StartupProfile'
+                      - $ref: '#/components/schemas/InvestorProfile'
+                  userType:
+                    type: string
+                    enum: [startup, investor]
+                  extendedProfile:
+                    type: object
+                    properties:
+                      socialLinks:
+                        type: object
+                      contactInfo:
+                        type: object
+                      additionalInfo:
+                        type: object
+        '404':
+          description: Shared profile not found or expired
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Shared profile not found or expired
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /profile/check-profile:
+    get:
+      tags:
+        - Profile
+      summary: Check if profile is complete
+      description: Check if the authenticated user has completed their profile
+      operationId: checkProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profile status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  profileComplete:
+                    type: boolean
+                    description: Whether the user has completed their profile
+                  userRole:
+                    type: string
+                    enum: [startup, investor]
+                    description: User's role in the system
+              example:
+                profileComplete: true
+                userRole: startup
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

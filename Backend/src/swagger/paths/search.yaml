@@ -1,0 +1,370 @@
+paths:
+  /search/startups:
+    get:
+      tags:
+        - Search
+      summary: Search for startups
+      description: Search for startups with various filters and criteria
+      operationId: searchStartups
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: industry
+          in: query
+          description: Filter by industry
+          schema:
+            type: string
+        - name: fundingStage
+          in: query
+          description: Filter by funding stage
+          schema:
+            type: string
+            enum: [pre-seed, seed, series-a, series-b, series-c, growth]
+        - name: employeeCount
+          in: query
+          description: Filter by employee count range
+          schema:
+            type: string
+            enum: [1-10, 11-50, 51-200, 201-500, 501+]
+        - name: location
+          in: query
+          description: Filter by location
+          schema:
+            type: string
+        - name: hasFormSubmission
+          in: query
+          description: Filter by whether the startup has submitted forms
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Number of results per page
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+        - name: sortBy
+          in: query
+          description: Field to sort by
+          schema:
+            type: string
+            default: createdAt
+            enum: [createdAt, companyName, industry, fundingStage, matchScore]
+        - name: sortOrder
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            default: desc
+            enum: [asc, desc]
+        - name: matchScore
+          in: query
+          description: Minimum match score (0-100)
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 0
+      responses:
+        '200':
+          description: Search results retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        profile:
+                          $ref: '#/components/schemas/StartupProfile'
+                        matchScore:
+                          type: number
+                          format: float
+                          minimum: 0
+                          maximum: 100
+                          description: Match score with the current user
+                        matchCategories:
+                          type: object
+                          additionalProperties:
+                            type: number
+                          description: Match scores by category
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        description: Total number of results
+                      page:
+                        type: integer
+                        description: Current page number
+                      limit:
+                        type: integer
+                        description: Number of results per page
+                      pages:
+                        type: integer
+                        description: Total number of pages
+              example:
+                results:
+                  - profile:
+                      userId: 123e4567-e89b-12d3-a456-426614174000
+                      companyName: Example Startup
+                      industry: Technology
+                      fundingStage: seed
+                      location: Bangalore, India
+                      employeeCount: 1-10
+                      revenue: pre-revenue
+                      website: https://example.com
+                      description: An innovative tech startup
+                    matchScore: 85
+                    matchCategories:
+                      Industry: 20
+                      FundingStage: 15
+                      Location: 10
+                      Revenue: 15
+                      Vision: 25
+                pagination:
+                  total: 42
+                  page: 1
+                  limit: 10
+                  pages: 5
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /search/investors:
+    get:
+      tags:
+        - Search
+      summary: Search for investors
+      description: Search for investors with various filters and criteria
+      operationId: searchInvestors
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: investorType
+          in: query
+          description: Filter by investor type
+          schema:
+            type: string
+            enum: [angel, vc, pe, family-office, corporate]
+        - name: preferredIndustry
+          in: query
+          description: Filter by preferred industry
+          schema:
+            type: string
+        - name: preferredFundingStage
+          in: query
+          description: Filter by preferred funding stage
+          schema:
+            type: string
+            enum: [pre-seed, seed, series-a, series-b, series-c, growth]
+        - name: ticketSize
+          in: query
+          description: Filter by ticket size
+          schema:
+            type: string
+            enum: [0-10L, 10L-50L, 50L-1Cr, 1Cr-10Cr, 10Cr+]
+        - name: location
+          in: query
+          description: Filter by location
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Number of results per page
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+        - name: sortBy
+          in: query
+          description: Field to sort by
+          schema:
+            type: string
+            default: createdAt
+            enum: [createdAt, firmName, investorType, matchScore]
+        - name: sortOrder
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            default: desc
+            enum: [asc, desc]
+        - name: matchScore
+          in: query
+          description: Minimum match score (0-100)
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 0
+      responses:
+        '200':
+          description: Search results retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        profile:
+                          $ref: '#/components/schemas/InvestorProfile'
+                        matchScore:
+                          type: number
+                          format: float
+                          minimum: 0
+                          maximum: 100
+                          description: Match score with the current user
+                        matchCategories:
+                          type: object
+                          additionalProperties:
+                            type: number
+                          description: Match scores by category
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        description: Total number of results
+                      page:
+                        type: integer
+                        description: Current page number
+                      limit:
+                        type: integer
+                        description: Number of results per page
+                      pages:
+                        type: integer
+                        description: Total number of pages
+              example:
+                results:
+                  - profile:
+                      userId: 123e4567-e89b-12d3-a456-426614174000
+                      firmName: Example Ventures
+                      investorType: vc
+                      location: Mumbai, India
+                      preferredIndustries: [Technology, Healthcare]
+                      preferredFundingStages: [seed, series-a]
+                      ticketSize: 1Cr-10Cr
+                    matchScore: 78
+                    matchCategories:
+                      Industry: 25
+                      FundingStage: 20
+                      TicketSize: 15
+                      Location: 8
+                      Vision: 10
+                pagination:
+                  total: 35
+                  page: 1
+                  limit: 10
+                  pages: 4
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /search/options:
+    get:
+      tags:
+        - Search
+      summary: Get filter options
+      description: Get available options for search filters
+      operationId: getFilterOptions
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Filter options retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  industries:
+                    type: array
+                    items:
+                      type: string
+                    description: Available industry options
+                  fundingStages:
+                    type: array
+                    items:
+                      type: string
+                    description: Available funding stage options
+                  employeeOptions:
+                    type: array
+                    items:
+                      type: string
+                    description: Available employee count options
+                  ticketSizes:
+                    type: array
+                    items:
+                      type: string
+                    description: Available ticket size options
+                  investmentCriteria:
+                    type: array
+                    items:
+                      type: string
+                    description: Available investment criteria options
+                  locations:
+                    type: array
+                    items:
+                      type: string
+                    description: Available location options
+              example:
+                industries: [Technology, Healthcare, Fintech, E-commerce, Education]
+                fundingStages: [pre-seed, seed, series-a, series-b, series-c, growth]
+                employeeOptions: [1-10, 11-50, 51-200, 201-500, 501+]
+                ticketSizes: [0-10L, 10L-50L, 50L-1Cr, 1Cr-10Cr, 10Cr+]
+                investmentCriteria: [Sustainable, Tech-enabled, B2B, B2C, SaaS]
+                locations: [Bangalore, Mumbai, Delhi, Hyderabad, Chennai]
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

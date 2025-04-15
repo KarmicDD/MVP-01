@@ -1,0 +1,770 @@
+paths:
+  /financial/upload:
+    post:
+      tags:
+        - Financial Due Diligence
+      summary: Upload financial documents
+      description: Upload financial documents for analysis
+      operationId: uploadFinancialDocuments
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                documents:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Array of files to upload (PDF, Excel, CSV, JSON)
+                description:
+                  type: string
+                  description: Optional description of the documents
+                documentType:
+                  type: string
+                  enum: [
+                    financial_balance_sheet,
+                    financial_income_statement,
+                    financial_cash_flow,
+                    financial_tax_returns,
+                    financial_audit_report,
+                    financial_gst_returns,
+                    financial_bank_statements,
+                    financial_projections,
+                    financial_valuation_report,
+                    financial_cap_table,
+                    financial_funding_history,
+                    financial_debt_schedule,
+                    pitch_deck,
+                    other
+                  ]
+                  description: Type of financial document
+              required:
+                - documents
+      responses:
+        '200':
+          description: Documents uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Documents uploaded successfully
+                  documents:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        documentId:
+                          type: string
+                          format: uuid
+                        fileName:
+                          type: string
+                        fileSize:
+                          type: integer
+                        documentType:
+                          type: string
+                        uploadedAt:
+                          type: string
+                          format: date-time
+              example:
+                message: Documents uploaded successfully
+                documents:
+                  - documentId: 123e4567-e89b-12d3-a456-426614174000
+                    fileName: balance_sheet_2023.pdf
+                    fileSize: 1024000
+                    documentType: financial_balance_sheet
+                    uploadedAt: 2023-05-15T10:30:00Z
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: No documents provided or invalid file type
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /financial/generate:
+    post:
+      tags:
+        - Financial Due Diligence
+      summary: Generate financial analysis
+      description: Generate financial analysis from uploaded documents
+      operationId: generateFinancialAnalysis
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                documentIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: IDs of the documents to analyze
+                companyName:
+                  type: string
+                  description: Name of the company
+                reportType:
+                  type: string
+                  enum: [analysis, audit]
+                  description: Type of financial report to generate
+              required:
+                - documentIds
+                - companyName
+                - reportType
+            example:
+              documentIds: [
+                123e4567-e89b-12d3-a456-426614174000,
+                234e5678-e89b-12d3-a456-426614174000
+              ]
+              companyName: Example Startup
+              reportType: analysis
+      responses:
+        '200':
+          description: Financial analysis generation initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Financial analysis generation initiated
+                  reportId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [processing]
+              example:
+                message: Financial analysis generation initiated
+                reportId: 345e6789-e89b-12d3-a456-426614174000
+                status: processing
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Invalid document IDs or missing required fields
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Documents not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: One or more documents not found
+        '429':
+          description: Too many requests - API usage limit exceeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: API usage limit exceeded
+                  resetTime:
+                    type: string
+                    format: date-time
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /financial/reports:
+    get:
+      tags:
+        - Financial Due Diligence
+      summary: Get financial reports
+      description: Get a list of financial reports for the authenticated user
+      operationId: getFinancialReports
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Number of results per page
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+        - name: status
+          in: query
+          description: Filter by report status
+          schema:
+            type: string
+            enum: [draft, processing, final]
+      responses:
+        '200':
+          description: Financial reports retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reports:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        reportId:
+                          type: string
+                          format: uuid
+                        companyName:
+                          type: string
+                        reportType:
+                          type: string
+                          enum: [analysis, audit]
+                        status:
+                          type: string
+                          enum: [draft, processing, final]
+                        createdAt:
+                          type: string
+                          format: date-time
+                        updatedAt:
+                          type: string
+                          format: date-time
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      pages:
+                        type: integer
+              example:
+                reports:
+                  - reportId: 345e6789-e89b-12d3-a456-426614174000
+                    companyName: Example Startup
+                    reportType: analysis
+                    status: final
+                    createdAt: 2023-05-15T10:30:00Z
+                    updatedAt: 2023-05-15T11:45:00Z
+                pagination:
+                  total: 5
+                  page: 1
+                  limit: 10
+                  pages: 1
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /financial/reports/{reportId}:
+    get:
+      tags:
+        - Financial Due Diligence
+      summary: Get financial report
+      description: Get a specific financial report by ID
+      operationId: getFinancialReport
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reportId
+          in: path
+          description: ID of the financial report
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Financial report retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialDueDiligenceReport'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Financial report not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /financial/reports/{reportId}/pdf:
+    get:
+      tags:
+        - Financial Due Diligence
+      summary: Generate PDF report
+      description: Generate and download a PDF version of a financial report
+      operationId: generatePdfReport
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reportId
+          in: path
+          description: ID of the financial report
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: PDF report generated successfully
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Financial report not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /financial/due-diligence/{startupId}/{investorId}:
+    get:
+      tags:
+        - Financial Due Diligence
+      summary: Analyze financial due diligence
+      description: Analyze financial due diligence between a startup and an investor
+      operationId: analyzeFinancialDueDiligence
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: startupId
+          in: path
+          description: ID of the startup
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: investorId
+          in: path
+          description: ID of the investor
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Financial due diligence analysis retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reportId:
+                    type: string
+                    format: uuid
+                  startupId:
+                    type: string
+                    format: uuid
+                  investorId:
+                    type: string
+                    format: uuid
+                  analysis:
+                    type: object
+                    properties:
+                      overallScore:
+                        type: number
+                        format: float
+                        minimum: 0
+                        maximum: 100
+                      categories:
+                        type: object
+                        properties:
+                          financialHealth:
+                            type: number
+                            format: float
+                          growthPotential:
+                            type: number
+                            format: float
+                          riskProfile:
+                            type: number
+                            format: float
+                          investmentFit:
+                            type: number
+                            format: float
+                      summary:
+                        type: string
+                      strengths:
+                        type: array
+                        items:
+                          type: string
+                      weaknesses:
+                        type: array
+                        items:
+                          type: string
+                      recommendations:
+                        type: array
+                        items:
+                          type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+              example:
+                reportId: 456e7890-e89b-12d3-a456-426614174000
+                startupId: 234e5678-e89b-12d3-a456-426614174000
+                investorId: 345e6789-e89b-12d3-a456-426614174000
+                analysis:
+                  overallScore: 78
+                  categories:
+                    financialHealth: 80
+                    growthPotential: 85
+                    riskProfile: 65
+                    investmentFit: 82
+                  summary: "The startup demonstrates strong financial health with consistent revenue growth and healthy margins. Their financial projections align well with the investor's expected returns."
+                  strengths: [
+                    "Strong revenue growth (45% YoY)",
+                    "Healthy gross margins (68%)",
+                    "Efficient cash utilization"
+                  ]
+                  weaknesses: [
+                    "High customer acquisition costs",
+                    "Limited runway without additional funding"
+                  ]
+                  recommendations: [
+                    "Focus on reducing CAC through channel optimization",
+                    "Develop more detailed financial projections for next 24 months",
+                    "Establish clear unit economics metrics"
+                  ]
+                createdAt: "2023-05-15T10:30:00Z"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Startup or investor profile not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Startup or investor profile not found
+        '429':
+          description: Too many requests - API usage limit exceeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: API usage limit exceeded
+                  resetTime:
+                    type: string
+                    format: date-time
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /financial/due-diligence/reports/{reportId}:
+    get:
+      tags:
+        - Financial Due Diligence
+      summary: Get financial due diligence report
+      description: Get a specific financial due diligence report by ID
+      operationId: getFinancialDueDiligenceReport
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reportId
+          in: path
+          description: ID of the financial due diligence report
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Financial due diligence report retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reportId:
+                    type: string
+                    format: uuid
+                  startupId:
+                    type: string
+                    format: uuid
+                  investorId:
+                    type: string
+                    format: uuid
+                  analysis:
+                    type: object
+                    properties:
+                      overallScore:
+                        type: number
+                        format: float
+                      categories:
+                        type: object
+                      summary:
+                        type: string
+                      strengths:
+                        type: array
+                        items:
+                          type: string
+                      weaknesses:
+                        type: array
+                        items:
+                          type: string
+                      recommendations:
+                        type: array
+                        items:
+                          type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Financial due diligence report not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /financial/due-diligence/reports/{reportId}/share:
+    post:
+      tags:
+        - Financial Due Diligence
+      summary: Share financial due diligence report
+      description: Share a financial due diligence report with specified recipients
+      operationId: shareFinancialDueDiligenceReport
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reportId
+          in: path
+          description: ID of the financial due diligence report
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                emails:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+                  description: List of recipient email addresses
+                message:
+                  type: string
+                  description: Optional personal message to include
+              required:
+                - emails
+            example:
+              emails: [recipient1@example.com, recipient2@example.com]
+              message: Here's the financial due diligence report we discussed
+      responses:
+        '200':
+          description: Report shared successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Report shared successfully
+                  shareableUrl:
+                    type: string
+                    format: uri
+                  recipientCount:
+                    type: integer
+              example:
+                message: Report shared successfully
+                shareableUrl: https://api.karmic-dd.com/api/financial/due-diligence/reports/share/abc123
+                recipientCount: 2
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Email addresses are required
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Financial due diligence report not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /financial/due-diligence/reports/{reportId}/pdf:
+    get:
+      tags:
+        - Financial Due Diligence
+      summary: Export financial due diligence report as PDF
+      description: Generate and download a PDF version of a financial due diligence report
+      operationId: exportFinancialDueDiligenceReportPdf
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reportId
+          in: path
+          description: ID of the financial due diligence report
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: PDF report generated successfully
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Financial due diligence report not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

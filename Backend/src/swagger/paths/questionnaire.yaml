@@ -1,0 +1,276 @@
+paths:
+  /questionnaire/status:
+    get:
+      tags:
+        - Questionnaire
+      summary: Get questionnaire status
+      description: Check the status of the user's questionnaire submission
+      operationId: getQuestionnaireStatus
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Questionnaire status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [not_started, draft, submitted]
+                    description: Status of the questionnaire submission
+                  lastUpdated:
+                    type: string
+                    format: date-time
+                    description: When the questionnaire was last updated
+              example:
+                status: submitted
+                lastUpdated: 2023-05-15T10:30:00Z
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /questionnaire/{role}:
+    get:
+      tags:
+        - Questionnaire
+      summary: Get questionnaire responses
+      description: Retrieve the user's questionnaire responses for a specific role
+      operationId: getQuestionnaireResponses
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: role
+          in: path
+          description: User role (startup or investor)
+          required: true
+          schema:
+            type: string
+            enum: [startup, investor]
+      responses:
+        '200':
+          description: Questionnaire responses retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  responses:
+                    type: object
+                    additionalProperties: true
+                    description: Map of question IDs to responses
+                  status:
+                    type: string
+                    enum: [draft, submitted]
+                    description: Status of the questionnaire submission
+                  analysisResults:
+                    type: object
+                    additionalProperties: true
+                    description: Results of the analysis of the questionnaire responses
+              example:
+                responses:
+                  q1: "Our mission is to revolutionize healthcare through AI"
+                  q2: "We value innovation, integrity, and impact"
+                  q3: "Our 5-year goal is to expand to international markets"
+                status: submitted
+                analysisResults:
+                  valueProfile:
+                    innovation: 85
+                    sustainability: 70
+                    socialImpact: 75
+                  riskProfile:
+                    marketRisk: "medium"
+                    executionRisk: "low"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Questionnaire responses not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Questionnaire responses not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /questionnaire/{role}/save:
+    post:
+      tags:
+        - Questionnaire
+      summary: Save draft questionnaire responses
+      description: Save draft responses to the questionnaire for a specific role
+      operationId: saveDraftResponses
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: role
+          in: path
+          description: User role (startup or investor)
+          required: true
+          schema:
+            type: string
+            enum: [startup, investor]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                responses:
+                  type: object
+                  additionalProperties: true
+                  description: Map of question IDs to responses
+              required:
+                - responses
+            example:
+              responses:
+                q1: "Our mission is to revolutionize healthcare through AI"
+                q2: "We value innovation, integrity, and impact"
+                q3: "Our 5-year goal is to expand to international markets"
+      responses:
+        '200':
+          description: Draft responses saved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Draft responses saved successfully
+                  status:
+                    type: string
+                    enum: [draft]
+                    example: draft
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Invalid responses format
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /questionnaire/{role}/submit:
+    post:
+      tags:
+        - Questionnaire
+      summary: Submit questionnaire
+      description: Submit final responses to the questionnaire for a specific role
+      operationId: submitQuestionnaire
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: role
+          in: path
+          description: User role (startup or investor)
+          required: true
+          schema:
+            type: string
+            enum: [startup, investor]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                responses:
+                  type: object
+                  additionalProperties: true
+                  description: Map of question IDs to responses
+              required:
+                - responses
+            example:
+              responses:
+                q1: "Our mission is to revolutionize healthcare through AI"
+                q2: "We value innovation, integrity, and impact"
+                q3: "Our 5-year goal is to expand to international markets"
+      responses:
+        '200':
+          description: Questionnaire submitted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Questionnaire submitted successfully
+                  status:
+                    type: string
+                    enum: [submitted]
+                    example: submitted
+                  analysisResults:
+                    type: object
+                    additionalProperties: true
+                    description: Results of the analysis of the questionnaire responses
+              example:
+                message: Questionnaire submitted successfully
+                status: submitted
+                analysisResults:
+                  valueProfile:
+                    innovation: 85
+                    sustainability: 70
+                    socialImpact: 75
+                  riskProfile:
+                    marketRisk: "medium"
+                    executionRisk: "low"
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Invalid responses format
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

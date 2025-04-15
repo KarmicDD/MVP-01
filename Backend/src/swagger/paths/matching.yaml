@@ -1,0 +1,260 @@
+paths:
+  /matching/startup:
+    get:
+      tags:
+        - Matching
+      summary: Find matches for startup
+      description: Find potential investor matches for the authenticated startup user
+      operationId: findMatchesForStartup
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Number of results per page
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+        - name: minScore
+          in: query
+          description: Minimum match score (0-100)
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 0
+      responses:
+        '200':
+          description: Matches retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matches:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        investor:
+                          $ref: '#/components/schemas/InvestorProfile'
+                        matchScore:
+                          type: number
+                          format: float
+                          minimum: 0
+                          maximum: 100
+                          description: Match score between startup and investor
+                        matchCategories:
+                          type: object
+                          additionalProperties:
+                            type: number
+                          description: Match scores by category
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        description: Total number of matches
+                      page:
+                        type: integer
+                        description: Current page number
+                      limit:
+                        type: integer
+                        description: Number of results per page
+                      pages:
+                        type: integer
+                        description: Total number of pages
+              example:
+                matches:
+                  - investor:
+                      userId: 123e4567-e89b-12d3-a456-426614174000
+                      firmName: Example Ventures
+                      investorType: vc
+                      location: Mumbai, India
+                      preferredIndustries: [Technology, Healthcare]
+                      preferredFundingStages: [seed, series-a]
+                      ticketSize: 1Cr-10Cr
+                    matchScore: 85
+                    matchCategories:
+                      Industry: 25
+                      FundingStage: 20
+                      TicketSize: 15
+                      Location: 10
+                      Vision: 15
+                pagination:
+                  total: 42
+                  page: 1
+                  limit: 10
+                  pages: 5
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Not a startup user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Access denied
+        '404':
+          description: Startup profile not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Startup profile not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /matching/investor:
+    get:
+      tags:
+        - Matching
+      summary: Find matches for investor
+      description: Find potential startup matches for the authenticated investor user
+      operationId: findMatchesForInvestor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Number of results per page
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+        - name: minScore
+          in: query
+          description: Minimum match score (0-100)
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 0
+      responses:
+        '200':
+          description: Matches retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matches:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        startup:
+                          $ref: '#/components/schemas/StartupProfile'
+                        matchScore:
+                          type: number
+                          format: float
+                          minimum: 0
+                          maximum: 100
+                          description: Match score between investor and startup
+                        matchCategories:
+                          type: object
+                          additionalProperties:
+                            type: number
+                          description: Match scores by category
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        description: Total number of matches
+                      page:
+                        type: integer
+                        description: Current page number
+                      limit:
+                        type: integer
+                        description: Number of results per page
+                      pages:
+                        type: integer
+                        description: Total number of pages
+              example:
+                matches:
+                  - startup:
+                      userId: 123e4567-e89b-12d3-a456-426614174000
+                      companyName: Example Startup
+                      industry: Technology
+                      fundingStage: seed
+                      location: Bangalore, India
+                      employeeCount: 1-10
+                      revenue: pre-revenue
+                      website: https://example.com
+                      description: An innovative tech startup
+                    matchScore: 78
+                    matchCategories:
+                      Industry: 25
+                      FundingStage: 20
+                      Revenue: 15
+                      Location: 8
+                      Vision: 10
+                pagination:
+                  total: 35
+                  page: 1
+                  limit: 10
+                  pages: 4
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Not an investor user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Access denied
+        '404':
+          description: Investor profile not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Investor profile not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

@@ -1,0 +1,52 @@
+openapi: 3.0.0
+info:
+  title: KarmicDD API Documentation
+  version: 1.0.0
+  description: |
+    API documentation for the KarmicDD platform. The API enables interaction with profiles, questionnaires, matching algorithms, and search functionality to connect startups with potential investors.
+  contact:
+    name: KarmicDD Support
+    url: https://karmicdd.netlify.app
+    email: support@karmicdd.com
+  license:
+    name: Proprietary
+    url: https://karmicdd.netlify.app/terms
+
+servers:
+  - url: http://localhost:5000/api
+    description: Development server
+  - url: https://api.karmic-dd.com/api
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: Endpoints for user authentication and authorization
+  - name: Users
+    description: Endpoints for user management and profiles
+  - name: Profile
+    description: Endpoints for managing startup and investor profiles
+  - name: Matching
+    description: Endpoints for finding matches between startups and investors
+  - name: Compatibility
+    description: Endpoints for analyzing compatibility between startups and investors
+  - name: Belief System Analysis
+    description: Endpoints for analyzing belief system alignment
+  - name: Questionnaire
+    description: Endpoints for managing questionnaire submissions
+  - name: Financial Due Diligence
+    description: Endpoints for financial analysis and due diligence
+  - name: Search
+    description: Endpoints for searching and filtering profiles
+  - name: Email
+    description: Endpoints for sending emails
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token authentication
+
+security:
+  - bearerAuth: []

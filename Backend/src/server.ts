@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import errorHandler from './middleware/errorHandler';
 import dotenv from 'dotenv';
+import swaggerUi from 'swagger-ui-express';
 
 // Routes import
 import routes from './routes';
@@ -11,6 +12,7 @@ import routes from './routes';
 import { connectMongoDBwithRetry, testPostgressConnection } from './config/db';
 import { resolve } from 'path';
 import { countRequest, statsMiddleware, trackTime } from './utils/logs';
+import { specs } from './config/swagger';
 
 // Import custom middlewares
 
@@ -60,6 +62,9 @@ const startServer = async () => {
         app.use(countRequest);
         app.use(trackTime);
 
+        // Swagger API Documentation
+        app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, { explorer: true }));
+
         // Define Routes
         app.use('/api', routes);
 
@@ -67,7 +72,10 @@ const startServer = async () => {
         app.get('/api/stats', statsMiddleware);
 
         app.get('/', (req: Request, res: Response) => {
-            res.json({ message: 'Welcome to KarmicDD API' });
+            res.json({
+                message: 'Welcome to KarmicDD API',
+                documentation: '/api-docs'
+            });
         });
 
         // Error handler middleware

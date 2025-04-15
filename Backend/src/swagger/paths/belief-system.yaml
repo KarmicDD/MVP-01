@@ -1,0 +1,128 @@
+paths:
+  /analysis/belief-system/{startupId}/{investorId}:
+    get:
+      tags:
+        - Belief System Analysis
+      summary: Analyze belief system alignment
+      description: Analyze the alignment of belief systems between a startup and an investor
+      operationId: analyzeBeliefSystemAlignment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: startupId
+          in: path
+          description: ID of the startup
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: investorId
+          in: path
+          description: ID of the investor
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Belief system analysis retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BeliefSystemAnalysis'
+              example:
+                analysisId: 123e4567-e89b-12d3-a456-426614174000
+                startupId: 234e5678-e89b-12d3-a456-426614174000
+                investorId: 345e6789-e89b-12d3-a456-426614174000
+                overallMatch: 82
+                compatibility:
+                  visionAlignment: 85
+                  coreValues: 78
+                  businessGoals: 83
+                risks:
+                  marketFitRisk:
+                    level: low
+                    description: "The startup's market approach aligns well with the investor's expectations."
+                  operationalRisk:
+                    level: medium
+                    description: "Some operational processes may need refinement to meet the investor's standards."
+                riskMitigationRecommendations: [
+                  "Establish clear KPIs for operational efficiency",
+                  "Develop a more detailed market expansion strategy",
+                  "Strengthen the governance framework"
+                ]
+                improvementAreas:
+                  strategicFocus: "Refine the long-term vision to better align with investor's portfolio strategy"
+                  communication: "Establish regular structured updates on key metrics"
+                  growthMetrics: "Define more granular growth milestones"
+                createdAt: "2023-05-15T10:30:00Z"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Startup or investor profile not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Startup or investor profile not found
+        '429':
+          description: Too many requests - API usage limit exceeded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: API usage limit exceeded
+                  resetTime:
+                    type: string
+                    format: date-time
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /analysis/check-status:
+    get:
+      tags:
+        - Belief System Analysis
+      summary: Check questionnaire status
+      description: Check if the user has completed the questionnaire required for belief system analysis
+      operationId: checkQuestionnaireStatus
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Questionnaire status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isCompleted:
+                    type: boolean
+                    description: Whether the user has completed the questionnaire
+              example:
+                isCompleted: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

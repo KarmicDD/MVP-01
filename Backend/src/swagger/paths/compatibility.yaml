@@ -1,0 +1,373 @@
+paths:
+  /score/compatibility/{startupId}/{investorId}:
+    get:
+      tags:
+        - Compatibility
+      summary: Get startup-investor compatibility
+      description: Get detailed compatibility analysis between a specific startup and investor
+      operationId: getStartupInvestorCompatibility
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: startupId
+          in: path
+          description: ID of the startup
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: investorId
+          in: path
+          description: ID of the investor
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Compatibility analysis retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  startup:
+                    $ref: '#/components/schemas/StartupProfile'
+                  investor:
+                    $ref: '#/components/schemas/InvestorProfile'
+                  compatibility:
+                    type: object
+                    properties:
+                      overallScore:
+                        type: number
+                        format: float
+                        minimum: 0
+                        maximum: 100
+                        description: Overall compatibility score
+                      categories:
+                        type: object
+                        properties:
+                          industry:
+                            type: number
+                            format: float
+                            description: Industry alignment score
+                          fundingStage:
+                            type: number
+                            format: float
+                            description: Funding stage alignment score
+                          location:
+                            type: number
+                            format: float
+                            description: Location alignment score
+                          revenue:
+                            type: number
+                            format: float
+                            description: Revenue alignment score
+                          vision:
+                            type: number
+                            format: float
+                            description: Vision alignment score
+                        description: Compatibility scores by category
+                      analysis:
+                        type: string
+                        description: Detailed analysis of the compatibility
+              example:
+                startup:
+                  userId: 123e4567-e89b-12d3-a456-426614174000
+                  companyName: Example Startup
+                  industry: Technology
+                  fundingStage: seed
+                investor:
+                  userId: 234e5678-e89b-12d3-a456-426614174000
+                  firmName: Example Ventures
+                  investorType: vc
+                  preferredIndustries: [Technology, Healthcare]
+                compatibility:
+                  overallScore: 85
+                  categories:
+                    industry: 25
+                    fundingStage: 20
+                    location: 15
+                    revenue: 15
+                    vision: 10
+                  analysis: "The startup and investor show strong alignment in industry focus and funding stage requirements. The investor's preferred ticket size matches well with the startup's current revenue and growth trajectory."
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Startup or investor profile not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Startup or investor profile not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /score/compatibility/batch:
+    get:
+      tags:
+        - Compatibility
+      summary: Get batch compatibility analysis
+      description: Get compatibility analysis for multiple matches based on user role
+      operationId: batchAnalyzeCompatibility
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Number of results per page
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+        - name: minScore
+          in: query
+          description: Minimum compatibility score (0-100)
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 0
+      responses:
+        '200':
+          description: Batch compatibility analysis retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        match:
+                          oneOf:
+                            - $ref: '#/components/schemas/StartupProfile'
+                            - $ref: '#/components/schemas/InvestorProfile'
+                        compatibility:
+                          type: object
+                          properties:
+                            overallScore:
+                              type: number
+                              format: float
+                              minimum: 0
+                              maximum: 100
+                            categories:
+                              type: object
+                              additionalProperties:
+                                type: number
+                            analysis:
+                              type: string
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      pages:
+                        type: integer
+              example:
+                results:
+                  - match:
+                      userId: 123e4567-e89b-12d3-a456-426614174000
+                      companyName: Example Startup
+                      industry: Technology
+                      fundingStage: seed
+                    compatibility:
+                      overallScore: 85
+                      categories:
+                        industry: 25
+                        fundingStage: 20
+                        location: 15
+                        revenue: 15
+                        vision: 10
+                      analysis: "Strong alignment in industry focus and funding stage requirements."
+                pagination:
+                  total: 42
+                  page: 1
+                  limit: 10
+                  pages: 5
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User profile not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User profile not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /score/compatibility/startup:
+    get:
+      tags:
+        - Compatibility
+      summary: Get AI-enhanced compatibility for startups
+      description: Get AI-enhanced compatibility analysis for startups
+      operationId: getStartupCompatibility
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Number of results per page
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+        - name: minScore
+          in: query
+          description: Minimum compatibility score (0-100)
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+            default: 0
+      responses:
+        '200':
+          description: AI-enhanced compatibility analysis retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        investor:
+                          $ref: '#/components/schemas/InvestorProfile'
+                        compatibility:
+                          type: object
+                          properties:
+                            overallScore:
+                              type: number
+                              format: float
+                              minimum: 0
+                              maximum: 100
+                            categories:
+                              type: object
+                              additionalProperties:
+                                type: number
+                            aiAnalysis:
+                              type: string
+                              description: AI-generated analysis of the compatibility
+                            keyInsights:
+                              type: array
+                              items:
+                                type: string
+                              description: Key insights from the AI analysis
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      pages:
+                        type: integer
+              example:
+                results:
+                  - investor:
+                      userId: 234e5678-e89b-12d3-a456-426614174000
+                      firmName: Example Ventures
+                      investorType: vc
+                      preferredIndustries: [Technology, Healthcare]
+                    compatibility:
+                      overallScore: 85
+                      categories:
+                        industry: 25
+                        fundingStage: 20
+                        location: 15
+                        revenue: 15
+                        vision: 10
+                      aiAnalysis: "The startup's focus on AI-driven healthcare solutions aligns perfectly with Example Ventures' investment thesis in healthcare technology. Their current seed stage and revenue traction match the investor's preferred investment criteria."
+                      keyInsights: [
+                        "Strong industry alignment in healthcare technology",
+                        "Seed stage funding needs match investor preferences",
+                        "Revenue traction demonstrates market validation",
+                        "Geographic proximity enables hands-on mentorship"
+                      ]
+                pagination:
+                  total: 35
+                  page: 1
+                  limit: 10
+                  pages: 4
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - Not a startup user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Access denied
+        '404':
+          description: Startup profile not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Startup profile not found
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

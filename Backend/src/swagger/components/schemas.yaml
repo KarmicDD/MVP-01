@@ -1,0 +1,387 @@
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: Unique identifier for the user
+        email:
+          type: string
+          format: email
+          description: User's email address
+        role:
+          type: string
+          enum: [startup, investor]
+          description: User's role in the system
+        createdAt:
+          type: string
+          format: date-time
+          description: Date and time when the user was created
+      required:
+        - userId
+        - email
+        - role
+
+    StartupProfile:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: User ID associated with this profile
+        companyName:
+          type: string
+          description: Name of the startup
+        industry:
+          type: string
+          description: Industry the startup operates in
+        fundingStage:
+          type: string
+          enum: [pre-seed, seed, series-a, series-b, series-c, growth]
+          description: Current funding stage of the startup
+        location:
+          type: string
+          description: Location of the startup
+        employeeCount:
+          type: string
+          enum: [1-10, 11-50, 51-200, 201-500, 501+]
+          description: Number of employees
+        revenue:
+          type: string
+          enum: [pre-revenue, 0-10L, 10L-50L, 50L-1Cr, 1Cr-10Cr, 10Cr+]
+          description: Annual revenue range in Indian currency
+        website:
+          type: string
+          format: uri
+          description: Company website URL
+        description:
+          type: string
+          description: Brief description of the startup
+        mission:
+          type: string
+          description: Company mission statement
+        vision:
+          type: string
+          description: Company vision statement
+        foundingDate:
+          type: string
+          format: date
+          description: Date when the company was founded
+        createdAt:
+          type: string
+          format: date-time
+          description: Date and time when the profile was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: Date and time when the profile was last updated
+      required:
+        - userId
+        - companyName
+        - industry
+
+    InvestorProfile:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: User ID associated with this profile
+        firmName:
+          type: string
+          description: Name of the investment firm
+        investorType:
+          type: string
+          enum: [angel, vc, pe, family-office, corporate]
+          description: Type of investor
+        location:
+          type: string
+          description: Location of the investor
+        preferredIndustries:
+          type: array
+          items:
+            type: string
+          description: Industries the investor is interested in
+        preferredFundingStages:
+          type: array
+          items:
+            type: string
+            enum: [pre-seed, seed, series-a, series-b, series-c, growth]
+          description: Funding stages the investor is interested in
+        ticketSize:
+          type: string
+          enum: [0-10L, 10L-50L, 50L-1Cr, 1Cr-10Cr, 10Cr+]
+          description: Investment ticket size range in Indian currency
+        investmentCriteria:
+          type: array
+          items:
+            type: string
+          description: Investment criteria and preferences
+        website:
+          type: string
+          format: uri
+          description: Firm website URL
+        description:
+          type: string
+          description: Brief description of the investment firm
+        createdAt:
+          type: string
+          format: date-time
+          description: Date and time when the profile was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: Date and time when the profile was last updated
+      required:
+        - userId
+        - firmName
+        - investorType
+
+    QuestionnaireSubmission:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: User ID associated with this submission
+        userRole:
+          type: string
+          enum: [startup, investor]
+          description: Role of the user
+        responses:
+          type: object
+          additionalProperties: true
+          description: Map of question IDs to responses
+        status:
+          type: string
+          enum: [draft, submitted]
+          description: Status of the questionnaire submission
+        analysisResults:
+          type: object
+          additionalProperties: true
+          description: Results of the analysis of the questionnaire responses
+        createdAt:
+          type: string
+          format: date-time
+          description: Date and time when the submission was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: Date and time when the submission was last updated
+      required:
+        - userId
+        - userRole
+        - responses
+
+    FinancialDueDiligenceReport:
+      type: object
+      properties:
+        reportId:
+          type: string
+          format: uuid
+          description: Unique identifier for the report
+        userId:
+          type: string
+          format: uuid
+          description: User ID associated with this report
+        companyName:
+          type: string
+          description: Name of the company
+        reportType:
+          type: string
+          enum: [analysis, audit]
+          description: Type of financial report
+        financialData:
+          type: object
+          properties:
+            revenue:
+              type: object
+              description: Revenue data
+            expenses:
+              type: object
+              description: Expense data
+            profitability:
+              type: object
+              description: Profitability metrics
+            cashFlow:
+              type: object
+              description: Cash flow data
+            balanceSheet:
+              type: object
+              description: Balance sheet data
+            keyRatios:
+              type: object
+              description: Key financial ratios
+          description: Financial data extracted from documents
+        analysis:
+          type: object
+          properties:
+            summary:
+              type: string
+              description: Executive summary of the analysis
+            strengths:
+              type: array
+              items:
+                type: string
+              description: Financial strengths identified
+            weaknesses:
+              type: array
+              items:
+                type: string
+              description: Financial weaknesses identified
+            opportunities:
+              type: array
+              items:
+                type: string
+              description: Financial opportunities identified
+            threats:
+              type: array
+              items:
+                type: string
+              description: Financial threats identified
+            recommendations:
+              type: array
+              items:
+                type: string
+              description: Recommendations based on the analysis
+          description: Analysis of the financial data
+        documentSources:
+          type: array
+          items:
+            type: string
+          description: IDs of the source documents used for the analysis
+        status:
+          type: string
+          enum: [draft, processing, final]
+          description: Status of the report
+        createdAt:
+          type: string
+          format: date-time
+          description: Date and time when the report was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: Date and time when the report was last updated
+      required:
+        - reportId
+        - userId
+        - companyName
+        - reportType
+
+    BeliefSystemAnalysis:
+      type: object
+      properties:
+        analysisId:
+          type: string
+          format: uuid
+          description: Unique identifier for the analysis
+        startupId:
+          type: string
+          format: uuid
+          description: ID of the startup
+        investorId:
+          type: string
+          format: uuid
+          description: ID of the investor
+        overallMatch:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+          description: Overall match percentage between startup and investor
+        compatibility:
+          type: object
+          properties:
+            visionAlignment:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Alignment score for vision
+            coreValues:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Alignment score for core values
+            businessGoals:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Alignment score for business goals
+          description: Compatibility scores in different areas
+        risks:
+          type: object
+          properties:
+            marketFitRisk:
+              type: object
+              properties:
+                level:
+                  type: string
+                  enum: [low, medium, high]
+                  description: Risk level
+                description:
+                  type: string
+                  description: Description of the risk
+              description: Market fit risk assessment
+            operationalRisk:
+              type: object
+              properties:
+                level:
+                  type: string
+                  enum: [low, medium, high]
+                  description: Risk level
+                description:
+                  type: string
+                  description: Description of the risk
+              description: Operational risk assessment
+          description: Risk assessments
+        riskMitigationRecommendations:
+          type: array
+          items:
+            type: string
+          description: Recommendations for mitigating identified risks
+        improvementAreas:
+          type: object
+          properties:
+            strategicFocus:
+              type: string
+              description: Improvement area for strategic focus
+            communication:
+              type: string
+              description: Improvement area for communication
+            growthMetrics:
+              type: string
+              description: Improvement area for growth metrics
+          description: Areas for improvement
+        createdAt:
+          type: string
+          format: date-time
+          description: Date and time when the analysis was created
+      required:
+        - analysisId
+        - startupId
+        - investorId
+        - overallMatch
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Error message
+        error:
+          type: string
+          description: Detailed error information (only in development)
+      required:
+        - message
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token authentication

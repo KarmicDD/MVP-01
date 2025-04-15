@@ -12,10 +12,11 @@ This is the backend service for KarmicDD, built with Node.js, TypeScript, Prisma
 4.  [Database Setup (Prisma)](#database-setup-prisma)
 5.  [OAuth Configuration](#oauth-configuration)
 6.  [Running the Server](#running-the-server)
-7.  [Environment Variables](#environment-variables)
-8.  [Directory Structure](#directory-structure)
-9.  [Contributing](#contributing)
-10. [License](#license)
+7.  [API Documentation](#api-documentation)
+8.  [Environment Variables](#environment-variables)
+9.  [Directory Structure](#directory-structure)
+10. [Contributing](#contributing)
+11. [License](#license)
 
 ## Prerequisites
 
@@ -29,7 +30,7 @@ This is the backend service for KarmicDD, built with Node.js, TypeScript, Prisma
 1.  Clone the repository:
 
     ```
-    git clone 
+    git clone
     cd Backend
     ```
 
@@ -118,6 +119,32 @@ npx prisma db push
     ```
 
     This command compiles the TypeScript code into JavaScript files.
+
+## API Documentation
+
+The API documentation is available through Swagger UI at `/api-docs` when the server is running:
+
+```
+http://localhost:5000/api-docs
+```
+
+The documentation provides a comprehensive overview of all available endpoints, request/response schemas, and data models. You can also test the API directly from the Swagger UI interface.
+
+Features of the API documentation:
+
+- Interactive API testing
+- Detailed request and response schemas
+- Authentication flow explanation
+- Organized by functional areas (Authentication, Profile, Matching, etc.)
+- Support for all API endpoints including:
+  - Authentication (register, login, OAuth)
+  - Profile management (startup, investor, extended profiles)
+  - Matching algorithms
+  - Compatibility analysis
+  - Belief system analysis
+  - Questionnaires
+  - Financial due diligence
+  - Search functionality
 
 ## Environment Variables
 
