@@ -14,21 +14,43 @@ export interface BeliefSystemReportType {
         coreValues: number;
         businessGoals: number;
     };
+    executiveSummary: {
+        headline: string;
+        keyFindings: string;
+        recommendedActions: string;
+        successProbability: number;
+        keyNumbers: Array<{ label: string; value: string | number; color: string }>;
+    };
+    scoringBreakdown: Array<{ label: string; score: number; description: string }>;
+    strengths: Array<{ area: string; score: number; description: string }>;
+    weaknesses: Array<{ area: string; score: number; description: string }>;
     risks: {
         marketFitRisk: {
             level: string;
             description: string;
+            impactAreas?: string[];
         };
         operationalRisk: {
             level: string;
             description: string;
+            impactAreas?: string[];
         };
+        riskHeatmap?: Array<{ risk: string; severity: string; probability: number; impact: number }>;
     };
-    riskMitigationRecommendations: string[];
+    riskMitigationRecommendations: Array<{
+        text: string;
+        priority: 'High' | 'Medium' | 'Low';
+        timeline: 'Immediate' | 'Short-term' | 'Medium-term' | 'Long-term';
+    }>;
     improvementAreas: {
         strategicFocus: string;
         communication: string;
         growthMetrics: string;
+        actions?: {
+            strategicFocus: string[];
+            communication: string[];
+            growthMetrics: string[];
+        };
     };
     perspective: string;
     isOldData?: boolean;
