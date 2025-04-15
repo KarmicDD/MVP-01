@@ -44,7 +44,13 @@ const options: swaggerJsdoc.Options = {
       }
     ]
   },
-  apis: ['./src/routes/*.ts', './src/controllers/*.ts', './src/models/**/*.ts', './src/swagger/*.ts']
+  apis: [
+    './src/routes/*.ts',
+    './src/controllers/*.ts',
+    './src/models/**/*.ts',
+    './src/swagger/*.ts',
+    './src/swagger/**/*.yaml'  // Include all YAML files in the swagger directory
+  ]
 };
 
 export const specs = swaggerJsdoc(options);

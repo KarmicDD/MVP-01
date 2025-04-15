@@ -30,7 +30,7 @@ tags:
   - name: Compatibility
     description: Endpoints for analyzing compatibility between startups and investors
   - name: Belief System Analysis
-    description: Endpoints for analyzing belief system alignment
+    description: Endpoints for analyzing belief system alignment between startups and investors. The analysis shows only the counterparty's profile based on the user's perspective.
   - name: Questionnaire
     description: Endpoints for managing questionnaire submissions
   - name: Financial Due Diligence

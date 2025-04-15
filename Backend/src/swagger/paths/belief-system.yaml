@@ -4,7 +4,7 @@ paths:
       tags:
         - Belief System Analysis
       summary: Analyze belief system alignment
-      description: Analyze the alignment of belief systems between a startup and an investor
+      description: Analyze the alignment of belief systems between a startup and an investor. The analysis shows only the counterparty's profile based on the user's perspective.
       operationId: analyzeBeliefSystemAlignment
       security:
         - bearerAuth: []
@@ -34,28 +34,111 @@ paths:
                 analysisId: 123e4567-e89b-12d3-a456-426614174000
                 startupId: 234e5678-e89b-12d3-a456-426614174000
                 investorId: 345e6789-e89b-12d3-a456-426614174000
+                perspective: "startup"
+                generatedDate: "2023-05-15T10:30:00Z"
                 overallMatch: 82
+                executiveSummary:
+                  headline: "Strong alignment with some operational risks."
+                  keyFindings: "The investor has a strong focus on sustainable growth and long-term value creation."
+                  recommendedActions: "Align your growth metrics with the investor's long-term perspective."
+                  successProbability: 78
+                  keyNumbers:
+                    - label: "Overall Match"
+                      value: 82
+                      color: "green"
+                    - label: "Top Risk"
+                      value: "Operational"
+                      color: "red"
+                    - label: "Top Priority"
+                      value: "Communication"
+                      color: "orange"
+                beliefFingerprint:
+                  investor:
+                    coreBeliefs:
+                      - "Value creation through sustainable growth"
+                      - "Strategic partnerships over transactional relationships"
+                      - "Data-driven decision making"
+                    decisionMakingStyle: "Methodical and data-driven"
+                    riskTolerance: "Moderate"
+                    timeHorizon: "5-7 years"
+                    investmentPhilosophy: "Active partnership"
                 compatibility:
-                  visionAlignment: 85
-                  coreValues: 78
-                  businessGoals: 83
+                  radarScores:
+                    VisionAlignment: 85
+                    CoreValues: 78
+                    BusinessGoals: 83
+                    LeadershipStyle: 75
+                    Communication: 80
+                    RiskApproach: 72
+                    Innovation: 88
+                    GrowthExpectations: 76
+                  details:
+                    - label: "Vision Alignment"
+                      score: 85
+                      description: "Strong shared vision."
+                    - label: "Core Values"
+                      score: 78
+                      description: "Mostly aligned values."
+                compatibilityDetails:
+                  strengths:
+                    - "Strong alignment on product innovation philosophy."
+                  challenges:
+                    - "Different expectations on growth velocity."
+                  keyAlignmentAreas:
+                    - "Innovation"
+                  potentialConflicts:
+                    - "Governance approach"
                 risks:
-                  marketFitRisk:
-                    level: low
-                    description: "The startup's market approach aligns well with the investor's expectations."
-                  operationalRisk:
-                    level: medium
-                    description: "Some operational processes may need refinement to meet the investor's standards."
-                riskMitigationRecommendations: [
-                  "Establish clear KPIs for operational efficiency",
-                  "Develop a more detailed market expansion strategy",
-                  "Strengthen the governance framework"
-                ]
+                  donut:
+                    - label: "Market Fit"
+                      score: 20
+                      level: "Low"
+                      color: "green"
+                      description: "Good market fit."
+                    - label: "Operational"
+                      score: 60
+                      level: "High"
+                      color: "red"
+                      description: "Operational processes need refinement."
+                  topRisks:
+                    - label: "Operational"
+                      score: 60
+                      description: "Operational processes need refinement."
                 improvementAreas:
-                  strategicFocus: "Refine the long-term vision to better align with investor's portfolio strategy"
-                  communication: "Establish regular structured updates on key metrics"
-                  growthMetrics: "Define more granular growth milestones"
-                createdAt: "2023-05-15T10:30:00Z"
+                  heatmap:
+                    - label: "Communication"
+                      priority: 90
+                      impact: 85
+                      color: "red"
+                      description: "Establish regular structured updates."
+                timeline:
+                  - phase: "First 3 Months"
+                    milestone: "Set up reporting cadence"
+                    color: "blue"
+                  - phase: "First Year"
+                    milestone: "Align on growth metrics"
+                    color: "indigo"
+                  - phase: "Long Term"
+                    milestone: "Review strategic vision"
+                    color: "green"
+                recommendations:
+                  - text: "Establish biweekly progress updates."
+                    urgency: "High"
+                    icon: "exclamation"
+                    color: "red"
+                scenarioAnalysis:
+                  marketDownturn: "Investor's experience will help with pivots."
+                  rapidGrowth: "Operational expertise will help scale."
+                  competitiveThreats: "Joint strategy sessions recommended."
+                  pivotRequired: "Investor open to pivots if justified."
+                riskMitigationRecommendations:
+                  immediate:
+                    - "Establish clear KPIs for operational efficiency."
+                  shortTerm:
+                    - "Implement quarterly strategic reviews."
+                  longTerm:
+                    - "Develop a shared dashboard for tracking key growth metrics."
+                isOldData: false
         '401':
           description: Unauthorized
           content:

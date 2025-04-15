@@ -285,12 +285,82 @@ components:
           type: string
           format: uuid
           description: ID of the investor
+        perspective:
+          type: string
+          enum: [startup, investor]
+          description: Perspective from which the analysis is conducted
+        generatedDate:
+          type: string
+          format: date-time
+          description: Date and time when the analysis was generated
         overallMatch:
           type: number
           format: float
           minimum: 0
           maximum: 100
           description: Overall match percentage between startup and investor
+        executiveSummary:
+          type: object
+          properties:
+            keyFindings:
+              type: string
+              description: Concise summary of the most important findings about the counterparty
+            recommendedActions:
+              type: string
+              description: Summary of critical actions to take based on the analysis
+            successProbability:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Probability of successful partnership
+          description: Executive summary of the analysis
+        beliefFingerprint:
+          type: object
+          properties:
+            startup:
+              type: object
+              properties:
+                coreBeliefs:
+                  type: array
+                  items:
+                    type: string
+                  description: Core beliefs of the startup
+                decisionMakingStyle:
+                  type: string
+                  description: Decision-making approach of the startup
+                riskTolerance:
+                  type: string
+                  description: Risk tolerance of the startup
+                timeHorizon:
+                  type: string
+                  description: Time horizon for goals/returns of the startup
+                innovationPhilosophy:
+                  type: string
+                  description: Approach to innovation of the startup
+              description: Belief system profile of the startup (only shown when perspective is investor)
+            investor:
+              type: object
+              properties:
+                coreBeliefs:
+                  type: array
+                  items:
+                    type: string
+                  description: Core beliefs of the investor
+                decisionMakingStyle:
+                  type: string
+                  description: Decision-making approach of the investor
+                riskTolerance:
+                  type: string
+                  description: Risk tolerance of the investor
+                timeHorizon:
+                  type: string
+                  description: Time horizon for goals/returns of the investor
+                investmentPhilosophy:
+                  type: string
+                  description: Investment approach of the investor
+              description: Belief system profile of the investor (only shown when perspective is startup)
+          description: Belief system profiles - only shows the counterparty's profile based on perspective
         compatibility:
           type: object
           properties:
@@ -312,7 +382,61 @@ components:
               minimum: 0
               maximum: 100
               description: Alignment score for business goals
+            leadershipStyle:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Alignment score for leadership style
+            communicationPreferences:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Alignment score for communication preferences
+            riskApproach:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Alignment score for risk approach
+            innovationPerspective:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Alignment score for innovation perspective
+            growthExpectations:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Alignment score for growth expectations
           description: Compatibility scores in different areas
+        compatibilityDetails:
+          type: object
+          properties:
+            strengths:
+              type: array
+              items:
+                type: string
+              description: Specific strengths with evidence
+            challenges:
+              type: array
+              items:
+                type: string
+              description: Specific challenges with evidence
+            keyAlignmentAreas:
+              type: array
+              items:
+                type: string
+              description: Key alignment areas with specific examples
+            potentialConflicts:
+              type: array
+              items:
+                type: string
+              description: Potential conflicts with specific examples
+          description: Detailed compatibility information
         risks:
           type: object
           properties:
@@ -321,51 +445,164 @@ components:
               properties:
                 level:
                   type: string
-                  enum: [low, medium, high]
+                  enum: [Low, Medium, High]
                   description: Risk level
                 description:
                   type: string
-                  description: Description of the risk
+                  description: Detailed description of risk with specific examples
+                impactAreas:
+                  type: array
+                  items:
+                    type: string
+                  description: Areas with specific impact
+                earlyWarningSignals:
+                  type: array
+                  items:
+                    type: string
+                  description: Signals with detection methods
               description: Market fit risk assessment
             operationalRisk:
               type: object
               properties:
                 level:
                   type: string
-                  enum: [low, medium, high]
+                  enum: [Low, Medium, High]
                   description: Risk level
                 description:
                   type: string
-                  description: Description of the risk
+                  description: Detailed description of risk with specific examples
+                impactAreas:
+                  type: array
+                  items:
+                    type: string
+                  description: Areas with specific impact
+                earlyWarningSignals:
+                  type: array
+                  items:
+                    type: string
+                  description: Signals with detection methods
               description: Operational risk assessment
+            strategicRisk:
+              type: object
+              properties:
+                level:
+                  type: string
+                  enum: [Low, Medium, High]
+                  description: Risk level
+                description:
+                  type: string
+                  description: Detailed description of risk with specific examples
+                impactAreas:
+                  type: array
+                  items:
+                    type: string
+                  description: Areas with specific impact
+                earlyWarningSignals:
+                  type: array
+                  items:
+                    type: string
+                  description: Signals with detection methods
+              description: Strategic risk assessment
+            culturalRisk:
+              type: object
+              properties:
+                level:
+                  type: string
+                  enum: [Low, Medium, High]
+                  description: Risk level
+                description:
+                  type: string
+                  description: Detailed description of risk with specific examples
+                impactAreas:
+                  type: array
+                  items:
+                    type: string
+                  description: Areas with specific impact
+                earlyWarningSignals:
+                  type: array
+                  items:
+                    type: string
+                  description: Signals with detection methods
+              description: Cultural risk assessment
           description: Risk assessments
+        scenarioAnalysis:
+          type: object
+          properties:
+            marketDownturn:
+              type: string
+              description: Analysis of relationship dynamics during market downturn
+            rapidGrowth:
+              type: string
+              description: Analysis of relationship dynamics during rapid growth
+            competitiveThreats:
+              type: string
+              description: Analysis of relationship dynamics when facing competitive threats
+            pivotRequired:
+              type: string
+              description: Analysis of relationship dynamics if a pivot is required
+          description: Analysis of different scenarios
         riskMitigationRecommendations:
-          type: array
-          items:
-            type: string
+          type: object
+          properties:
+            immediate:
+              type: array
+              items:
+                type: string
+              description: Immediate actions with implementation steps
+            shortTerm:
+              type: array
+              items:
+                type: string
+              description: Short-term actions with implementation steps
+            longTerm:
+              type: array
+              items:
+                type: string
+              description: Long-term actions with implementation steps
           description: Recommendations for mitigating identified risks
         improvementAreas:
           type: object
           properties:
             strategicFocus:
               type: string
-              description: Improvement area for strategic focus
+              description: Improvement area for strategic focus with actionable insights
             communication:
               type: string
-              description: Improvement area for communication
+              description: Improvement area for communication with actionable insights
             growthMetrics:
               type: string
-              description: Improvement area for growth metrics
+              description: Improvement area for growth metrics with actionable insights
+            governanceStructure:
+              type: string
+              description: Improvement area for governance structure with actionable insights
+            decisionMakingProcess:
+              type: string
+              description: Improvement area for decision-making process with actionable insights
           description: Areas for improvement
-        createdAt:
+        relationshipTimeline:
+          type: object
+          properties:
+            firstThreeMonths:
+              type: string
+              description: Expected dynamics in first three months with specific milestones
+            firstYear:
+              type: string
+              description: Expected dynamics in first year with specific milestones
+            longTerm:
+              type: string
+              description: Expected long-term relationship dynamics with specific milestones
+          description: Timeline of the relationship
+        isOldData:
+          type: boolean
+          description: Whether the data is historical
+        message:
           type: string
-          format: date-time
-          description: Date and time when the analysis was created
+          description: Additional message about the report
       required:
         - analysisId
         - startupId
         - investorId
-        - overallMatch
+        - perspective
 
     Error:
       type: object
