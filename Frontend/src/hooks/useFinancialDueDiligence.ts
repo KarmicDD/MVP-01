@@ -101,6 +101,8 @@ export interface FinancialDueDiligenceReport {
   startupInfo?: StartupInfo;
   investorInfo?: InvestorInfo;
   reportType?: 'analysis' | 'audit';
+  isOldData?: boolean;
+  message?: string;
 }
 
 export interface FinancialDocument {

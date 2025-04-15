@@ -31,6 +31,8 @@ export interface BeliefSystemReportType {
         growthMetrics: string;
     };
     perspective: string;
+    isOldData?: boolean;
+    message?: string;
 }
 
 export function useBeliefSystemReport(startupId: string | null, investorId: string | null) {

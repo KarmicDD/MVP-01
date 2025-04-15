@@ -19,12 +19,18 @@ if (!apiKey) {
 // Maximum API requests per day
 const MAX_DAILY_REQUESTS = 5;
 
+interface RateLimitResult {
+    underLimit: boolean;
+    usageCount: number;
+    maxRequests: number;
+}
+
 /**
  * Check if the user has exceeded the daily API usage limit
  * @param userId User ID
- * @returns Boolean indicating if the user is under the limit
+ * @returns RateLimitResult object with limit information
  */
-async function checkRateLimit(userId: string): Promise<boolean> {
+async function checkRateLimit(userId: string): Promise<RateLimitResult> {
     // Find or create usage record for this user
     let usageRecord = await ApiUsageModel.findOne({ userId });
 
@@ -49,29 +55,28 @@ async function checkRateLimit(userId: string): Promise<boolean> {
     }
 
     // Check if under limit
-    return usageRecord.compatibilityRequestCount < MAX_DAILY_REQUESTS;
-}
+    const underLimit = usageRecord.compatibilityRequestCount < MAX_DAILY_REQUESTS;
 
-/**
- * Increment the API usage count for a user
- * @param userId User ID
- */
-async function incrementApiUsage(userId: string): Promise<void> {
-    // Find or create usage record for this user
-    let usageRecord = await ApiUsageModel.findOne({ userId });
-
-    if (!usageRecord) {
-        usageRecord = await ApiUsageModel.create({
-            userId,
-            compatibilityRequestCount: 0,
-            lastReset: new Date()
-        });
+    if (!underLimit) {
+        return {
+            underLimit: false,
+            usageCount: usageRecord.compatibilityRequestCount,
+            maxRequests: MAX_DAILY_REQUESTS
+        };
     }
 
-    // Increment count
+    // If under limit, increment the counter
     usageRecord.compatibilityRequestCount += 1;
     await usageRecord.save();
+
+    return {
+        underLimit: true,
+        usageCount: usageRecord.compatibilityRequestCount,
+        maxRequests: MAX_DAILY_REQUESTS
+    };
 }
+
+// Note: incrementApiUsage is no longer needed as the checkRateLimit function now handles incrementing
 
 /**
  * Analyze financial due diligence between a startup and an investor
@@ -89,8 +94,55 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
         }
 
         // Check rate limit
-        const underLimit = await checkRateLimit(req.user.userId);
-        if (!underLimit) {
+        const rateLimitResult = await checkRateLimit(req.user.userId);
+
+        if (!rateLimitResult.underLimit) {
+            // If limit reached, check for any existing analysis regardless of age
+            const { startupId, investorId } = req.params;
+
+            // Get the perspective from query params or determine based on user role
+            let perspective: 'startup' | 'investor' = (req.query.perspective as 'startup' | 'investor') || 'startup';
+
+            // If no perspective is specified in query, determine based on user role
+            if (!req.query.perspective) {
+                // Check if the user is the startup or the investor
+                if (req.user.userId === startupId) {
+                    perspective = 'startup';
+                } else if (req.user.userId === investorId) {
+                    perspective = 'investor';
+                } else {
+                    // Default perspective if not directly involved
+                    perspective = 'investor';
+                }
+            }
+
+            // Look for any existing analysis, regardless of age
+            const oldAnalysis = await FinancialDueDiligenceReport.findOne({
+                startupId: startupId,
+                investorId: investorId,
+                perspective: perspective
+            }).sort({ createdAt: -1 }); // Get the most recent one
+
+            if (oldAnalysis) {
+                // Return old analysis with a flag indicating it's old data
+                res.json({
+                    summary: oldAnalysis.summary,
+                    metrics: oldAnalysis.metrics,
+                    recommendations: oldAnalysis.recommendations,
+                    riskFactors: oldAnalysis.riskFactors,
+                    complianceItems: oldAnalysis.complianceItems,
+                    financialStatements: oldAnalysis.financialStatements,
+                    ratioAnalysis: oldAnalysis.ratioAnalysis,
+                    taxCompliance: oldAnalysis.taxCompliance,
+                    perspective: oldAnalysis.perspective,
+                    generatedDate: oldAnalysis.createdAt,
+                    isOldData: true,
+                    message: 'Daily request limit reached. Showing previously generated data.'
+                });
+                return;
+            }
+
+            // If no old data exists, return the rate limit error
             res.status(429).json({
                 message: 'Daily request limit reached',
                 limit: MAX_DAILY_REQUESTS,
@@ -355,8 +407,7 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
             await financialReport.save();
             console.log('Saved financial report to database');
 
-            // Increment API usage
-            await incrementApiUsage(req.user.userId);
+            // API usage already incremented in checkRateLimit
 
             // Return complete analysis data with current date as generation date
             res.json({

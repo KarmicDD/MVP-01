@@ -53,10 +53,16 @@ interface BeliefSystemAnalysis {
 
 // Using the cleanJsonResponse utility function from utils/jsonHelper.ts
 
+interface RateLimitResult {
+    underLimit: boolean;
+    usageCount: number;
+    maxRequests: number;
+}
+
 /**
  * Helper function to check and update API usage limits
  */
-async function checkRateLimit(userId: string): Promise<boolean> {
+async function checkRateLimit(userId: string): Promise<RateLimitResult> {
     // Find or create usage record for this user
     let usageRecord = await ApiUsageModel.findOne({ userId });
 
@@ -77,18 +83,27 @@ async function checkRateLimit(userId: string): Promise<boolean> {
         // Reset counter for new day
         usageRecord.compatibilityRequestCount = 0;
         usageRecord.lastReset = now;
+        await usageRecord.save();
     }
 
     // Check if user has reached limit
     if (usageRecord.compatibilityRequestCount >= MAX_DAILY_REQUESTS) {
-        return false; // Limit reached
+        return {
+            underLimit: false,
+            usageCount: usageRecord.compatibilityRequestCount,
+            maxRequests: MAX_DAILY_REQUESTS
+        }; // Limit reached
     }
 
     // Update counter and save
     usageRecord.compatibilityRequestCount += 1;
     await usageRecord.save();
 
-    return true; // Under limit
+    return {
+        underLimit: true,
+        usageCount: usageRecord.compatibilityRequestCount,
+        maxRequests: MAX_DAILY_REQUESTS
+    }; // Under limit
 }
 
 /**
@@ -102,8 +117,49 @@ export const analyzeBeliefSystemAlignment = async (req: Request, res: Response):
         }
 
         // Check rate limit
-        const underLimit = await checkRateLimit(req.user.userId);
-        if (!underLimit) {
+        const rateLimitResult = await checkRateLimit(req.user.userId);
+
+        if (!rateLimitResult.underLimit) {
+            // If limit reached, check for any existing analysis regardless of age
+            const { startupId, investorId } = req.params;
+
+            // Determine the user perspective based on their role
+            let perspective: 'startup' | 'investor';
+
+            // Check if the user is the startup or the investor
+            if (req.user.userId === startupId) {
+                perspective = 'startup';
+            } else if (req.user.userId === investorId) {
+                perspective = 'investor';
+            } else {
+                // Default perspective if not directly involved
+                perspective = 'investor';
+            }
+
+            // Look for any existing analysis, regardless of age
+            const oldAnalysis = await BeliefSystemAnalysisModel.findOne({
+                startupId: startupId,
+                investorId: investorId,
+                perspective: perspective
+            }).sort({ createdAt: -1 }); // Get the most recent one
+
+            if (oldAnalysis) {
+                // Return old analysis with a flag indicating it's old data
+                res.json({
+                    overallMatch: oldAnalysis.overallMatch,
+                    compatibility: oldAnalysis.compatibility,
+                    risks: oldAnalysis.risks,
+                    riskMitigationRecommendations: oldAnalysis.riskMitigationRecommendations,
+                    improvementAreas: oldAnalysis.improvementAreas,
+                    perspective: oldAnalysis.perspective,
+                    generatedDate: oldAnalysis.createdAt,
+                    isOldData: true,
+                    message: 'Daily request limit reached. Showing previously generated data.'
+                });
+                return;
+            }
+
+            // If no old data exists, return the rate limit error
             res.status(429).json({
                 message: 'Daily request limit reached',
                 limit: MAX_DAILY_REQUESTS,

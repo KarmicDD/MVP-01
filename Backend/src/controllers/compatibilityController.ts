@@ -39,10 +39,16 @@ interface CompatibilityScore {
 
 // Using the cleanJsonResponse utility function from utils/jsonHelper.ts
 
+interface RateLimitResult {
+    underLimit: boolean;
+    usageCount: number;
+    maxRequests: number;
+}
+
 /**
  * Helper function to check and update API usage limits
  */
-async function checkRateLimit(userId: string): Promise<boolean> {
+async function checkRateLimit(userId: string): Promise<RateLimitResult> {
     // Find or create usage record for this user
     let usageRecord = await ApiUsageModel.findOne({ userId });
 
@@ -63,18 +69,27 @@ async function checkRateLimit(userId: string): Promise<boolean> {
         // Reset counter for new day
         usageRecord.compatibilityRequestCount = 0;
         usageRecord.lastReset = now;
+        await usageRecord.save();
     }
 
     // Check if user has reached limit
     if (usageRecord.compatibilityRequestCount >= MAX_DAILY_REQUESTS) {
-        return false; // Limit reached
+        return {
+            underLimit: false,
+            usageCount: usageRecord.compatibilityRequestCount,
+            maxRequests: MAX_DAILY_REQUESTS
+        }; // Limit reached
     }
 
     // Update counter and save
     usageRecord.compatibilityRequestCount += 1;
     await usageRecord.save();
 
-    return true; // Under limit
+    return {
+        underLimit: true,
+        usageCount: usageRecord.compatibilityRequestCount,
+        maxRequests: MAX_DAILY_REQUESTS
+    }; // Under limit
 }
 
 /**
@@ -88,8 +103,47 @@ export const getStartupInvestorCompatibility = async (req: Request, res: Respons
         }
 
         // Check rate limit
-        const underLimit = await checkRateLimit(req.user.userId);
-        if (!underLimit) {
+        const rateLimitResult = await checkRateLimit(req.user.userId);
+
+        if (!rateLimitResult.underLimit) {
+            // If limit reached, check for any existing analysis regardless of age
+            const { startupId, investorId } = req.params;
+
+            // Determine the user perspective based on their role
+            let perspective: 'startup' | 'investor';
+
+            // Check if the user is the startup or the investor
+            if (req.user.userId === startupId) {
+                perspective = 'startup';
+            } else if (req.user.userId === investorId) {
+                perspective = 'investor';
+            } else {
+                // Default perspective if not directly involved
+                perspective = 'investor';
+            }
+
+            // Look for any existing analysis, regardless of age
+            const oldAnalysis = await MatchAnalysisModel.findOne({
+                startupId: startupId,
+                investorId: investorId,
+                perspective: perspective
+            }).sort({ createdAt: -1 }); // Get the most recent one
+
+            if (oldAnalysis) {
+                // Return old analysis with a flag indicating it's old data
+                res.json({
+                    breakdown: oldAnalysis.breakdown,
+                    overallScore: oldAnalysis.overallScore,
+                    insights: oldAnalysis.insights,
+                    perspective: oldAnalysis.perspective,
+                    isOldData: true,
+                    createdAt: oldAnalysis.createdAt,
+                    message: 'Daily request limit reached. Showing previously generated data.'
+                });
+                return;
+            }
+
+            // If no old data exists, return the rate limit error
             res.status(429).json({
                 message: 'Daily request limit reached',
                 limit: MAX_DAILY_REQUESTS,
@@ -192,8 +246,112 @@ export const batchAnalyzeCompatibility = async (req: Request, res: Response): Pr
         }
 
         // Check rate limit - batch analysis counts as one request
-        const underLimit = await checkRateLimit(req.user.userId);
-        if (!underLimit) {
+        const rateLimitResult = await checkRateLimit(req.user.userId);
+
+        if (!rateLimitResult.underLimit) {
+            const { role } = req.query;
+            const perspective = role as 'startup' | 'investor';
+
+            // If limit reached, check for any existing batch analyses
+            let oldMatches = [];
+
+            if (perspective === 'startup') {
+                // Find any existing analyses for this startup, regardless of age
+                const existingAnalyses = await MatchAnalysisModel.find({
+                    startupId: req.user.userId,
+                    perspective: perspective
+                }).sort({ createdAt: -1 });
+
+                if (existingAnalyses.length > 0) {
+                    // Group by investorId and take the most recent for each
+                    const investorMap = new Map();
+                    existingAnalyses.forEach(analysis => {
+                        if (!investorMap.has(analysis.investorId)) {
+                            investorMap.set(analysis.investorId, analysis);
+                        }
+                    });
+
+                    // Get investor names
+                    const investorIds = Array.from(investorMap.keys());
+                    const investors = await InvestorProfileModel.find({
+                        userId: { $in: investorIds }
+                    });
+
+                    const investorNameMap = investors.reduce((acc, investor) => {
+                        acc[investor.userId] = investor.companyName;
+                        return acc;
+                    }, {} as Record<string, string>);
+
+                    // Create matches array
+                    for (const [investorId, analysis] of investorMap.entries()) {
+                        oldMatches.push({
+                            investorId: investorId,
+                            companyName: investorNameMap[investorId] || 'Unknown',
+                            compatibility: {
+                                overallScore: analysis.overallScore,
+                                breakdown: analysis.breakdown,
+                                insights: analysis.insights
+                            }
+                        });
+                    }
+                }
+            } else {
+                // Find any existing analyses for this investor, regardless of age
+                const existingAnalyses = await MatchAnalysisModel.find({
+                    investorId: req.user.userId,
+                    perspective: perspective
+                }).sort({ createdAt: -1 });
+
+                if (existingAnalyses.length > 0) {
+                    // Group by startupId and take the most recent for each
+                    const startupMap = new Map();
+                    existingAnalyses.forEach(analysis => {
+                        if (!startupMap.has(analysis.startupId)) {
+                            startupMap.set(analysis.startupId, analysis);
+                        }
+                    });
+
+                    // Get startup names
+                    const startupIds = Array.from(startupMap.keys());
+                    const startups = await StartupProfileModel.find({
+                        userId: { $in: startupIds }
+                    });
+
+                    const startupNameMap = startups.reduce((acc, startup) => {
+                        acc[startup.userId] = startup.companyName;
+                        return acc;
+                    }, {} as Record<string, string>);
+
+                    // Create matches array
+                    for (const [startupId, analysis] of startupMap.entries()) {
+                        oldMatches.push({
+                            startupId: startupId,
+                            companyName: startupNameMap[startupId] || 'Unknown',
+                            compatibility: {
+                                overallScore: analysis.overallScore,
+                                breakdown: analysis.breakdown,
+                                insights: analysis.insights
+                            }
+                        });
+                    }
+                }
+            }
+
+            if (oldMatches.length > 0) {
+                // Sort matches by overall score
+                oldMatches.sort((a, b) => b.compatibility.overallScore - a.compatibility.overallScore);
+
+                // Return old matches with a flag indicating it's old data
+                res.json({
+                    matches: oldMatches,
+                    perspective: perspective,
+                    isOldData: true,
+                    message: 'Daily request limit reached. Showing previously generated data.'
+                });
+                return;
+            }
+
+            // If no old data exists, return the rate limit error
             res.status(429).json({
                 message: 'Daily request limit reached',
                 limit: MAX_DAILY_REQUESTS,
