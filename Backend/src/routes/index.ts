@@ -10,6 +10,7 @@ import beliefSystemRoutes from './BelifSystemRoutes';
 import emailRoutes from './emailRoutes';
 import searchRoutes from './searchRoutes';
 import financialDueDiligenceRoutes from './financialDueDiligenceRoutes';
+import recommendationRoutes from './recommendationRoutes';
 
 const router = express.Router();
 
@@ -32,5 +33,9 @@ router.use('/search', searchRoutes);
 // Financial due diligence routes
 console.log('Registering financial due diligence routes');
 router.use('/financial', financialDueDiligenceRoutes);
+
+// Recommendation routes
+console.log('Registering recommendation routes');
+router.use('/recommendations', recommendationRoutes);
 
 export default router;

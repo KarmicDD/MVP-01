@@ -626,6 +626,16 @@ components:
         - overallMatch
         - executiveSummary
         - compatibility
+
+    BeliefSystemReportType:
+      type: object
+      properties:
+        profiles:
+          type: object
+          properties:
+            investor:
+              type: object
+              properties:
                 decisionMakingStyle:
                   type: string
                   description: Decision-making approach of the investor
@@ -640,7 +650,7 @@ components:
                   description: Investment approach of the investor
               description: Belief system profile of the investor (only shown when perspective is startup)
           description: Belief system profiles - only shows the counterparty's profile based on perspective
-        compatibility:
+        beliefCompatibility:
           type: object
           properties:
             visionAlignment:

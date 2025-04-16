@@ -7,7 +7,7 @@ import Landing from './pages/Landing';
 import ActiveSectionContextProvider from './context/active-section-context';
 import ComingSoon from './components/ComingSoon/ComingSoon';
 import VentureMatch from './components/Forms/form';
-import LoadingSpinner from './components/Loading';
+import { LoadingSpinner } from './components/Loading';
 import Dashboard from './pages/Dashboard';
 import QuestionnairePage from './pages/QuestionnairePage';
 import { ToastContainer } from 'react-toastify';

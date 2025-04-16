@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import CompatibilityBreakdown from '../MatchesPage/CompatibilityBreakdown';
 import AIRecommendations from '../MatchesPage/AIRecomendations';
-import LoadingSpinner from '../../Loading';
+import { LoadingSpinner } from '../../Loading';
 
 interface CompatibilityData {
   breakdown: {
@@ -24,13 +24,18 @@ interface CompatibilitySectionProps {
   loadingCompatibility: boolean;
   compatibilityData: CompatibilityData;
   itemVariants: any;
+  userProfile?: {
+    userId: string;
+    role: string;
+  } | null;
 }
 
 const CompatibilitySection: React.FC<CompatibilitySectionProps> = ({
   selectedMatchId,
   loadingCompatibility,
   compatibilityData,
-  itemVariants
+  itemVariants,
+  userProfile
 }) => {
   if (!selectedMatchId) {
     return (
@@ -87,7 +92,7 @@ const CompatibilitySection: React.FC<CompatibilitySectionProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {loadingCompatibility ? (
             <div className="col-span-2 flex justify-center py-12">
-              <LoadingSpinner />
+              <LoadingSpinner size="medium" />
             </div>
           ) : (
             <>
@@ -99,7 +104,10 @@ const CompatibilitySection: React.FC<CompatibilitySectionProps> = ({
                 />
               </div>
               <div className="bg-gray-50 rounded-lg p-5">
-                <AIRecommendations />
+                <AIRecommendations
+                  startupId={userProfile?.role?.toLowerCase() === 'startup' ? userProfile.userId : selectedMatchId}
+                  investorId={userProfile?.role?.toLowerCase() === 'investor' ? userProfile.userId : selectedMatchId}
+                />
               </div>
             </>
           )}

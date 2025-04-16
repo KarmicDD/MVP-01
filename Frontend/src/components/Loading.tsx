@@ -287,4 +287,5 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     );
 };
 
+// Provide both named and default exports for backward compatibility
 export default LoadingSpinner;

@@ -5,7 +5,7 @@ import { FiArrowLeft, FiUser, FiLink, FiUsers, FiBriefcase, FiInfo, FiFile } fro
 import { profileService } from '../services/api';
 import { StartupProfile, InvestorProfile } from '../types/Dashboard.types';
 import { toast } from 'react-hot-toast';
-import LoadingSpinner from '../components/Loading';
+import { LoadingSpinner } from '../components/Loading';
 import { colours } from '../utils/colours';
 import EnhancedProfileCompleteness from '../components/Profile/EnhancedProfileCompleteness';
 import ProfileHeader from '../components/Profile/ProfileHeader';

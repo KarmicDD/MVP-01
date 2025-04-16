@@ -5,7 +5,7 @@ import { FiArrowLeft, FiAlertCircle, FiMapPin } from 'react-icons/fi';
 import { profileService } from '../services/api';
 // We don't need toast in this component
 // import { toast } from 'react-hot-toast';
-import LoadingSpinner from '../components/Loading';
+import { LoadingSpinner } from '../components/Loading';
 import { colours } from '../utils/colours';
 
 const SharedProfilePage: React.FC = () => {

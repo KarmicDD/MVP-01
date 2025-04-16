@@ -14,7 +14,7 @@ import {
     FiRefreshCw,
     FiCheck
 } from 'react-icons/fi';
-import LoadingSpinner from '../../../Loading';
+import { LoadingSpinner } from '../../../Loading';
 import { Match, UserProfile } from '../../../../types/Dashboard.types';
 import { colours } from '../../../../utils/colours';
 

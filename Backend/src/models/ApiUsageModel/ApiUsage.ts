@@ -10,6 +10,23 @@ const ApiUsageSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    beliefSystemRequestCount: {
+        type: Number,
+        default: 0
+    },
+    financialAnalysisRequestCount: {
+        type: Number,
+        default: 0
+    },
+    recommendationRequestCount: {
+        type: Number,
+        default: 0
+    },
+    date: {
+        type: Date,
+        default: Date.now,
+        index: true
+    },
     lastReset: {
         type: Date,
         default: Date.now
