@@ -21,12 +21,18 @@ if (!apiKey) {
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash-thinking-exp-01-21",
+    generationConfig: {
+        temperature: 0.7,
+        topP: 0.95,
+        topK: 40,
+        maxOutputTokens: 8192,
+    }
 });
 
 // Maximum API requests per day
-const MAX_DAILY_REQUESTS = 5;
+const MAX_DAILY_REQUESTS = 10;
 // Analysis expiration in days
-const ANALYSIS_EXPIRATION_DAYS = 7;
+const ANALYSIS_EXPIRATION_DAYS = 5;
 
 /**
  * Enhanced interface for the belief system analysis with more detailed fields
@@ -44,6 +50,12 @@ interface BeliefSystemAnalysis {
         visionAlignment: number;
         coreValues: number;
         businessGoals: number;
+        growthExpectations: number;
+        innovation: number;
+        riskApproach: number;
+        communication: number;
+        leadershipStyle: number;
+        [key: string]: number;
     };
     scoringBreakdown: Array<{ label: string; score: number; description: string }>;
     strengths: Array<{ area: string; score: number; description: string }>;
@@ -53,13 +65,19 @@ interface BeliefSystemAnalysis {
             level: string;
             description: string;
             impactAreas: string[];
+            factors: Array<{ factor: string; score: number }>;
         };
         operationalRisk: {
             level: string;
             description: string;
             impactAreas: string[];
+            factors: Array<{ factor: string; score: number }>;
         };
-        riskHeatmap?: Array<{ risk: string; severity: string; probability: number; impact: number }>;
+        riskHeatmap: Array<{ risk: string; severity: string; probability: number; impact: number }>;
+    };
+    riskFactors: {
+        marketFit: Array<{ factor: string; score: number }>;
+        operational: Array<{ factor: string; score: number }>;
     };
     riskMitigationRecommendations: Array<{
         text: string;
@@ -162,6 +180,12 @@ function adaptLegacyAnalysisData(analysis: any): BeliefSystemAnalysis {
             'Product-market alignment',
             'Customer acquisition strategy',
             'Competitive positioning'
+        ],
+        factors: analysis.risks.marketFitRisk.factors || [
+            { factor: 'Market Timing', score: 65 },
+            { factor: 'Customer Demand', score: 70 },
+            { factor: 'Competitive Landscape', score: 60 },
+            { factor: 'Product Maturity', score: 55 }
         ]
     };
 
@@ -172,6 +196,12 @@ function adaptLegacyAnalysisData(analysis: any): BeliefSystemAnalysis {
             'Execution capabilities',
             'Resource allocation efficiency',
             'Process management'
+        ],
+        factors: analysis.risks.operationalRisk.factors || [
+            { factor: 'Resource Allocation', score: 55 },
+            { factor: 'Process Maturity', score: 60 },
+            { factor: 'Team Expertise', score: 65 },
+            { factor: 'Communication Efficiency', score: 50 }
         ]
     };
 
@@ -205,7 +235,9 @@ function adaptLegacyAnalysisData(analysis: any): BeliefSystemAnalysis {
         keyNumbers: [
             { label: 'Overall Match', value: analysis.overallMatch || 50, color: 'bg-indigo-100 text-indigo-800' },
             { label: 'Vision Alignment', value: analysis.compatibility?.visionAlignment || 50, color: 'bg-blue-100 text-blue-800' },
-            { label: 'Core Values', value: analysis.compatibility?.coreValues || 50, color: 'bg-green-100 text-green-800' }
+            { label: 'Core Values', value: analysis.compatibility?.coreValues || 50, color: 'bg-green-100 text-green-800' },
+            { label: 'Innovation', value: analysis.compatibility?.innovation || 65, color: 'bg-purple-100 text-purple-800' },
+            { label: 'Communication', value: analysis.compatibility?.communication || 55, color: 'bg-yellow-100 text-yellow-800' }
         ]
     };
 
@@ -227,10 +259,38 @@ function adaptLegacyAnalysisData(analysis: any): BeliefSystemAnalysis {
         { area: 'Metrics', score: 50, description: 'Success metrics need to be defined' }
     ];
 
+    // Ensure compatibility has all required fields
+    const enhancedCompatibility = {
+        visionAlignment: analysis.compatibility?.visionAlignment || 50,
+        coreValues: analysis.compatibility?.coreValues || 50,
+        businessGoals: analysis.compatibility?.businessGoals || 50,
+        growthExpectations: analysis.compatibility?.growthExpectations || 60,
+        innovation: analysis.compatibility?.innovation || 65,
+        riskApproach: analysis.compatibility?.riskApproach || 55,
+        communication: analysis.compatibility?.communication || 60,
+        leadershipStyle: analysis.compatibility?.leadershipStyle || 70
+    };
+
+    // Create risk factors
+    const riskFactors = {
+        marketFit: analysis.riskFactors?.marketFit || [
+            { factor: 'Market Timing', score: 65 },
+            { factor: 'Customer Demand', score: 70 },
+            { factor: 'Competitive Landscape', score: 60 },
+            { factor: 'Product Maturity', score: 55 }
+        ],
+        operational: analysis.riskFactors?.operational || [
+            { factor: 'Resource Allocation', score: 55 },
+            { factor: 'Process Maturity', score: 60 },
+            { factor: 'Team Expertise', score: 65 },
+            { factor: 'Communication Efficiency', score: 50 }
+        ]
+    };
+
     return {
         executiveSummary,
         overallMatch: analysis.overallMatch,
-        compatibility: analysis.compatibility,
+        compatibility: enhancedCompatibility,
         scoringBreakdown,
         strengths,
         weaknesses,
@@ -243,6 +303,7 @@ function adaptLegacyAnalysisData(analysis: any): BeliefSystemAnalysis {
                 { risk: 'Communication', severity: 'Medium', probability: 50, impact: 50 }
             ]
         },
+        riskFactors,
         riskMitigationRecommendations: recommendations,
         improvementAreas
     };
@@ -455,6 +516,7 @@ You are KarmicDD, a world-class due diligence analyst. Write a comprehensive, pr
 - Be ruthlessly honest, critical, and detailed. Use clear, concise, and professional language. Avoid generic statements.
 - **Every field in the JSON below is required. Do not leave any field empty, null, or with placeholder text.**
 - Provide all data in JSON, suitable for a dashboard with graphs, charts, and heatmaps.
+- **IMPORTANT: Provide diverse and complementary data sets for different visualizations. The radar chart will show all 8 compatibility dimensions, while the bar chart will focus on business and growth metrics.**
 
 **RESPONSE FORMAT:**
 Return ONLY valid JSON with this exact structure (no markdown, no explanations, no missing fields):
@@ -462,53 +524,64 @@ Return ONLY valid JSON with this exact structure (no markdown, no explanations, 
   "executiveSummary": {
     "headline": string, // Required. A sharp, professional headline summarizing the most important finding.
     "keyFindings": string, // Required. A detailed, multi-sentence summary of the most critical findings.
-    "recommendedActions": string, // Required. A concise, actionable set of recommendations for the requesting party.
+    "recommendedActions": string, // Required. A concise, actionable set of recommendations for the requesting party. Format as a numbered list (1. Action one, 2. Action two, etc.)
     "successProbability": number, // Required. 0-100. Your best estimate of the probability of a successful partnership.
     "keyNumbers": [
-      { "label": string, "value": string|number, "color": string } // Required. At least 3 key numbers with color for dashboard display.
+      { "label": string, "value": string|number, "color": string } // Required. At least 5 key numbers with color for dashboard display. Use diverse metrics.
     ]
   },
   "overallMatch": number, // 0-100. Required.
   "compatibility": {
-    "visionAlignment": number, // Required.
-    "coreValues": number, // Required.
-    "businessGoals": number // Required.
+    "visionAlignment": number, // Required. For radar chart.
+    "coreValues": number, // Required. For radar chart.
+    "businessGoals": number, // Required. For both radar and bar charts.
+    "growthExpectations": number, // Required. For both radar and bar charts.
+    "innovation": number, // Required. For both radar and bar charts.
+    "riskApproach": number, // Required. For both radar and bar charts.
+    "communication": number, // Required. For radar chart.
+    "leadershipStyle": number // Required. For radar chart.
   },
   "scoringBreakdown": [
-    { "label": string, "score": number, "description": string } // Required. At least 3 items.
+    { "label": string, "score": number, "description": string } // Required. At least 4 items with detailed descriptions.
   ],
   "strengths": [
-    { "area": string, "score": number, "description": string } // Required. At least 3 items.
+    { "area": string, "score": number, "description": string } // Required. At least 3 items with specific, actionable insights.
   ],
   "weaknesses": [
-    { "area": string, "score": number, "description": string } // Required. At least 3 items.
+    { "area": string, "score": number, "description": string } // Required. At least 3 items with specific, actionable insights.
   ],
   "risks": {
     "marketFitRisk": {
       "level": "High"|"Medium"|"Low", // Required.
       "description": string, // Required.
-      "impactAreas": [string] // Required. At least 3.
+      "impactAreas": [string], // Required. At least 3.
+      "factors": [{ "factor": string, "score": number }] // Required. At least 3 factors with scores.
     },
     "operationalRisk": {
       "level": "High"|"Medium"|"Low", // Required.
       "description": string, // Required.
-      "impactAreas": [string] // Required. At least 3.
+      "impactAreas": [string], // Required. At least 3.
+      "factors": [{ "factor": string, "score": number }] // Required. At least 3 factors with scores.
     },
     "riskHeatmap": [
       { "risk": string, "severity": string, "probability": number, "impact": number } // Required. At least 3 items.
     ]
   },
+  "riskFactors": {
+    "marketFit": [{ "factor": string, "score": number }], // Required. Exactly 4 factors with scores for radar chart visualization.
+    "operational": [{ "factor": string, "score": number }] // Required. Exactly 4 factors with scores for radar chart visualization.
+  },
   "riskMitigationRecommendations": [
     { "text": string, "priority": "High"|"Medium"|"Low", "timeline": "Immediate"|"Short-term"|"Medium-term"|"Long-term" } // Required. At least 3 items.
   ],
   "improvementAreas": {
-    "strategicFocus": string, // Required.
-    "communication": string, // Required.
-    "growthMetrics": string, // Required.
+    "strategicFocus": string, // Required. Detailed, specific improvement area.
+    "communication": string, // Required. Detailed, specific improvement area.
+    "growthMetrics": string, // Required. Detailed, specific improvement area.
     "actions": {
-      "strategicFocus": [string], // Required. At least 2.
-      "communication": [string], // Required. At least 2.
-      "growthMetrics": [string] // Required. At least 2.
+      "strategicFocus": [string], // Required. At least 3 specific, actionable items.
+      "communication": [string], // Required. At least 3 specific, actionable items.
+      "growthMetrics": [string] // Required. At least 3 specific, actionable items.
     }
   }
 }
@@ -516,9 +589,11 @@ Return ONLY valid JSON with this exact structure (no markdown, no explanations, 
 **REQUIREMENTS:**
 - The executive summary must be sharp, actionable, and highlight the most important findings for the ${userType}.
 - All scores must be justified and suitable for radar/bar/pie charts.
+- Provide diverse data for different visualizations - radar chart will show all 8 compatibility dimensions, while bar chart will focus on business and growth metrics.
 - The riskHeatmap must include at least 3-5 key risks with severity, probability (0-100), and impact (0-100).
-- Strengths and weaknesses must be specific, not generic.
+- Strengths and weaknesses must be specific, not generic, with actionable insights.
 - Recommendations must be actionable, prioritized, and tailored to the ${userType}'s needs.
+- Format the recommended actions as a numbered list (1. Action one, 2. Action two, etc.).
 - Write as if you are the due diligence advisor for the ${userType}, evaluating the ${subjectType}.
 - Use all available data below for your analysis.
 - **Do not leave any field empty, null, or with placeholder text. Every field must be filled with detailed, professional content.**
@@ -563,14 +638,21 @@ Return ONLY valid JSON with this exact structure (no markdown, no explanations, 
                     keyNumbers: [
                         { label: 'Overall Match', value: 50, color: 'bg-indigo-100 text-indigo-800' },
                         { label: 'Vision Alignment', value: 50, color: 'bg-blue-100 text-blue-800' },
-                        { label: 'Core Values', value: 50, color: 'bg-green-100 text-green-800' }
+                        { label: 'Core Values', value: 50, color: 'bg-green-100 text-green-800' },
+                        { label: 'Innovation', value: 65, color: 'bg-purple-100 text-purple-800' },
+                        { label: 'Communication', value: 55, color: 'bg-yellow-100 text-yellow-800' }
                     ]
                 },
                 overallMatch: 50,
                 compatibility: {
                     visionAlignment: 50,
                     coreValues: 50,
-                    businessGoals: 50
+                    businessGoals: 50,
+                    growthExpectations: 60,
+                    innovation: 65,
+                    riskApproach: 55,
+                    communication: 60,
+                    leadershipStyle: 70
                 },
                 scoringBreakdown: [
                     { label: 'Vision Alignment', score: 50, description: 'Alignment of long-term vision and goals' },
@@ -595,6 +677,12 @@ Return ONLY valid JSON with this exact structure (no markdown, no explanations, 
                             'Product-market alignment',
                             'Customer acquisition strategy',
                             'Competitive positioning'
+                        ],
+                        factors: [
+                            { factor: 'Market Timing', score: 65 },
+                            { factor: 'Customer Demand', score: 70 },
+                            { factor: 'Competitive Landscape', score: 60 },
+                            { factor: 'Product Maturity', score: 55 }
                         ]
                     },
                     operationalRisk: {
@@ -604,12 +692,32 @@ Return ONLY valid JSON with this exact structure (no markdown, no explanations, 
                             'Execution capabilities',
                             'Resource allocation efficiency',
                             'Process management'
+                        ],
+                        factors: [
+                            { factor: 'Resource Allocation', score: 55 },
+                            { factor: 'Process Maturity', score: 60 },
+                            { factor: 'Team Expertise', score: 65 },
+                            { factor: 'Communication Efficiency', score: 50 }
                         ]
                     },
                     riskHeatmap: [
                         { risk: 'Market Fit', severity: 'Medium', probability: 50, impact: 70 },
                         { risk: 'Operational', severity: 'Medium', probability: 50, impact: 60 },
                         { risk: 'Communication', severity: 'Medium', probability: 50, impact: 50 }
+                    ]
+                },
+                riskFactors: {
+                    marketFit: [
+                        { factor: 'Market Timing', score: 65 },
+                        { factor: 'Customer Demand', score: 70 },
+                        { factor: 'Competitive Landscape', score: 60 },
+                        { factor: 'Product Maturity', score: 55 }
+                    ],
+                    operational: [
+                        { factor: 'Resource Allocation', score: 55 },
+                        { factor: 'Process Maturity', score: 60 },
+                        { factor: 'Team Expertise', score: 65 },
+                        { factor: 'Communication Efficiency', score: 50 }
                     ]
                 },
                 riskMitigationRecommendations: [

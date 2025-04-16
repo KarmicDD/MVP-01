@@ -13,6 +13,12 @@ export interface BeliefSystemReportType {
         visionAlignment: number;
         coreValues: number;
         businessGoals: number;
+        growthExpectations?: number;
+        innovation?: number;
+        riskApproach?: number;
+        communication?: number;
+        leadershipStyle?: number;
+        [key: string]: number | undefined;
     };
     executiveSummary: {
         headline: string;
@@ -29,13 +35,19 @@ export interface BeliefSystemReportType {
             level: string;
             description: string;
             impactAreas?: string[];
+            factors?: Array<{ factor: string; score: number }>;
         };
         operationalRisk: {
             level: string;
             description: string;
             impactAreas?: string[];
+            factors?: Array<{ factor: string; score: number }>;
         };
         riskHeatmap?: Array<{ risk: string; severity: string; probability: number; impact: number }>;
+    };
+    riskFactors?: {
+        marketFit: Array<{ factor: string; score: number }>;
+        operational: Array<{ factor: string; score: number }>;
     };
     riskMitigationRecommendations: Array<{
         text: string;
