@@ -130,6 +130,15 @@ http://localhost:5000/api-docs
 
 The documentation provides a comprehensive overview of all available endpoints, request/response schemas, and data models. You can also test the API directly from the Swagger UI interface.
 
+### API Documentation Version 2.1.0
+
+The latest update to our API documentation includes:
+
+- Updated Belief System Analysis endpoints with enhanced response schemas
+- Detailed documentation for the Gemini 2.0 Flash Thinking AI model integration
+- Improved rate limiting information (10 requests per day)
+- More comprehensive schema definitions for all data models
+
 Features of the API documentation:
 
 - Interactive API testing
@@ -141,7 +150,7 @@ Features of the API documentation:
   - Profile management (startup, investor, extended profiles)
   - Matching algorithms
   - Compatibility analysis
-  - Belief system analysis
+  - Belief system analysis with Gemini 2.0 Flash Thinking
   - Questionnaires
   - Financial due diligence
   - Search functionality

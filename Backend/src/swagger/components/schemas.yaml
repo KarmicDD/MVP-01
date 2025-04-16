@@ -293,6 +293,12 @@ components:
           type: string
           format: date-time
           description: Date and time when the analysis was generated
+        isOldData:
+          type: boolean
+          description: Indicates if this is historical data due to rate limiting
+        message:
+          type: string
+          description: Optional message about the data status
         overallMatch:
           type: number
           format: float
@@ -302,51 +308,324 @@ components:
         executiveSummary:
           type: object
           properties:
+            headline:
+              type: string
+              description: A sharp, professional headline summarizing the most important finding
             keyFindings:
               type: string
-              description: Concise summary of the most important findings about the counterparty
+              description: A detailed, multi-sentence summary of the most critical findings
             recommendedActions:
               type: string
-              description: Summary of critical actions to take based on the analysis
+              description: A concise, actionable set of recommendations formatted as a numbered list
             successProbability:
               type: number
               format: float
               minimum: 0
               maximum: 100
               description: Probability of successful partnership
+            keyNumbers:
+              type: array
+              items:
+                type: object
+                properties:
+                  label:
+                    type: string
+                    description: Label for the key metric
+                  value:
+                    type: string
+                    description: Value of the key metric (can be number or string)
+                  color:
+                    type: string
+                    description: Color scheme for displaying the metric
+              description: Key metrics for dashboard display
           description: Executive summary of the analysis
-        beliefFingerprint:
+        compatibility:
           type: object
           properties:
-            startup:
+            visionAlignment:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Alignment score for long-term vision
+            coreValues:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Alignment score for fundamental principles and values
+            businessGoals:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Alignment score for business objectives
+            growthExpectations:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Alignment score for growth expectations
+            innovation:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Alignment score for approach to innovation
+            riskApproach:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Alignment score for approach to risk
+            communication:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Alignment score for communication style
+            leadershipStyle:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 100
+              description: Alignment score for leadership philosophy
+          description: Detailed compatibility scores across key dimensions
+        scoringBreakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+                description: Label for the scoring category
+              score:
+                type: number
+                format: float
+                minimum: 0
+                maximum: 100
+                description: Score for this category
+              description:
+                type: string
+                description: Detailed explanation of this score
+          description: Detailed breakdown of key scoring areas
+        strengths:
+          type: array
+          items:
+            type: object
+            properties:
+              area:
+                type: string
+                description: Area of strength
+              score:
+                type: number
+                format: float
+                minimum: 0
+                maximum: 100
+                description: Score for this strength
+              description:
+                type: string
+                description: Detailed explanation of this strength
+          description: Key strengths in the relationship
+        weaknesses:
+          type: array
+          items:
+            type: object
+            properties:
+              area:
+                type: string
+                description: Area of weakness
+              score:
+                type: number
+                format: float
+                minimum: 0
+                maximum: 100
+                description: Score for this weakness
+              description:
+                type: string
+                description: Detailed explanation of this weakness
+          description: Key weaknesses in the relationship
+        risks:
+          type: object
+          properties:
+            marketFitRisk:
               type: object
               properties:
-                coreBeliefs:
+                level:
+                  type: string
+                  enum: [High, Medium, Low]
+                  description: Risk level assessment
+                description:
+                  type: string
+                  description: Detailed explanation of the market fit risk
+                impactAreas:
                   type: array
                   items:
                     type: string
-                  description: Core beliefs of the startup
-                decisionMakingStyle:
-                  type: string
-                  description: Decision-making approach of the startup
-                riskTolerance:
-                  type: string
-                  description: Risk tolerance of the startup
-                timeHorizon:
-                  type: string
-                  description: Time horizon for goals/returns of the startup
-                innovationPhilosophy:
-                  type: string
-                  description: Approach to innovation of the startup
-              description: Belief system profile of the startup (only shown when perspective is investor)
-            investor:
+                  description: Areas impacted by this risk
+                factors:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      factor:
+                        type: string
+                        description: Specific risk factor
+                      score:
+                        type: number
+                        format: float
+                        minimum: 0
+                        maximum: 100
+                        description: Score for this risk factor
+                  description: Specific factors contributing to market fit risk
+              description: Assessment of market fit risks
+            operationalRisk:
               type: object
               properties:
-                coreBeliefs:
+                level:
+                  type: string
+                  enum: [High, Medium, Low]
+                  description: Risk level assessment
+                description:
+                  type: string
+                  description: Detailed explanation of the operational risk
+                impactAreas:
                   type: array
                   items:
                     type: string
-                  description: Core beliefs of the investor
+                  description: Areas impacted by this risk
+                factors:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      factor:
+                        type: string
+                        description: Specific risk factor
+                      score:
+                        type: number
+                        format: float
+                        minimum: 0
+                        maximum: 100
+                        description: Score for this risk factor
+                  description: Specific factors contributing to operational risk
+              description: Assessment of operational risks
+            riskHeatmap:
+              type: array
+              items:
+                type: object
+                properties:
+                  risk:
+                    type: string
+                    description: Name of the risk
+                  severity:
+                    type: string
+                    description: Severity level
+                  probability:
+                    type: number
+                    format: float
+                    minimum: 0
+                    maximum: 100
+                    description: Probability of the risk occurring
+                  impact:
+                    type: number
+                    format: float
+                    minimum: 0
+                    maximum: 100
+                    description: Impact if the risk occurs
+              description: Heatmap of key risks with probability and impact
+          description: Comprehensive risk assessment
+        riskFactors:
+          type: object
+          properties:
+            marketFit:
+              type: array
+              items:
+                type: object
+                properties:
+                  factor:
+                    type: string
+                    description: Name of the market fit risk factor
+                  score:
+                    type: number
+                    format: float
+                    minimum: 0
+                    maximum: 100
+                    description: Score for this risk factor
+              description: Market fit risk factors for radar chart visualization
+            operational:
+              type: array
+              items:
+                type: object
+                properties:
+                  factor:
+                    type: string
+                    description: Name of the operational risk factor
+                  score:
+                    type: number
+                    format: float
+                    minimum: 0
+                    maximum: 100
+                    description: Score for this risk factor
+              description: Operational risk factors for radar chart visualization
+          description: Risk factors for visualization
+        riskMitigationRecommendations:
+          type: array
+          items:
+            type: object
+            properties:
+              text:
+                type: string
+                description: Recommendation text
+              priority:
+                type: string
+                enum: [High, Medium, Low]
+                description: Priority level of the recommendation
+              timeline:
+                type: string
+                enum: [Immediate, Short-term, Medium-term, Long-term]
+                description: Suggested timeline for implementation
+          description: Recommendations for mitigating identified risks
+        improvementAreas:
+          type: object
+          properties:
+            strategicFocus:
+              type: string
+              description: Improvement area for strategic focus
+            communication:
+              type: string
+              description: Improvement area for communication
+            growthMetrics:
+              type: string
+              description: Improvement area for growth metrics
+            actions:
+              type: object
+              properties:
+                strategicFocus:
+                  type: array
+                  items:
+                    type: string
+                  description: Specific actions for strategic focus improvement
+                communication:
+                  type: array
+                  items:
+                    type: string
+                  description: Specific actions for communication improvement
+                growthMetrics:
+                  type: array
+                  items:
+                    type: string
+                  description: Specific actions for growth metrics improvement
+              description: Specific actionable items for each improvement area
+          description: Areas for improvement in the relationship
+      required:
+        - startupId
+        - investorId
+        - perspective
+        - generatedDate
+        - overallMatch
+        - executiveSummary
+        - compatibility
                 decisionMakingStyle:
                   type: string
                   description: Decision-making approach of the investor

@@ -7,7 +7,7 @@ const options: swaggerJsdoc.Options = {
     openapi: '3.0.0',
     info: {
       title: 'KarmicDD API Documentation',
-      version: '2.0.0',
+      version: '2.1.0',
       description: 'API documentation for the KarmicDD platform. The API enables interaction with profiles, questionnaires, matching algorithms, and search functionality to connect startups with potential investors.',
       contact: {
         name: 'KarmicDD Support',

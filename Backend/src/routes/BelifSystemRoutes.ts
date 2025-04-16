@@ -12,7 +12,10 @@ const router = express.Router();
  *     tags:
  *       - Belief System Analysis
  *     summary: Analyze belief system alignment
- *     description: Analyze the belief system alignment between a startup and an investor
+ *     description: |
+ *       Analyze the belief system alignment between a startup and an investor.
+ *       The analysis shows only the counterparty's profile based on the user's perspective.
+ *       Uses Gemini 2.0 Flash Thinking AI model to generate comprehensive due diligence reports.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -32,7 +35,7 @@ const router = express.Router();
  *           format: uuid
  *       - name: perspective
  *         in: query
- *         description: Perspective of the analysis
+ *         description: Perspective of the analysis (defaults to the requesting user's role)
  *         schema:
  *           type: string
  *           enum: [startup, investor]
@@ -51,7 +54,24 @@ const router = express.Router();
  *       '404':
  *         description: Startup or investor profile not found
  *       '429':
- *         description: API usage limit exceeded
+ *         description: API usage limit exceeded (maximum 10 requests per day)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Daily request limit reached
+ *                 limit:
+ *                   type: number
+ *                   example: 10
+ *                 nextReset:
+ *                   type: string
+ *                   example: Tomorrow
+ *                 usageCount:
+ *                   type: number
+ *                   example: 10
  *       '500':
  *         description: Server error
  */
@@ -64,7 +84,7 @@ router.get('/belief-system/:startupId/:investorId', authenticateJWT, analyzeBeli
  *     tags:
  *       - Belief System Analysis
  *     summary: Check questionnaire status
- *     description: Check if the user has completed the questionnaire
+ *     description: Check if the user has completed the questionnaire required for belief system analysis
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -78,6 +98,45 @@ router.get('/belief-system/:startupId/:investorId', authenticateJWT, analyzeBeli
  *                 isCompleted:
  *                   type: boolean
  *                   description: Whether the user has completed the questionnaire
+ *                 questionnaires:
+ *                   type: object
+ *                   properties:
+ *                     startup:
+ *                       type: object
+ *                       properties:
+ *                         status:
+ *                           type: string
+ *                           enum: [submitted, incomplete, not_started]
+ *                           description: Status of the startup questionnaire
+ *                         completedAt:
+ *                           type: string
+ *                           format: date-time
+ *                           description: When the questionnaire was completed
+ *                     profile:
+ *                       type: object
+ *                       properties:
+ *                         status:
+ *                           type: string
+ *                           enum: [completed, incomplete, not_started]
+ *                           description: Status of the profile completion
+ *                         completedAt:
+ *                           type: string
+ *                           format: date-time
+ *                           description: When the profile was completed
+ *                   description: Status of individual questionnaires and profiles
+ *                 eligibleForMatching:
+ *                   type: boolean
+ *                   description: Whether the user is eligible for matching and analysis
+ *             example:
+ *               isCompleted: true
+ *               questionnaires:
+ *                 startup:
+ *                   status: submitted
+ *                   completedAt: 2023-05-15T10:30:00Z
+ *                 profile:
+ *                   status: completed
+ *                   completedAt: 2023-05-10T14:20:00Z
+ *               eligibleForMatching: true
  *       '401':
  *         description: Unauthorized
  *       '500':
