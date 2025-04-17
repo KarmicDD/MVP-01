@@ -14,6 +14,13 @@ export interface BeliefSystemAnalysis extends Document {
         successProbability: number;
         keyNumbers: Array<{ label: string; value: string | number; color: string }>;
     };
+    sentimentInsights: string[];
+    stakeholderAlignment: Array<{
+        factor: string;
+        startupScore: number;
+        investorScore: number;
+    }>;
+    marketContextSummary: string;
     overallMatch: number;
     compatibility: {
         visionAlignment: number;
@@ -71,6 +78,13 @@ const BeliefSystemAnalysisSchema = new Schema<BeliefSystemAnalysis>({
             color: { type: String, required: true }
         }]
     },
+    sentimentInsights: [{ type: String }],
+    stakeholderAlignment: [{
+        factor: { type: String, required: true },
+        startupScore: { type: Number, required: true },
+        investorScore: { type: Number, required: true }
+    }],
+    marketContextSummary: { type: String, default: '' },
     overallMatch: { type: Number, required: true },
     compatibility: {
         visionAlignment: { type: Number, required: true },

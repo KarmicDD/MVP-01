@@ -30,7 +30,7 @@ const model = genAI.getGenerativeModel({
 });
 
 // Maximum API requests per day
-const MAX_DAILY_REQUESTS = 10;
+const MAX_DAILY_REQUESTS = 3;
 // Analysis expiration in days
 const ANALYSIS_EXPIRATION_DAYS = 5;
 

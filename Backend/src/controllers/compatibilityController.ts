@@ -23,7 +23,7 @@ const model = genAI.getGenerativeModel({
 });
 
 // Maximum API requests per day
-const MAX_DAILY_REQUESTS = 5;
+const MAX_DAILY_REQUESTS = 15;
 
 interface CompatibilityScore {
     overallScore: number;

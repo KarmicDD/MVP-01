@@ -5,7 +5,7 @@ import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
 import ApiUsageModel from '../models/ApiUsageModel/ApiUsage';
 
 // Maximum API requests per day
-const MAX_DAILY_REQUESTS = 10;
+const MAX_DAILY_REQUESTS = 15;
 
 /**
  * Check if user has reached their daily API usage limit
