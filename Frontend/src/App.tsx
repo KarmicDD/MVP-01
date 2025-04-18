@@ -136,7 +136,16 @@ function App() {
         <Router>
           <Routes>
             {/* Default Landing Page */}
-            <Route path="/" element={<Landing />} />
+            <Route
+              path="/"
+              element={
+                authService.isAuthenticated() ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Landing />
+                )
+              }
+            />
 
             {/* Forms Route - Protected but accessible before dashboard */}
             <Route path="/forms" element={<FormsRoute />} />
