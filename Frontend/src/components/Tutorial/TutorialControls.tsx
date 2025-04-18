@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { FiArrowLeft, FiArrowRight, FiX } from 'react-icons/fi';
 
 interface TutorialControlsProps {
@@ -25,6 +25,17 @@ const TutorialControls: React.FC<TutorialControlsProps> = ({
   const isFirstStep = currentStep === 0;
   const isLastStep = currentStep === totalSteps - 1;
 
+  // Memoize step dots to avoid re-creating on each render
+  const stepDots = useMemo(() =>
+    Array.from({ length: totalSteps }).map((_, index) => (
+      <div
+        key={index}
+        className={`w-2 h-2 rounded-full ${index === currentStep ? 'bg-indigo-600' : 'bg-gray-300'}`}
+      />
+    )),
+    [currentStep, totalSteps]
+  );
+
   return (
     <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
       {/* Progress indicator */}
@@ -39,12 +50,7 @@ const TutorialControls: React.FC<TutorialControlsProps> = ({
           />
         </div>
         <div className="flex space-x-1 mt-1">
-          {Array.from({ length: totalSteps }).map((_, index) => (
-            <div
-              key={index}
-              className={`w-2 h-2 rounded-full ${index === currentStep ? 'bg-indigo-600' : 'bg-gray-300'}`}
-            />
-          ))}
+          {stepDots}
         </div>
       </div>
 
@@ -105,4 +111,4 @@ const TutorialControls: React.FC<TutorialControlsProps> = ({
   );
 };
 
-export default TutorialControls;
+export default React.memo(TutorialControls);

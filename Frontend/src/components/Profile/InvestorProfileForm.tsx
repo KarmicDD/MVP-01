@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { FiBriefcase, FiGrid, FiLayers, FiDollarSign, FiTarget } from 'react-icons/fi';
 import { colours } from '../../utils/colours';
@@ -17,8 +17,8 @@ const InvestorProfileForm: React.FC<InvestorProfileFormProps> = ({
   handleInputChange,
   handleMultiSelect
 }) => {
-  // These fields exactly match the backend model
-  const formFields = [
+  // Memoize form fields (static) to avoid re-creation each render
+  const formFields = useMemo(() => [
     {
       id: 'companyName',
       label: 'Firm Name',
@@ -81,7 +81,7 @@ const InvestorProfileForm: React.FC<InvestorProfileFormProps> = ({
       description: 'Highlight some of your key investments',
       rows: 4
     }
-  ];
+  ], []);
 
   // Animation variants
   const containerVariants = {
@@ -228,4 +228,4 @@ const InvestorProfileForm: React.FC<InvestorProfileFormProps> = ({
   );
 };
 
-export default InvestorProfileForm;
+export default React.memo(InvestorProfileForm);

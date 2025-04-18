@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiEdit2, FiSave, FiX, FiMapPin, FiUsers, FiShare2, FiLink, FiMail, FiCopy, FiCheck } from 'react-icons/fi';
 import { colours } from '../../utils/colours';
@@ -120,7 +120,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         </svg>
 
         {/* Refined animated elements - more subtle and professional */}
-        {Array.from({ length: 8 }).map((_, i) => (
+        {useMemo(() => Array.from({ length: 8 }).map((_, i) => (
           <motion.div
             key={i}
             className="absolute rounded-full bg-white"
@@ -144,7 +144,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               ease: "easeInOut"
             }}
           />
-        ))}
+        )), [])}
 
         {/* Simplified decorative shapes for a cleaner professional look */}
         <motion.div
@@ -500,4 +500,4 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   );
 };
 
-export default ProfileHeader;
+export default React.memo(ProfileHeader);

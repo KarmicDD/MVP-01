@@ -181,12 +181,10 @@ export const Navigation: React.FC = () => {
             transition={{ type: 'spring', stiffness: 100, damping: 20 }}
         >
             <div className="container mx-auto flex flex-wrap justify-between items-center px-4">
-                <ScrollLink
-                    to="hero"
-                    {...scrollSettings}
+                <div
                     className="font-bold text-xl md:text-2xl cursor-pointer flex items-center"
                     onClick={() => {
-                        setTimeOfLastClick(Date.now());
+                        navigate('/');
                         setIsMenuOpen(false);
                     }}
                 >
@@ -202,7 +200,7 @@ export const Navigation: React.FC = () => {
                             KarmicDD
                         </span>
                     </motion.div>
-                </ScrollLink>
+                </div>
 
                 {/* Mobile menu button */}
                 <motion.button

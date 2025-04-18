@@ -19,7 +19,6 @@ const AuthPage: React.FC = () => {
     const [pageTitle, setPageTitle] = useState<string>('Choose Your Role');
     const navigate = useNavigate();
     const location = useLocation();
-    const from = location.state?.from || '/';
     const preselectedRole = location.state?.preselectedRole as 'startup' | 'investor' | undefined;
 
     useEffect(() => {
@@ -59,7 +58,7 @@ const AuthPage: React.FC = () => {
         } else if (activeView === 'createAccount') {
             setActiveView('signIn');
         } else {
-            navigate(from);
+            navigate('/');
         }
     };
 

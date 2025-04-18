@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiArrowLeft, FiAlertCircle, FiMapPin } from 'react-icons/fi';
@@ -16,6 +16,38 @@ const SharedProfilePage: React.FC = () => {
   const [profileData, setProfileData] = useState<any>(null);
   const [extendedData, setExtendedData] = useState<any>(null);
   const [userType, setUserType] = useState<'startup' | 'investor' | null>(null);
+
+  // Memoize badges to prevent re-creating arrays on each render
+  const industryBadges = useMemo(() =>
+    profileData?.industriesOfInterest?.map((industry: string) => (
+      <span key={industry} className="px-2 py-1 bg-white rounded-md text-xs text-gray-700 border border-gray-200">
+        {industry}
+      </span>
+    )),
+    [profileData?.industriesOfInterest]
+  );
+  const stageBadges = useMemo(() =>
+    profileData?.preferredStages?.map((stage: string) => (
+      <span key={stage} className="px-2 py-1 bg-white rounded-md text-xs text-gray-700 border border-gray-200">
+        {stage}
+      </span>
+    )),
+    [profileData?.preferredStages]
+  );
+  const socialLinkList = useMemo(() =>
+    extendedData?.socialLinks?.map((link: any) => (
+      <a
+        key={link.url}
+        href={link.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center shadow-sm"
+      >
+        {link.platform}
+      </a>
+    )),
+    [extendedData?.socialLinks]
+  );
 
   useEffect(() => {
     const fetchSharedProfile = async () => {
@@ -263,11 +295,7 @@ const SharedProfilePage: React.FC = () => {
                     <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                       <h3 className="text-sm font-medium text-gray-500 mb-2">Industries of Interest</h3>
                       <div className="flex flex-wrap gap-2">
-                        {profileData.industriesOfInterest.map((industry: string, index: number) => (
-                          <span key={index} className="px-2 py-1 bg-white rounded-md text-xs text-gray-700 border border-gray-200">
-                            {industry}
-                          </span>
-                        ))}
+                        {industryBadges}
                       </div>
                     </div>
                   )}
@@ -276,11 +304,7 @@ const SharedProfilePage: React.FC = () => {
                     <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                       <h3 className="text-sm font-medium text-gray-500 mb-2">Preferred Stages</h3>
                       <div className="flex flex-wrap gap-2">
-                        {profileData.preferredStages.map((stage: string, index: number) => (
-                          <span key={index} className="px-2 py-1 bg-white rounded-md text-xs text-gray-700 border border-gray-200">
-                            {stage}
-                          </span>
-                        ))}
+                        {stageBadges}
                       </div>
                     </div>
                   )}
@@ -305,17 +329,7 @@ const SharedProfilePage: React.FC = () => {
               >
                 <h3 className="text-sm font-medium text-gray-500 mb-3">Connect</h3>
                 <div className="flex flex-wrap gap-3">
-                  {extendedData.socialLinks.map((link: any, index: number) => (
-                    <a
-                      key={index}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center shadow-sm"
-                    >
-                      {link.platform}
-                    </a>
-                  ))}
+                  {socialLinkList}
                 </div>
               </motion.div>
             )}

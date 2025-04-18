@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { FiBriefcase, FiGrid, FiLayers, FiUsers, FiMapPin, FiTarget } from 'react-icons/fi';
 import { colours } from '../../utils/colours';
@@ -11,8 +11,8 @@ interface ProfileFormProps {
 }
 
 const StartupProfileForm: React.FC<ProfileFormProps> = ({ formData, isEditing, handleInputChange }) => {
-  // These fields exactly match the backend model
-  const formFields = [
+  // Memoize form fields (static) to avoid re-creating array
+  const formFields = useMemo(() => [
     {
       id: 'companyName',
       label: 'Company Name',
@@ -72,7 +72,7 @@ const StartupProfileForm: React.FC<ProfileFormProps> = ({ formData, isEditing, h
       maxLength: 500,
       rows: 4
     }
-  ];
+  ], []);
 
   // Animation variants
   const containerVariants = {
@@ -187,4 +187,4 @@ const StartupProfileForm: React.FC<ProfileFormProps> = ({ formData, isEditing, h
   );
 };
 
-export default StartupProfileForm;
+export default React.memo(StartupProfileForm);
