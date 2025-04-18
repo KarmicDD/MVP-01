@@ -1,5 +1,5 @@
 import express from 'express';
-import { getMatchRecommendations, getBatchRecommendations } from '../controllers/recommendationController';
+import { getMatchRecommendations, getBatchRecommendations, testRecommendationCache } from '../controllers/recommendationController';
 import { authenticateJWT } from '../middleware/auth';
 
 const router = express.Router();
@@ -129,5 +129,35 @@ router.get('/match/:startupId/:investorId', authenticateJWT, getMatchRecommendat
  *         description: Server error
  */
 router.post('/batch', authenticateJWT, getBatchRecommendations);
+
+/**
+ * @swagger
+ * /api/recommendations/test-cache:
+ *   get:
+ *     summary: Test MongoDB recommendation cache
+ *     description: Tests the MongoDB connection and ability to save recommendations
+ *     tags: [Recommendations]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Test successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 timestamp:
+ *                   type: string
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Test failed
+ */
+router.get('/test-cache', authenticateJWT, testRecommendationCache);
 
 export default router;

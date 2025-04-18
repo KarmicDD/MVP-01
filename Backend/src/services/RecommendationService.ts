@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import StartupProfileModel from '../models/Profile/StartupProfile';
 import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
 import QuestionnaireSubmissionModel from '../models/question/QuestionnaireSubmission';
+import RecommendationModel from '../models/RecommendationModel';
 import { cleanJsonResponse } from '../utils/jsonHelper';
 
 // Load environment variables
@@ -37,18 +38,81 @@ export interface RecommendationResult {
 
 class RecommendationService {
     /**
+     * Test MongoDB connection and recommendation saving
+     * This method can be called during startup to verify MongoDB connectivity
+     */
+    async testMongoDBConnection(): Promise<boolean> {
+        try {
+            console.log('Testing MongoDB connection for recommendations...');
+
+            // Create a test recommendation document
+            const testRecommendation = await RecommendationModel.create({
+                startupId: 'test-startup-id',
+                investorId: 'test-investor-id',
+                perspective: 'startup',
+                recommendations: [
+                    {
+                        id: 'test-id',
+                        title: 'Test Recommendation',
+                        summary: 'This is a test recommendation',
+                        details: 'This recommendation was created to test MongoDB connectivity.',
+                        category: 'strategic',
+                        priority: 'medium',
+                        confidence: 90
+                    }
+                ],
+                precision: 95,
+                createdAt: new Date(),
+                expiresAt: new Date(Date.now() + 60 * 1000) // Expire after 1 minute
+            });
+
+            console.log(`Test recommendation created successfully with ID: ${testRecommendation._id}`);
+
+            // Clean up the test document
+            await RecommendationModel.findByIdAndDelete(testRecommendation._id);
+            console.log('Test recommendation deleted successfully');
+
+            return true;
+        } catch (error) {
+            console.error('MongoDB connection test failed:', error);
+            return false;
+        }
+    }
+    /**
      * Generate personalized recommendations for a startup-investor match
      * @param startupId Startup user ID
      * @param investorId Investor user ID
      * @param perspective Perspective to generate recommendations from ('startup' or 'investor')
+     * @param forceRefresh Whether to force a refresh of recommendations even if cached
      * @returns Personalized recommendations
      */
     async generateRecommendations(
         startupId: string,
         investorId: string,
-        perspective: 'startup' | 'investor'
+        perspective: 'startup' | 'investor',
+        forceRefresh: boolean = false
     ): Promise<RecommendationResult> {
         try {
+            // Check for cached recommendations if not forcing refresh
+            if (!forceRefresh) {
+                console.log(`Checking for cached recommendations for startup ${startupId} and investor ${investorId} with perspective ${perspective}`);
+
+                // First try to find recommendations without date restriction
+                const cachedRecommendations = await RecommendationModel.findOne({
+                    startupId: startupId,
+                    investorId: investorId,
+                    perspective: perspective
+                }).sort({ createdAt: -1 }); // Get the most recent one
+
+                if (cachedRecommendations) {
+                    console.log(`Using cached recommendations for startup ${startupId} and investor ${investorId}`);
+                    return {
+                        recommendations: cachedRecommendations.recommendations,
+                        precision: cachedRecommendations.precision
+                    };
+                }
+            }
+
             // Fetch profiles
             const startup = await StartupProfileModel.findOne({ userId: startupId });
             const investor = await InvestorProfileModel.findOne({ userId: investorId });
@@ -80,16 +144,96 @@ class RecommendationService {
                 : {};
 
             // Generate recommendations using Gemini
-            return await this.generateRecommendationsWithGemini(
+            const recommendations = await this.generateRecommendationsWithGemini(
                 startup,
                 investor,
                 perspective,
                 startupResponses,
                 investorResponses
             );
+
+            // Cache the recommendations
+            try {
+                console.log(`Attempting to save recommendations to MongoDB for startup ${startupId} and investor ${investorId}`);
+
+                // Validate data before saving
+                if (!recommendations.recommendations || !Array.isArray(recommendations.recommendations)) {
+                    console.error('Invalid recommendations format, cannot save to MongoDB');
+                    return recommendations;
+                }
+
+                // Log the data being saved
+                console.log(`Saving ${recommendations.recommendations.length} recommendations with precision ${recommendations.precision}`);
+
+                const newRecommendation = await RecommendationModel.create({
+                    startupId: startupId,
+                    investorId: investorId,
+                    perspective: perspective,
+                    recommendations: recommendations.recommendations,
+                    precision: recommendations.precision,
+                    createdAt: new Date(),
+                    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Expire after 30 days
+                });
+
+                console.log(`Successfully saved recommendations to MongoDB with ID: ${newRecommendation._id}`);
+            } catch (dbError) {
+                console.error('Error saving recommendations to MongoDB:', dbError);
+                // Continue execution even if caching fails
+            }
+
+            return recommendations;
         } catch (error) {
             console.error('Error generating recommendations:', error);
-            // Return fallback recommendations if generation fails
+
+            // If there's an error, check for any existing recommendations regardless of age
+            try {
+                console.log(`Attempting to find any cached recommendations after error for startup ${startupId} and investor ${investorId}`);
+
+                // Try with exact match first
+                const oldRecommendations = await RecommendationModel.findOne({
+                    startupId: startupId,
+                    investorId: investorId,
+                    perspective: perspective
+                }).sort({ createdAt: -1 }); // Get the most recent one
+
+                if (oldRecommendations) {
+                    console.log(`Found cached recommendations with exact match: ${JSON.stringify({
+                        id: oldRecommendations._id,
+                        createdAt: oldRecommendations.createdAt,
+                        recommendationCount: oldRecommendations.recommendations.length
+                    })}`);
+
+                    return {
+                        recommendations: oldRecommendations.recommendations,
+                        precision: oldRecommendations.precision
+                    };
+                }
+
+                // If no exact match, try with reversed perspective as fallback
+                const reversedPerspective = perspective === 'startup' ? 'investor' : 'startup';
+                console.log(`Trying with reversed perspective: ${reversedPerspective}`);
+
+                const reversedRecommendations = await RecommendationModel.findOne({
+                    startupId: startupId,
+                    investorId: investorId,
+                    perspective: reversedPerspective
+                }).sort({ createdAt: -1 });
+
+                if (reversedRecommendations) {
+                    console.log(`Found cached recommendations with reversed perspective`);
+                    return {
+                        recommendations: reversedRecommendations.recommendations,
+                        precision: reversedRecommendations.precision
+                    };
+                }
+
+                console.log(`No cached recommendations found for startup ${startupId} and investor ${investorId}`);
+            } catch (cacheError) {
+                console.error('Error retrieving cached recommendations:', cacheError);
+            }
+
+            // Return fallback recommendations if generation fails and no cache is available
+            console.log(`Using fallback recommendations for ${perspective}`);
             return this.getFallbackRecommendations(perspective);
         }
     }
@@ -116,7 +260,7 @@ class RecommendationService {
 
             // Call Gemini API
             const result = await model.generateContent(prompt);
-            const response = await result.response;
+            const response = result.response;
             const textResponse = response.text();
 
             // Clean and parse the response

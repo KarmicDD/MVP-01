@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsc && nodemon ./dist/server.js",
+    "dev": "cross-env NODE_OPTIONS=--max_old_space_size=4096 tsc && node ./dist/server.js",
     "start": "cross-env NODE_OPTIONS=--max_old_space_size=4096 node ./dist/server.js",
     "build": "tsc -b"
   },

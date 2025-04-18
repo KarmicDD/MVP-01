@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Use environment variable or fallback to localhost for development
-const API_URL = 'https://mvp-01.onrender.com/api';
+const API_URL = 'http://localhost:5000/api';
 
 // Define interfaces for auth services
 interface UserRegistrationData {

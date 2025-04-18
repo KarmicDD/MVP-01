@@ -10,6 +10,7 @@ import swaggerUi from 'swagger-ui-express';
 import routes from './routes';
 
 import { connectMongoDBwithRetry, testPostgressConnection } from './config/db';
+import RecommendationService from './services/RecommendationService';
 import { resolve } from 'path';
 import { countRequest, statsMiddleware, trackTime } from './utils/logs';
 import { specs } from './config/swagger';
@@ -25,6 +26,18 @@ const startServer = async () => {
             testPostgressConnection(),
             connectMongoDBwithRetry()
         ]);
+
+        // Test MongoDB connection for recommendations
+        try {
+            const mongoTestResult = await RecommendationService.testMongoDBConnection();
+            if (mongoTestResult) {
+                console.log('MongoDB recommendation test successful');
+            } else {
+                console.warn('MongoDB recommendation test failed, recommendations may not be saved properly');
+            }
+        } catch (error) {
+            console.error('Error testing MongoDB recommendation connection:', error);
+        }
 
         // Initialize app after successful DB connections
         const app: Application = express();

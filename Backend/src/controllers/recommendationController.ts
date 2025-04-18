@@ -3,6 +3,7 @@ import RecommendationService from '../services/RecommendationService';
 import StartupProfileModel from '../models/Profile/StartupProfile';
 import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
 import ApiUsageModel from '../models/ApiUsageModel/ApiUsage';
+import RecommendationModel from '../models/RecommendationModel';
 
 // Maximum API requests per day
 const MAX_DAILY_REQUESTS = 15;
@@ -75,23 +76,6 @@ export const getMatchRecommendations = async (req: Request, res: Response): Prom
             return;
         }
 
-        // Check rate limit
-        try {
-            const rateLimitResult = await checkRateLimit(userId);
-
-            if (!rateLimitResult.underLimit) {
-                res.status(429).json({
-                    message: 'Daily request limit reached',
-                    limit: MAX_DAILY_REQUESTS,
-                    nextReset: 'Tomorrow'
-                });
-                return;
-            }
-        } catch (rateLimitError) {
-            console.error('Rate limit check error:', rateLimitError);
-            // Continue even if rate limiting fails
-        }
-
         const { startupId, investorId } = req.params;
 
         if (!startupId || !investorId) {
@@ -110,6 +94,43 @@ export const getMatchRecommendations = async (req: Request, res: Response): Prom
         } else {
             // Default perspective if not directly involved
             perspective = 'investor';
+        }
+
+        // Check rate limit
+        try {
+            const rateLimitResult = await checkRateLimit(userId);
+
+            if (!rateLimitResult.underLimit) {
+                // If limit reached, check for any existing recommendations regardless of age
+                const oldRecommendations = await RecommendationModel.findOne({
+                    startupId: startupId,
+                    investorId: investorId,
+                    perspective: perspective
+                }).sort({ createdAt: -1 }); // Get the most recent one
+
+                if (oldRecommendations) {
+                    // Return old recommendations with a flag indicating it's old data
+                    res.json({
+                        recommendations: oldRecommendations.recommendations,
+                        precision: oldRecommendations.precision,
+                        isOldData: true,
+                        createdAt: oldRecommendations.createdAt,
+                        message: 'Daily request limit reached. Showing previously generated data.'
+                    });
+                    return;
+                }
+
+                // If no old data exists, return the rate limit error
+                res.status(429).json({
+                    message: 'Daily request limit reached',
+                    limit: MAX_DAILY_REQUESTS,
+                    nextReset: 'Tomorrow'
+                });
+                return;
+            }
+        } catch (rateLimitError) {
+            console.error('Rate limit check error:', rateLimitError);
+            // Continue even if rate limiting fails
         }
 
         // Verify that both profiles exist
@@ -131,7 +152,7 @@ export const getMatchRecommendations = async (req: Request, res: Response): Prom
             return;
         }
 
-        // Generate recommendations
+        // Generate recommendations (will check cache internally)
         const recommendations = await RecommendationService.generateRecommendations(
             startupId,
             investorId,
@@ -148,7 +169,10 @@ export const getMatchRecommendations = async (req: Request, res: Response): Prom
 /**
  * Generate personalized recommendations for multiple matches
  */
-export const getBatchRecommendations = async (req: Request, res: Response): Promise<void> => {
+/**
+ * Test MongoDB connection for recommendations
+ */
+export const testRecommendationCache = async (req: Request, res: Response): Promise<void> => {
     try {
         // Check authentication
         const userId = req.user?.userId;
@@ -157,21 +181,34 @@ export const getBatchRecommendations = async (req: Request, res: Response): Prom
             return;
         }
 
-        // Check rate limit
-        try {
-            const rateLimitResult = await checkRateLimit(userId);
+        // Test MongoDB connection
+        const testResult = await RecommendationService.testMongoDBConnection();
 
-            if (!rateLimitResult.underLimit) {
-                res.status(429).json({
-                    message: 'Daily request limit reached',
-                    limit: MAX_DAILY_REQUESTS,
-                    nextReset: 'Tomorrow'
-                });
-                return;
-            }
-        } catch (rateLimitError) {
-            console.error('Rate limit check error:', rateLimitError);
-            // Continue even if rate limiting fails
+        if (testResult) {
+            res.json({
+                success: true,
+                message: 'MongoDB recommendation test successful',
+                timestamp: new Date().toISOString()
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'MongoDB recommendation test failed'
+            });
+        }
+    } catch (error) {
+        console.error('Error testing recommendation cache:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+export const getBatchRecommendations = async (req: Request, res: Response): Promise<void> => {
+    try {
+        // Check authentication
+        const userId = req.user?.userId;
+        if (!userId) {
+            res.status(401).json({ message: 'Unauthorized' });
+            return;
         }
 
         const { matchIds } = req.body;
@@ -207,6 +244,80 @@ export const getBatchRecommendations = async (req: Request, res: Response): Prom
 
         const perspective = userProfile ? 'startup' : 'investor';
 
+        // Check rate limit
+        try {
+            const rateLimitResult = await checkRateLimit(userId);
+
+            if (!rateLimitResult.underLimit) {
+                // If limit reached, try to return cached recommendations for each match
+                const results = [];
+
+                for (const matchId of batchIds) {
+                    try {
+                        // Find cached recommendations for this match
+                        let cachedRecommendations;
+
+                        if (perspective === 'startup') {
+                            cachedRecommendations = await RecommendationModel.findOne({
+                                startupId: userId,
+                                investorId: matchId,
+                                perspective: 'startup'
+                            }).sort({ createdAt: -1 });
+                        } else {
+                            cachedRecommendations = await RecommendationModel.findOne({
+                                startupId: matchId,
+                                investorId: userId,
+                                perspective: 'investor'
+                            }).sort({ createdAt: -1 });
+                        }
+
+                        if (cachedRecommendations) {
+                            results.push({
+                                matchId,
+                                recommendations: {
+                                    recommendations: cachedRecommendations.recommendations,
+                                    precision: cachedRecommendations.precision
+                                },
+                                isOldData: true
+                            });
+                        } else {
+                            results.push({
+                                matchId,
+                                error: 'No cached recommendations available'
+                            });
+                        }
+                    } catch (error) {
+                        results.push({
+                            matchId,
+                            error: 'Error retrieving cached recommendations'
+                        });
+                    }
+                }
+
+                if (results.length > 0) {
+                    res.json({
+                        results,
+                        batchSize,
+                        totalRequested: matchIds.length,
+                        isOldData: true,
+                        message: 'Daily request limit reached. Showing previously generated data.'
+                    });
+                    return;
+                }
+
+                // If no cached data exists, return the rate limit error
+                res.status(429).json({
+                    message: 'Daily request limit reached',
+                    limit: MAX_DAILY_REQUESTS,
+                    nextReset: 'Tomorrow'
+                });
+                return;
+            }
+        } catch (rateLimitError) {
+            console.error('Rate limit check error:', rateLimitError);
+            // Continue even if rate limiting fails
+        }
+
         // Generate recommendations for each match
         const recommendationsPromises = batchIds.map(async (matchId) => {
             try {
@@ -235,13 +346,16 @@ export const getBatchRecommendations = async (req: Request, res: Response): Prom
                         };
                     }
 
+                    // Generate recommendations (will check cache internally)
+                    const recommendations = await RecommendationService.generateRecommendations(
+                        req.user.userId,
+                        matchId,
+                        'startup'
+                    );
+
                     return {
                         matchId,
-                        recommendations: await RecommendationService.generateRecommendations(
-                            req.user.userId,
-                            matchId,
-                            'startup'
-                        )
+                        recommendations
                     };
                 } else {
                     // Verify startup exists
@@ -261,13 +375,16 @@ export const getBatchRecommendations = async (req: Request, res: Response): Prom
                         };
                     }
 
+                    // Generate recommendations (will check cache internally)
+                    const recommendations = await RecommendationService.generateRecommendations(
+                        matchId,
+                        req.user.userId,
+                        'investor'
+                    );
+
                     return {
                         matchId,
-                        recommendations: await RecommendationService.generateRecommendations(
-                            matchId,
-                            req.user.userId,
-                            'investor'
-                        )
+                        recommendations
                     };
                 }
             } catch (error) {
