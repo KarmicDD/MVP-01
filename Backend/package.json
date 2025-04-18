@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsc && nodemon ./dist/server.js",
-    "start": "node ./dist/server.js",
+    "start": "cross-env NODE_OPTIONS=--max_old_space_size=4096 node ./dist/server.js",
     "build": "tsc -b"
   },
   "keywords": [],
@@ -59,6 +59,7 @@
     "@types/pg": "^8.11.11",
     "@types/uuid": "^10.0.0",
     "nodemon": "^3.1.9",
-    "prisma": "^6.4.1"
+    "prisma": "^6.4.1",
+    "cross-env": "^7.0.3"
   }
 }
