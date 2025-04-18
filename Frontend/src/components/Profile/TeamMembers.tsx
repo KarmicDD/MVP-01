@@ -57,7 +57,7 @@ const TeamMembers: React.FC<TeamMembersProps> = ({
                 <FiTrash2 />
               </button>
             </div>
-            
+
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 Role
@@ -70,7 +70,7 @@ const TeamMembers: React.FC<TeamMembersProps> = ({
                 className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-${colours.indigo600} focus:ring-${colours.indigo600} sm:text-sm`}
               />
             </div>
-            
+
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 Bio (optional)

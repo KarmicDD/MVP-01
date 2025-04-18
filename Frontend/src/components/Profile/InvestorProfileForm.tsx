@@ -100,15 +100,15 @@ const InvestorProfileForm: React.FC<InvestorProfileFormProps> = ({
   };
 
   return (
-    <motion.div 
+    <motion.div
       className="grid grid-cols-1 gap-y-8 gap-x-6 sm:grid-cols-6"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
       {formFields.map((field) => (
-        <motion.div 
-          key={field.id} 
+        <motion.div
+          key={field.id}
           className={field.type === 'textarea' ? "sm:col-span-6" : "sm:col-span-3"}
           variants={itemVariants}
         >
@@ -200,8 +200,8 @@ const InvestorProfileForm: React.FC<InvestorProfileFormProps> = ({
                 formData[field.id]?.length ? (
                   <div className="flex flex-wrap gap-1">
                     {formData[field.id].map((item: string, idx: number) => (
-                      <span 
-                        key={idx} 
+                      <span
+                        key={idx}
                         className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
                       >
                         {item}
