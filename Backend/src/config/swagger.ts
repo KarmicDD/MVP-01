@@ -25,7 +25,7 @@ const options: swaggerJsdoc.Options = {
         description: 'Development server'
       },
       {
-        url: 'https://api.karmic-dd.com/api',
+        url: 'https://mvp-01.onrender.com/api',
         description: 'Production server'
       }
     ],

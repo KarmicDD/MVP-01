@@ -14,7 +14,7 @@
 
 This documentation describes the REST API endpoints for the KarmicDD platform. The API enables interaction with profiles, questionnaires, matching algorithms, and search functionality to connect startups with potential investors.
 
-**Base URL**: `https://api.karmic-dd.com/api`
+**Base URL**: `https://mvp-01.onrender.com/api`
 
 ## Authentication
 
@@ -833,7 +833,7 @@ Send a welcome email to a newly registered user.
   "deliveryStatus": "queued",
   "trackingInfo": {
     "trackingId": "track-789012",
-    "trackingUrl": "https://api.karmic-dd.com/api/email/track/track-789012"
+    "trackingUrl": "https://mvp-01.onrender.com/api/email/track/track-789012"
   }
 }
 ```

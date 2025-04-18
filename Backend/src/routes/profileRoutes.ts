@@ -388,7 +388,7 @@ router.post(
  *                 shareableUrl:
  *                   type: string
  *                   format: uri
- *                   example: https://api.karmic-dd.com/api/profile/shared/abc123
+ *                   example: https://mvp-01.onrender.com/api/profile/shared/abc123
  *                 expiresAt:
  *                   type: string
  *                   format: date-time

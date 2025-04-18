@@ -686,7 +686,7 @@ paths:
                     type: integer
               example:
                 message: Report shared successfully
-                shareableUrl: https://api.karmic-dd.com/api/financial/due-diligence/reports/share/abc123
+                shareableUrl: https://mvp-01.onrender.com/api/financial/due-diligence/reports/share/abc123
                 recipientCount: 2
         '400':
           description: Invalid input
