@@ -13,8 +13,8 @@ import {
     LinearScale,
     BarElement
 } from 'chart.js';
-import { Radar, Doughnut, Bar } from 'react-chartjs-2';
-import { FiFileText, FiDownload, FiShare2, FiChevronDown, FiChevronUp, FiCheckCircle, FiAlertTriangle, FiAlertCircle, FiArrowRight, FiBarChart2, FiLayers, FiUser, FiTarget, FiActivity } from 'react-icons/fi';
+import { Radar, Bar } from 'react-chartjs-2';
+import { FiFileText, FiDownload, FiShare2, FiChevronDown, FiChevronUp, FiCheckCircle, FiAlertTriangle, FiArrowRight, FiBarChart2, FiLayers, FiUser, FiTarget, FiActivity } from 'react-icons/fi';
 
 // Register ChartJS components
 ChartJS.register(
@@ -67,35 +67,35 @@ const BeliefSystemReportContent = forwardRef<HTMLDivElement, BeliefSystemReportC
         }));
     };
 
-    // Get risk level classes
-    const getRiskLevelClass = (level: string) => {
-        switch (level) {
-            case 'High': return {
-                bg: 'bg-red-50',
-                border: 'border-red-200',
-                text: 'text-red-700',
-                badge: 'bg-red-100 text-red-800',
-                icon: <FiAlertCircle className="text-red-500" />
-            };
-            case 'Medium': return {
-                bg: 'bg-amber-50',
-                border: 'border-amber-200',
-                text: 'text-amber-700',
-                badge: 'bg-amber-100 text-amber-800',
-                icon: <FiAlertTriangle className="text-amber-500" />
-            };
-            default: return {
-                bg: 'bg-green-50',
-                border: 'border-green-200',
-                text: 'text-green-700',
-                badge: 'bg-green-100 text-green-800',
-                icon: <FiCheckCircle className="text-green-500" />
-            };
-        }
-    };
+    // // Get risk level classes
+    // const getRiskLevelClass = (level: string) => {
+    //     switch (level) {
+    //         case 'High': return {
+    //             bg: 'bg-red-50',
+    //             border: 'border-red-200',
+    //             text: 'text-red-700',
+    //             badge: 'bg-red-100 text-red-800',
+    //             icon: <FiAlertCircle className="text-red-500" />
+    //         };
+    //         case 'Medium': return {
+    //             bg: 'bg-amber-50',
+    //             border: 'border-amber-200',
+    //             text: 'text-amber-700',
+    //             badge: 'bg-amber-100 text-amber-800',
+    //             icon: <FiAlertTriangle className="text-amber-500" />
+    //         };
+    //         default: return {
+    //             bg: 'bg-green-50',
+    //             border: 'border-green-200',
+    //             text: 'text-green-700',
+    //             badge: 'bg-green-100 text-green-800',
+    //             icon: <FiCheckCircle className="text-green-500" />
+    //         };
+    //     }
+    // };
 
-    const marketFitRiskStyle = getRiskLevelClass(report.risks.marketFitRisk.level);
-    const operationalRiskStyle = getRiskLevelClass(report.risks.operationalRisk.level);
+    // const marketFitRiskStyle = getRiskLevelClass(report.risks.marketFitRisk.level);
+    // const operationalRiskStyle = getRiskLevelClass(report.risks.operationalRisk.level);
 
     // Prepare radar chart data for compatibility metrics
     const radarChartData = {
