@@ -181,6 +181,8 @@ export const getStartupProfile = async (req: Request, res: Response): Promise<vo
     }
 };
 
+
+
 // Get investor profile
 export const getInvestorProfile = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -208,6 +210,8 @@ export const getInvestorProfile = async (req: Request, res: Response): Promise<v
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+
 
 // Create or update extended profile
 export const updateExtendedProfile = async (req: Request, res: Response): Promise<void> => {
@@ -607,13 +611,19 @@ export const getUserDocuments = async (req: Request, res: Response): Promise<voi
             return;
         }
 
-        const documents = await DocumentModel.find({ userId: req.user.userId })
+        // Check if a specific userId is provided in the query params
+        const requestedUserId = req.query.userId as string || req.user.userId;
+
+        console.log(`Fetching documents for userId: ${requestedUserId}`);
+
+        const documents = await DocumentModel.find({ userId: requestedUserId })
             .select('-filePath')
             .sort({ createdAt: -1 });
 
         res.status(200).json({
             documents: documents.map(doc => ({
                 id: doc._id,
+                userId: doc.userId,
                 fileName: doc.fileName,
                 originalName: doc.originalName,
                 fileType: doc.fileType,
@@ -621,7 +631,8 @@ export const getUserDocuments = async (req: Request, res: Response): Promise<voi
                 description: doc.description,
                 documentType: doc.documentType,
                 isPublic: doc.isPublic,
-                createdAt: doc.createdAt
+                createdAt: doc.createdAt,
+                uploadDate: doc.createdAt
             }))
         });
     } catch (error) {

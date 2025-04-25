@@ -270,6 +270,8 @@ router.get(
     getInvestorProfile
 );
 
+
+
 /**
  * @swagger
  * /profile/extended:

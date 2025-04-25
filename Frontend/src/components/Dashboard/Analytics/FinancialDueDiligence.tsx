@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiDownload, FiFileText, FiBarChart2, FiList, FiClipboard, FiInfo } from 'react-icons/fi';
+import { FiDownload, FiFileText, FiBarChart2, FiList, FiClipboard, FiInfo, FiX, FiUpload } from 'react-icons/fi';
 import SimpleSpinner from '../../SimpleSpinner';
 import { profileService } from '../../../services/api';
 import { toast } from 'react-hot-toast';
@@ -43,7 +43,13 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
   // Use the tutorial hook for the help button functionality
   useTutorial('financial-dd-tutorial');
 
-  // Use the financial due diligence hook with the selected report type
+  // We want to analyze the selected entity's documents, not the logged-in user's
+  // If user is a startup, we want to analyze the investor's documents (perspective = 'investor')
+  // If user is an investor, we want to analyze the startup's documents (perspective = 'startup')
+  // This ensures we're looking at the selected entity's documents (the counterparty)
+  const perspective = userProfile.role === 'startup' ? 'investor' : 'startup';
+
+  // Use the financial due diligence hook with the selected report type and correct perspective
   const {
     report,
     loading,
@@ -56,7 +62,7 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
     generateReport,
     formatDate,
     reportRef
-  } = useFinancialDueDiligence(startupId, investorId, selectedReportType, userProfile.role);
+  } = useFinancialDueDiligence(startupId, investorId, selectedReportType, perspective);
 
   // Fetch existing reports on component mount
   useEffect(() => {
@@ -70,19 +76,20 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
     if (!selectedMatchId) return;
 
     try {
-      // Determine whose perspective we're using
-      const entityId = userProfile.role === 'startup' ? selectedMatchId : selectedMatchId;
+      // Determine whose documents we're analyzing
+      // If user is a startup, we're analyzing the investor's documents
+      // If user is an investor, we're analyzing the startup's documents
       const entityType = userProfile.role === 'startup' ? 'investor' : 'startup';
 
-      // Fetch the entity's profile to get their name
-      const response = await profileService.getProfile(entityId, entityType);
-      if (entityType === 'startup') {
-        setEntityName(response.companyName || 'Selected Startup');
-      } else {
-        setEntityName(response.name || response.companyName || 'Selected Investor');
-      }
+      // Set a default name based on the entity type
+      const defaultName = entityType === 'startup' ? 'Selected Startup' : 'Selected Investor';
+
+      // For now, just use the default name since we don't have a direct way to get the entity's name
+      setEntityName(defaultName);
+
+      console.log(`Analyzing documents for ${entityType} with ID ${selectedMatchId} for financial due diligence`);
     } catch (error) {
-      console.error('Error fetching entity name:', error);
+      console.error('Error setting entity name:', error);
       setEntityName(userProfile.role === 'startup' ? 'Selected Investor' : 'Selected Startup');
     }
   };
@@ -152,17 +159,63 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
   // Show error if any
   if (error) {
     return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-lg">
-        <h3 className="font-semibold mb-2">Error Loading Financial Due Diligence</h3>
-        <p>{error}</p>
-        {documentsAvailable === false && (
-          <div className="mt-4 text-center">
-            <p className="mb-2">No financial documents have been uploaded by {entityName} yet.</p>
-            <p className="text-sm text-gray-600 mb-4">
-              Financial documents need to be uploaded in the entity's profile before analysis can be performed.
-            </p>
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-gradient-to-r from-amber-50 to-red-50 p-6 border-b border-red-100">
+          <div className="flex items-center">
+            <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center mr-4 border border-red-200">
+              <FiFileText className="text-red-500 text-xl" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">Financial Documents Required</h3>
+              <p className="text-red-600 text-sm font-medium">No financial documents available for analysis</p>
+            </div>
           </div>
-        )}
+        </div>
+
+        <div className="p-6">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <div className="flex">
+              <FiInfo className="text-amber-500 mt-1 mr-3 flex-shrink-0" />
+              <div>
+                <p className="text-gray-700 mb-2">
+                  {entityName} has not uploaded any financial documents yet. Financial documents are required to generate a due diligence report.
+                </p>
+                <p className="text-sm text-gray-600">
+                  Financial documents may include balance sheets, income statements, cash flow statements, and other financial records.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="font-medium text-gray-700">Required Documents:</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {['Balance Sheet', 'Income Statement', 'Cash Flow Statement', 'Financial Projections', 'Tax Returns'].map((doc, index) => (
+                <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center mr-3">
+                    <FiX className="text-red-500 text-sm" />
+                  </div>
+                  <span className="text-sm text-gray-700">{doc}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 text-center">
+              <p className="text-gray-600 mb-4">
+                Please ask {entityName} to upload the required financial documents in their profile.
+              </p>
+              <motion.button
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 transition-colors flex items-center mx-auto"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => window.open('/profile', '_blank')}
+              >
+                <FiUpload className="mr-2" />
+                Go to Profile Documents
+              </motion.button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

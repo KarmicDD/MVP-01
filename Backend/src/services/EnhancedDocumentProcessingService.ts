@@ -17,12 +17,12 @@ dotenv.config();
 // Initialize Gemini API
 const apiKey = process.env.GEMINI_API_KEY || '';
 if (!apiKey) {
-    console.warn('Warning: GEMINI_API_KEY is not defined in environment variables');
+  console.warn('Warning: GEMINI_API_KEY is not defined in environment variables');
 }
 
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash-thinking-exp-01-21",
+  model: "gemini-2.0-flash-thinking-exp-01-21",
 });
 
 // Promisify fs functions
@@ -38,265 +38,265 @@ const pdfExtractAsync = promisify(pdfExtract.extract.bind(pdfExtract));
  * Enhanced service for processing different types of documents and extracting their content
  */
 export class EnhancedDocumentProcessingService {
-    /**
-     * Extract text content from a PDF file
-     * @param filePath Path to the PDF file
-     * @returns Extracted text content
-     */
-    async extractPdfText(filePath: string): Promise<string> {
-        try {
-            const options: PDFExtractOptions = {};
-            const data = await pdfExtractAsync(filePath, options);
+  /**
+   * Extract text content from a PDF file
+   * @param filePath Path to the PDF file
+   * @returns Extracted text content
+   */
+  async extractPdfText(filePath: string): Promise<string> {
+    try {
+      const options: PDFExtractOptions = {};
+      const data = await pdfExtractAsync(filePath, options);
 
-            // Combine all page content
-            let textContent = '';
-            if (data && typeof data === 'object' && 'pages' in data && Array.isArray(data.pages)) {
-                data.pages.forEach((page: any) => {
-                    if (page && typeof page === 'object' && 'content' in page && Array.isArray(page.content)) {
-                        page.content.forEach((item: any) => {
-                            textContent += item.str + ' ';
-                        });
-                    }
-                    textContent += '\n\n';
-                });
-            }
-
-            return textContent;
-        } catch (error) {
-            console.error('Error extracting PDF text:', error);
-            throw new Error('Failed to extract text from PDF');
-        }
-    }
-
-    /**
-     * Extract text and data from an Excel file
-     * @param filePath Path to the Excel file
-     * @returns Extracted data as a string
-     */
-    async extractExcelData(filePath: string): Promise<string> {
-        try {
-            const workbook = XLSX.readFile(filePath);
-            let result = '';
-
-            // Process each sheet
-            workbook.SheetNames.forEach(sheetName => {
-                result += `Sheet: ${sheetName}\n\n`;
-
-                const worksheet = workbook.Sheets[sheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-                // Convert to formatted string
-                jsonData.forEach((row: any) => {
-                    if (row.length > 0) {
-                        result += row.join('\t') + '\n';
-                    }
-                });
-
-                result += '\n\n';
+      // Combine all page content
+      let textContent = '';
+      if (data && typeof data === 'object' && 'pages' in data && Array.isArray(data.pages)) {
+        data.pages.forEach((page: any) => {
+          if (page && typeof page === 'object' && 'content' in page && Array.isArray(page.content)) {
+            page.content.forEach((item: any) => {
+              textContent += item.str + ' ';
             });
+          }
+          textContent += '\n\n';
+        });
+      }
 
-            return result;
-        } catch (error) {
-            console.error('Error extracting Excel data:', error);
-            throw new Error('Failed to extract data from Excel file');
-        }
+      return textContent;
+    } catch (error) {
+      console.error('Error extracting PDF text:', error);
+      throw new Error('Failed to extract text from PDF');
     }
+  }
 
-    /**
-     * Extract data from a CSV file
-     * @param filePath Path to the CSV file
-     * @returns Extracted data as a string
-     */
-    async extractCsvData(filePath: string): Promise<string> {
-        try {
-            const content = await readFileAsync(filePath, 'utf8');
-            const lines = content.split('\n');
+  /**
+   * Extract text and data from an Excel file
+   * @param filePath Path to the Excel file
+   * @returns Extracted data as a string
+   */
+  async extractExcelData(filePath: string): Promise<string> {
+    try {
+      const workbook = XLSX.readFile(filePath);
+      let result = '';
 
-            // Process CSV data
-            let result = '';
-            lines.forEach(line => {
-                if (line.trim()) {
-                    result += line + '\n';
-                }
-            });
+      // Process each sheet
+      workbook.SheetNames.forEach(sheetName => {
+        result += `Sheet: ${sheetName}\n\n`;
 
-            return result;
-        } catch (error) {
-            console.error('Error extracting CSV data:', error);
-            throw new Error('Failed to extract data from CSV file');
-        }
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        // Convert to formatted string
+        jsonData.forEach((row: any) => {
+          if (row.length > 0) {
+            result += row.join('\t') + '\n';
+          }
+        });
+
+        result += '\n\n';
+      });
+
+      return result;
+    } catch (error) {
+      console.error('Error extracting Excel data:', error);
+      throw new Error('Failed to extract data from Excel file');
     }
+  }
 
-    /**
-     * Extract text from a PowerPoint file using Gemini API
-     * @param filePath Path to the PowerPoint file
-     * @returns Extracted text content
-     */
-    async extractPptText(filePath: string): Promise<string> {
-        try {
-            const fileBuffer = await readFileAsync(filePath);
+  /**
+   * Extract data from a CSV file
+   * @param filePath Path to the CSV file
+   * @returns Extracted data as a string
+   */
+  async extractCsvData(filePath: string): Promise<string> {
+    try {
+      const content = await readFileAsync(filePath, 'utf8');
+      const lines = content.split('\n');
 
-            // Use Gemini to extract text from PowerPoint
-            const prompt = `
+      // Process CSV data
+      let result = '';
+      lines.forEach(line => {
+        if (line.trim()) {
+          result += line + '\n';
+        }
+      });
+
+      return result;
+    } catch (error) {
+      console.error('Error extracting CSV data:', error);
+      throw new Error('Failed to extract data from CSV file');
+    }
+  }
+
+  /**
+   * Extract text from a PowerPoint file using Gemini API
+   * @param filePath Path to the PowerPoint file
+   * @returns Extracted text content
+   */
+  async extractPptText(filePath: string): Promise<string> {
+    try {
+      const fileBuffer = await readFileAsync(filePath);
+
+      // Use Gemini to extract text from PowerPoint
+      const prompt = `
             Extract all text content from this PowerPoint presentation.
             Include slide titles, bullet points, notes, and any other textual information.
 
             Format the output as plain text, preserving the structure of the slides.
             `;
 
-            const result = await model.generateContent([
-                prompt,
-                { fileData: { mime_type: 'application/vnd.ms-powerpoint', data: fileBuffer.toString('base64') } as any }
-            ]);
+      const result = await model.generateContent([
+        prompt,
+        { fileData: { mime_type: 'application/vnd.ms-powerpoint', data: fileBuffer.toString('base64') } as any }
+      ]);
 
-            const response = await result.response;
-            return response.text();
-        } catch (error) {
-            console.error('Error extracting PPT text:', error);
-            throw new Error('Failed to extract text from PowerPoint');
-        }
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      console.error('Error extracting PPT text:', error);
+      throw new Error('Failed to extract text from PowerPoint');
     }
+  }
 
-    /**
-     * Extract text from a Word document
-     * @param filePath Path to the Word document
-     * @returns Extracted text content
-     */
-    async extractWordText(filePath: string): Promise<string> {
-        try {
-            const result = await mammoth.extractRawText({ path: filePath });
-            return result.value;
-        } catch (error) {
-            console.error('Error extracting Word text:', error);
-            throw new Error('Failed to extract text from Word document');
-        }
+  /**
+   * Extract text from a Word document
+   * @param filePath Path to the Word document
+   * @returns Extracted text content
+   */
+  async extractWordText(filePath: string): Promise<string> {
+    try {
+      const result = await mammoth.extractRawText({ path: filePath });
+      return result.value;
+    } catch (error) {
+      console.error('Error extracting Word text:', error);
+      throw new Error('Failed to extract text from Word document');
     }
+  }
 
-    /**
-     * Extract text from an image using OCR
-     * @param filePath Path to the image file
-     * @returns Extracted text content
-     */
-    async extractImageText(filePath: string): Promise<string> {
-        try {
-            const worker = await createWorker();
-            // Use the correct methods for Tesseract.js v6
-            await worker.reinitialize('eng');
+  /**
+   * Extract text from an image using OCR
+   * @param filePath Path to the image file
+   * @returns Extracted text content
+   */
+  async extractImageText(filePath: string): Promise<string> {
+    try {
+      const worker = await createWorker();
+      // Use the correct methods for Tesseract.js v6
+      await worker.reinitialize('eng');
 
-            const result = await worker.recognize(filePath);
-            const text = result.data.text;
-            await worker.terminate();
+      const result = await worker.recognize(filePath);
+      const text = result.data.text;
+      await worker.terminate();
 
-            return text;
-        } catch (error) {
-            console.error('Error extracting image text:', error);
-            throw new Error('Failed to extract text from image');
-        }
+      return text;
+    } catch (error) {
+      console.error('Error extracting image text:', error);
+      throw new Error('Failed to extract text from image');
     }
+  }
 
-    /**
-     * Extract text from a text file
-     * @param filePath Path to the text file
-     * @returns Extracted text content
-     */
-    async extractTextFileContent(filePath: string): Promise<string> {
-        try {
-            const content = await readFileAsync(filePath, 'utf8');
-            return content;
-        } catch (error) {
-            console.error('Error extracting text file content:', error);
-            throw new Error('Failed to extract content from text file');
-        }
+  /**
+   * Extract text from a text file
+   * @param filePath Path to the text file
+   * @returns Extracted text content
+   */
+  async extractTextFileContent(filePath: string): Promise<string> {
+    try {
+      const content = await readFileAsync(filePath, 'utf8');
+      return content;
+    } catch (error) {
+      console.error('Error extracting text file content:', error);
+      throw new Error('Failed to extract content from text file');
     }
+  }
 
-    /**
-     * Process a document and extract its content based on file type
-     * @param filePath Path to the document (relative or absolute)
-     * @returns Extracted content
-     */
-    async processDocument(filePath: string): Promise<string> {
-        // Convert to absolute path if it's a relative path
-        const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, '../..', filePath);
-        const fileExtension = path.extname(absolutePath).toLowerCase();
+  /**
+   * Process a document and extract its content based on file type
+   * @param filePath Path to the document (relative or absolute)
+   * @returns Extracted content
+   */
+  async processDocument(filePath: string): Promise<string> {
+    // Convert to absolute path if it's a relative path
+    const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, '../..', filePath);
+    const fileExtension = path.extname(absolutePath).toLowerCase();
 
-        switch (fileExtension) {
-            case '.pdf':
-                return this.extractPdfText(absolutePath);
-            case '.ppt':
-            case '.pptx':
-                return this.extractPptText(absolutePath);
-            case '.xls':
-            case '.xlsx':
-                return this.extractExcelData(absolutePath);
-            case '.csv':
-                return this.extractCsvData(absolutePath);
-            case '.doc':
-            case '.docx':
-                return this.extractWordText(absolutePath);
-            case '.jpg':
-            case '.jpeg':
-            case '.png':
-            case '.gif':
-            case '.bmp':
-                return this.extractImageText(absolutePath);
-            case '.txt':
-            case '.md':
-            case '.json':
-            case '.xml':
-                return this.extractTextFileContent(absolutePath);
-            default:
-                throw new Error(`Unsupported file type: ${fileExtension}`);
-        }
+    switch (fileExtension) {
+      case '.pdf':
+        return this.extractPdfText(absolutePath);
+      case '.ppt':
+      case '.pptx':
+        return this.extractPptText(absolutePath);
+      case '.xls':
+      case '.xlsx':
+        return this.extractExcelData(absolutePath);
+      case '.csv':
+        return this.extractCsvData(absolutePath);
+      case '.doc':
+      case '.docx':
+        return this.extractWordText(absolutePath);
+      case '.jpg':
+      case '.jpeg':
+      case '.png':
+      case '.gif':
+      case '.bmp':
+        return this.extractImageText(absolutePath);
+      case '.txt':
+      case '.md':
+      case '.json':
+      case '.xml':
+        return this.extractTextFileContent(absolutePath);
+      default:
+        throw new Error(`Unsupported file type: ${fileExtension}`);
     }
+  }
 
-    /**
-     * Process multiple documents and combine their content
-     * @param filePaths Array of file paths
-     * @returns Combined extracted content
-     */
-    async processMultipleDocuments(filePaths: string[]): Promise<string> {
-        const contentPromises = filePaths.map(async (filePath) => {
-            // Convert to absolute path if it's a relative path
-            const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, '../..', filePath);
-            const fileExtension = path.extname(absolutePath).toLowerCase();
-            const fileName = path.basename(absolutePath);
+  /**
+   * Process multiple documents and combine their content
+   * @param filePaths Array of file paths
+   * @returns Combined extracted content
+   */
+  async processMultipleDocuments(filePaths: string[]): Promise<string> {
+    const contentPromises = filePaths.map(async (filePath) => {
+      // Convert to absolute path if it's a relative path
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, '../..', filePath);
+      const fileExtension = path.extname(absolutePath).toLowerCase();
+      const fileName = path.basename(absolutePath);
 
-            try {
-                const content = await this.processDocument(filePath); // This will handle the path conversion internally
-                return `--- Document: ${fileName} ---\n\n${content}\n\n`;
-            } catch (error) {
-                console.error(`Error processing ${fileName}:`, error);
-                return `--- Document: ${fileName} ---\n\nError: Failed to process this document\n\n`;
-            }
-        });
+      try {
+        const content = await this.processDocument(filePath); // This will handle the path conversion internally
+        return `--- Document: ${fileName} ---\n\n${content}\n\n`;
+      } catch (error) {
+        console.error(`Error processing ${fileName}:`, error);
+        return `--- Document: ${fileName} ---\n\nError: Failed to process this document\n\n`;
+      }
+    });
 
-        const contents = await Promise.all(contentPromises);
-        return contents.join('\n');
-    }
+    const contents = await Promise.all(contentPromises);
+    return contents.join('\n');
+  }
 
-    /**
-     * Extract financial data from documents using Gemini AI
-     * @param documentContent Combined document content
-     * @param companyName Name of the company
-     * @param reportType Type of report to generate
-     * @param startupInfo Additional startup information
-     * @param investorInfo Additional investor information
-     * @returns Extracted financial data
-     */
-    async extractFinancialData(
-        documentContent: string,
-        companyName: string,
-        reportType: 'analysis' | 'audit',
-        startupInfo?: any,
-        investorInfo?: any,
-        missingDocumentTypes?: string[]
-    ): Promise<any> {
-        try {
-            // Create a prompt for Gemini based on the report type
-            let prompt = '';
+  /**
+   * Extract financial data from documents using Gemini AI
+   * @param documentContent Combined document content
+   * @param companyName Name of the company
+   * @param reportType Type of report to generate
+   * @param startupInfo Additional startup information
+   * @param investorInfo Additional investor information
+   * @returns Extracted financial data
+   */
+  async extractFinancialData(
+    documentContent: string,
+    companyName: string,
+    reportType: 'analysis' | 'audit',
+    startupInfo?: any,
+    investorInfo?: any,
+    missingDocumentTypes?: string[]
+  ): Promise<any> {
+    try {
+      // Create a prompt for Gemini based on the report type
+      let prompt = '';
 
-            // Prepare context information
-            const startupContext = startupInfo ? `
+      // Prepare context information
+      const startupContext = startupInfo ? `
                 STARTUP INFORMATION:
                 Company Name: ${startupInfo.companyName || companyName}
                 Industry: ${startupInfo.industry || 'Not specified'}
@@ -311,18 +311,18 @@ export class EnhancedDocumentProcessingService {
                 Valuation: ${startupInfo.valuation || 'Not specified'}
             ` : '';
 
-            // Prepare missing documents information
-            const missingDocumentsContext = missingDocumentTypes && missingDocumentTypes.length > 0 ? `
+      // Prepare missing documents information
+      const missingDocumentsContext = missingDocumentTypes && missingDocumentTypes.length > 0 ? `
                 MISSING DOCUMENTS:
                 The following required financial documents are missing:
                 ${missingDocumentTypes.map(type => {
-                // Convert document type to readable format
-                const readableType = type.replace('financial_', '').replace(/_/g, ' ');
-                return `- ${readableType.charAt(0).toUpperCase() + readableType.slice(1)}`;
-            }).join('\n                ')}
+        // Convert document type to readable format
+        const readableType = type.replace('financial_', '').replace(/_/g, ' ');
+        return `- ${readableType.charAt(0).toUpperCase() + readableType.slice(1)}`;
+      }).join('\n                ')}
             ` : '';
 
-            const investorContext = investorInfo ? `
+      const investorContext = investorInfo ? `
                 INVESTOR INFORMATION:
                 Name: ${investorInfo.name || 'Not specified'}
                 Investment Stage: ${investorInfo.investmentStage || 'Not specified'}
@@ -332,8 +332,8 @@ export class EnhancedDocumentProcessingService {
                 Portfolio: ${Array.isArray(investorInfo.portfolio) ? investorInfo.portfolio.join(', ') : (investorInfo.portfolio || 'Not specified')}
             ` : '';
 
-            if (reportType === 'analysis') {
-                prompt = `
+      if (reportType === 'analysis') {
+        prompt = `
                 You are a specialized financial analyst with expertise in Indian company standards and regulations.
 
                 TASK: Analyze the following financial documents for ${companyName} and provide a comprehensive financial analysis.
@@ -408,8 +408,8 @@ export class EnhancedDocumentProcessingService {
                 DOCUMENT CONTENT:
                 ${documentContent}
                 `;
-            } else {
-                prompt = `
+      } else {
+        prompt = `
                 You are a specialized financial auditor with expertise in Indian company standards and regulations.
 
                 TASK: Conduct a thorough financial audit for ${companyName} based on the provided documents.
@@ -484,29 +484,29 @@ export class EnhancedDocumentProcessingService {
                 DOCUMENT CONTENT:
                 ${documentContent}
                 `;
-            }
+      }
 
-            // Call Gemini API
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const text = response.text();
+      // Call Gemini API
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
 
-            // Parse the JSON response
-            try {
-                // Clean the response text by removing markdown code block markers
-                const cleanedText = cleanJsonResponse(text);
+      // Parse the JSON response
+      try {
+        // Clean the response text by removing markdown code block markers
+        const cleanedText = cleanJsonResponse(text);
 
-                return JSON.parse(cleanedText);
-            } catch (error) {
-                console.error('Error parsing Gemini response:', error);
-                console.log('Raw response:', text);
-                throw new Error('Failed to parse financial data from Gemini response');
-            }
-        } catch (error) {
-            console.error('Error extracting financial data:', error);
-            throw new Error('Failed to extract financial data from documents');
-        }
+        return JSON.parse(cleanedText);
+      } catch (error) {
+        console.error('Error parsing Gemini response:', error);
+        console.log('Raw response:', text);
+        throw new Error('Failed to parse financial data from Gemini response');
+      }
+    } catch (error) {
+      console.error('Error extracting financial data:', error);
+      throw new Error('Failed to extract financial data from documents');
     }
+  }
 }
 
 export default new EnhancedDocumentProcessingService();

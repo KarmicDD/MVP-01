@@ -137,12 +137,15 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
           return;
         }
 
-        // Determine which entity's documents we need to check
-        // This will be the startup if perspective is 'startup', or the investor if perspective is 'investor'
-        const entityId = perspective === 'startup' ? startupId : investorId;
+        // We need to check the documents of the selected entity (the counterparty), not the logged-in user
+        // If perspective is 'startup', we want to analyze the startup's documents (startupId)
+        // If perspective is 'investor', we want to analyze the investor's documents (investorId)
+        const entityIdToCheck = perspective === 'startup' ? startupId : investorId;
 
-        // Fetch documents for the entity
-        const response = await api.get(`/profile/documents?userId=${entityId}`);
+        console.log(`Checking documents for entity ID: ${entityIdToCheck} with perspective: ${perspective}`);
+
+        // Fetch documents for the selected entity
+        const response = await api.get(`/profile/documents?userId=${entityIdToCheck}`);
 
         // Filter for financial documents (any document type starting with 'financial_')
         const financialDocuments = response.data.documents ?
@@ -193,9 +196,10 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
       try {
         setLoading(true);
         setError(null);
-        console.log(`Fetching financial due diligence report for startup ${startupId} and investor ${investorId}`);
+        console.log(`Fetching financial due diligence report for startup ${startupId} and investor ${investorId} with perspective ${perspective}`);
 
         // Call the financial due diligence API with report type and perspective
+        // The perspective parameter ensures we're analyzing the correct entity's documents
         const response = await api.get(`/financial/match/${startupId}/${investorId}?reportType=${reportType}&perspective=${perspective}`);
         setReport(response.data);
       } catch (err: unknown) {
@@ -215,16 +219,19 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
           // Handle specific error codes
           if (errorObj.response?.data?.errorCode === 'NO_FINANCIAL_DOCUMENTS') {
             setDocumentsAvailable(false);
-            setError('No financial documents available for this startup.');
+
+            // Create a more specific error message based on the perspective
+            const entityType = perspective === 'startup' ? 'startup' : 'investor';
+            setError(`No financial documents available for the selected ${entityType}.`);
 
             // If the API returned startup and investor info, save it for display
             if (errorObj.response?.data?.startupInfo || errorObj.response?.data?.investorInfo) {
               setReport({
-                summary: 'No financial documents available for analysis.',
+                summary: `No financial documents available for the selected ${entityType}.`,
                 metrics: [],
                 recommendations: [],
                 riskFactors: [],
-                perspective: 'pending',
+                perspective: perspective,
                 generatedDate: new Date().toISOString(),
                 startupInfo: errorObj.response?.data?.startupInfo,
                 investorInfo: errorObj.response?.data?.investorInfo,
@@ -341,6 +348,8 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
       setError(null);
 
       // Call the financial due diligence API endpoint to generate a new report
+      // Make sure we're using the correct perspective to analyze the selected entity's documents
+      console.log(`Generating report for startupId: ${startupId}, investorId: ${investorId}, perspective: ${perspective}`);
       const response = await api.post(`/financial/match/${startupId}/${investorId}/generate`, {
         reportType: reportType,
         perspective: perspective

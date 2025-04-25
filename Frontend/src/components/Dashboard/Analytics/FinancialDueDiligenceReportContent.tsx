@@ -89,7 +89,7 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
           </div>
           <div className="flex space-x-2">
             <motion.button
-              className="px-3 py-2 bg-white bg-opacity-30 hover:bg-opacity-50 rounded-lg text-white flex items-center shadow-sm"
+              className="px-3 py-2 bg-white text-indigo-700 hover:bg-gray-100 rounded-lg flex items-center shadow-sm border border-white font-medium"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleShareReport}
@@ -99,7 +99,7 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
               Share
             </motion.button>
             <motion.button
-              className="px-3 py-2 bg-white bg-opacity-30 hover:bg-opacity-50 rounded-lg text-white flex items-center shadow-sm"
+              className="px-3 py-2 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-white flex items-center shadow-sm font-medium"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleExportPDF}
