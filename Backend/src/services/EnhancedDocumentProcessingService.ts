@@ -278,7 +278,6 @@ export class EnhancedDocumentProcessingService {
    * Extract financial data from documents using Gemini AI
    * @param documentContent Combined document content
    * @param companyName Name of the company
-   * @param reportType Type of report to generate
    * @param startupInfo Additional startup information
    * @param investorInfo Additional investor information
    * @returns Extracted financial data
@@ -286,7 +285,6 @@ export class EnhancedDocumentProcessingService {
   async extractFinancialData(
     documentContent: string,
     companyName: string,
-    reportType: 'analysis' | 'audit',
     startupInfo?: any,
     investorInfo?: any,
     missingDocumentTypes?: string[]
@@ -332,102 +330,49 @@ export class EnhancedDocumentProcessingService {
                 Portfolio: ${Array.isArray(investorInfo.portfolio) ? investorInfo.portfolio.join(', ') : (investorInfo.portfolio || 'Not specified')}
             ` : '';
 
-      if (reportType === 'analysis') {
-        prompt = `
-                You are a specialized financial analyst with expertise in Indian company standards and regulations.
+      prompt = `
+                You are a specialized financial analyst and auditor with expertise in Indian company standards and regulations.
 
-                TASK: Analyze the following financial documents for ${companyName} and provide a comprehensive financial analysis.
+                TASK: Analyze the following financial documents for ${companyName} and provide a comprehensive financial due diligence report that combines both financial analysis and audit findings.
                 ${startupContext}
                 ${investorContext}
                 ${missingDocumentsContext}
 
                 RESPONSE FORMAT: Return ONLY valid JSON with this exact structure:
                 {
-                  "summary": "Detailed summary of financial analysis",
-                  "metrics": [
-                    {
-                      "name": "Metric name",
-                      "value": "Metric value",
-                      "status": "good" or "warning" or "critical",
-                      "description": "Brief description of the metric"
-                    }
-                  ],
-                  "recommendations": [
-                    "Recommendation 1",
-                    "Recommendation 2",
-                    "Recommendation 3"
-                  ],
-                  "riskFactors": [
-                    {
-                      "category": "Risk category",
-                      "level": "high" or "medium" or "low",
-                      "description": "Description of risk",
-                      "impact": "Potential impact"
-                    }
-                  ],
-                  "ratioAnalysis": {
-                    "liquidityRatios": [
+                  "reportCalculated": true or false, // IMPORTANT: Set to true if you were able to extract meaningful financial data, false otherwise
+                  "executiveSummary": {
+                    "headline": "Brief headline summarizing the financial health",
+                    "summary": "Detailed summary of financial analysis and audit findings",
+                    "keyFindings": ["Key finding 1", "Key finding 2", "Key finding 3"],
+                    "recommendedActions": ["Action 1", "Action 2", "Action 3"],
+                    "keyMetrics": [
                       {
-                        "name": "Ratio name",
-                        "value": numeric value,
-                        "industry_average": numeric value,
-                        "description": "Description of ratio",
-                        "status": "good" or "warning" or "critical"
+                        "name": "Key metric name",
+                        "value": "Metric value",
+                        "status": "good" or "warning" or "critical",
+                        "description": "Brief description of the metric"
+                      }
+                    ]
+                  },
+                  "financialAnalysis": {
+                    "metrics": [
+                      {
+                        "name": "Metric name",
+                        "value": "Metric value",
+                        "status": "good" or "warning" or "critical",
+                        "description": "Brief description of the metric"
                       }
                     ],
-                    "profitabilityRatios": [...],
-                    "solvencyRatios": [...],
-                    "efficiencyRatios": [...]
+                    "trends": [
+                      {
+                        "name": "Trend name",
+                        "description": "Description of the trend",
+                        "trend": "increasing" or "decreasing" or "stable",
+                        "impact": "positive" or "negative" or "neutral"
+                      }
+                    ]
                   },
-                  "financialStatements": {
-                    "balanceSheet": {
-                      "assets": {...},
-                      "liabilities": {...},
-                      "equity": {...}
-                    },
-                    "incomeStatement": {...},
-                    "cashFlow": {...}
-                  },
-                  "missingDocuments": {
-                    "list": ["Document type 1", "Document type 2"],
-                    "impact": "Description of how missing documents impact the analysis",
-                    "recommendations": ["Recommendation for missing documents"]
-                  }
-                }
-
-                ANALYSIS GUIDELINES:
-                - Focus on key financial indicators and trends
-                - Identify strengths, weaknesses, and areas for improvement
-                - Provide actionable recommendations based on the analysis
-                - Consider Indian accounting standards and regulatory requirements
-                - Evaluate financial health, profitability, liquidity, and solvency
-                - Assess growth potential and investment opportunities
-                - If documents are missing, explain how this impacts the analysis
-                - For missing documents, provide recommendations on what information they would provide
-
-                DOCUMENT CONTENT:
-                ${documentContent}
-                `;
-      } else {
-        prompt = `
-                You are a specialized financial auditor with expertise in Indian company standards and regulations.
-
-                TASK: Conduct a thorough financial audit for ${companyName} based on the provided documents.
-                ${startupContext}
-                ${investorContext}
-                ${missingDocumentsContext}
-
-                RESPONSE FORMAT: Return ONLY valid JSON with this exact structure:
-                {
-                  "summary": "Detailed summary of audit findings",
-                  "metrics": [
-                    {
-                      "name": "Metric name",
-                      "value": "Metric value",
-                      "status": "good" or "warning" or "critical",
-                      "description": "Brief description of the metric"
-                    }
-                  ],
                   "recommendations": [
                     "Recommendation 1",
                     "Recommendation 2",
@@ -450,6 +395,29 @@ export class EnhancedDocumentProcessingService {
                       "recommendation": "Recommendation to address compliance issue"
                     }
                   ],
+                  "financialStatements": {
+                    "balanceSheet": {
+                      "assets": {...},
+                      "liabilities": {...},
+                      "equity": {...}
+                    },
+                    "incomeStatement": {...},
+                    "cashFlow": {...}
+                  },
+                  "ratioAnalysis": {
+                    "liquidityRatios": [
+                      {
+                        "name": "Ratio name",
+                        "value": numeric value,
+                        "industry_average": numeric value,
+                        "description": "Description of ratio",
+                        "status": "good" or "warning" or "critical"
+                      }
+                    ],
+                    "profitabilityRatios": [...],
+                    "solvencyRatios": [...],
+                    "efficiencyRatios": [...]
+                  },
                   "taxCompliance": {
                     "gst": {
                       "status": "compliant" or "partial" or "non-compliant",
@@ -464,27 +432,57 @@ export class EnhancedDocumentProcessingService {
                       "details": "Details about TDS compliance"
                     }
                   },
-                  "missingDocuments": {
-                    "list": ["Document type 1", "Document type 2"],
-                    "impact": "Description of how missing documents impact the audit",
-                    "recommendations": ["Recommendation for missing documents"]
+                  "auditFindings": {
+                    "findings": [
+                      {
+                        "area": "Area of finding",
+                        "severity": "high" or "medium" or "low",
+                        "description": "Description of finding",
+                        "recommendation": "Recommendation to address finding"
+                      }
+                    ],
+                    "overallAssessment": "Overall assessment of audit findings"
+                  },
+                  "documentAnalysis": {
+                    "availableDocuments": [
+                      {
+                        "documentType": "Document type name",
+                        "quality": "good" or "moderate" or "poor",
+                        "completeness": "complete" or "partial" or "incomplete",
+                        "keyInsights": ["Key insight 1", "Key insight 2"]
+                      }
+                    ],
+                    "missingDocuments": {
+                      "list": ["Document type 1", "Document type 2"],
+                      "impact": "Description of how missing documents impact the analysis",
+                      "recommendations": ["Recommendation for missing documents"]
+                    }
                   }
                 }
 
-                AUDIT GUIDELINES:
+                COMPREHENSIVE DUE DILIGENCE GUIDELINES:
+                - CRITICAL: Set "reportCalculated" to true ONLY if you were able to extract meaningful financial data and generate a useful report
+                - Set "reportCalculated" to false if you cannot extract sufficient financial information from the documents
+                - Even if reportCalculated is false, still provide as much analysis as possible with the available data
+                - NEVER leave the report empty - always provide some analysis even if limited
+                - Provide an executive summary with key findings and recommended actions
+                - Focus on key financial indicators, trends, and growth metrics
+                - Identify strengths, weaknesses, and areas for improvement
                 - Evaluate compliance with Indian accounting standards and regulations
                 - Assess internal controls and financial reporting processes
                 - Identify potential fraud risks and irregularities
                 - Verify accuracy and completeness of financial statements
                 - Evaluate tax compliance (GST, Income Tax, TDS)
                 - Provide recommendations for improving financial governance
-                - If documents are missing, explain how this impacts the audit
-                - For missing documents, provide recommendations on what information they would provide
+                - Evaluate financial health, profitability, liquidity, and solvency
+                - Assess growth potential and investment opportunities
+                - IMPORTANT: Include a detailed analysis of available documents in the documentAnalysis section
+                - For each available document, assess its quality, completeness, and key insights
+                - For missing documents, explain how this impacts the analysis and provide recommendations
 
                 DOCUMENT CONTENT:
                 ${documentContent}
                 `;
-      }
 
       // Call Gemini API
       const result = await model.generateContent(prompt);

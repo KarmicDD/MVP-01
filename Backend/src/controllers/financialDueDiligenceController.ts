@@ -1,6 +1,11 @@
 import { Request, Response } from 'express';
-import FinancialReport, { IFinancialReport } from '../models/Analytics/FinancialReport';
-import DocumentModel from '../models/Profile/Document';
+import FinancialDueDiligenceReport, { IFinancialDueDiligenceReport } from '../models/Analytics/FinancialDueDiligenceReport';
+import DocumentModel, { DocumentType } from '../models/Profile/Document';
+import StartupProfileModel from '../models/Profile/StartupProfile';
+import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
+import ApiUsageModel from '../models/ApiUsageModel/ApiUsage';
+import enhancedDocumentProcessingService from '../services/EnhancedDocumentProcessingService';
+import dotenv from 'dotenv';
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
@@ -191,19 +196,36 @@ export const generateFinancialAnalysis = async (req: Request, res: Response): Pr
         // For now, generate a mock report based on the report type
         const report = await generateMockReport(companyName, reportType, documentIds);
 
-        // Save the report to the database
-        const financialReport = new FinancialReport({
+        // Save the report to the database using our consolidated model
+        const financialReport = new FinancialDueDiligenceReport({
             userId: req.user.userId,
             companyName,
-            reportType,
             generatedBy: 'KarmicDD AI',
-            summary: report.summary,
-            metrics: report.metrics,
-            recommendations: report.recommendations,
-            riskFactors: report.riskFactors,
-            complianceItems: report.complianceItems,
+
+            // Executive Summary Section
+            executiveSummary: {
+                headline: `${reportType === 'analysis' ? 'Financial Analysis' : 'Audit Report'} for ${companyName}`,
+                summary: report.summary,
+                keyFindings: [],
+                recommendedActions: [],
+                keyMetrics: report.metrics || []
+            },
+
+            // Financial Analysis Section
+            financialAnalysis: {
+                metrics: report.metrics || [],
+                trends: []
+            },
+
+            // Other sections
+            recommendations: report.recommendations || [],
+            riskFactors: report.riskFactors || [],
+            complianceItems: report.complianceItems || [],
+
+            // Document Sources and Metadata
             documentSources: documentIds,
-            status: 'final'
+            status: 'final',
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Expire after 30 days
         });
 
         await financialReport.save();
@@ -227,9 +249,9 @@ export const getFinancialReports = async (req: Request, res: Response): Promise<
             return;
         }
 
-        const reports = await FinancialReport.find({ userId: req.user.userId })
+        const reports = await FinancialDueDiligenceReport.find({ userId: req.user.userId })
             .sort({ createdAt: -1 })
-            .select('-financialStatements -ratioAnalysis -taxCompliance');
+            .select('-financialStatements -ratioAnalysis -taxCompliance -auditFindings');
 
         res.status(200).json({ reports });
     } catch (error) {
@@ -248,7 +270,7 @@ export const getFinancialReport = async (req: Request, res: Response): Promise<v
 
         const { reportId } = req.params;
 
-        const report = await FinancialReport.findOne({
+        const report = await FinancialDueDiligenceReport.findOne({
             _id: reportId,
             userId: req.user.userId
         });
@@ -275,7 +297,7 @@ export const generatePdfReport = async (req: Request, res: Response): Promise<vo
 
         const { reportId } = req.params;
 
-        const report = await FinancialReport.findOne({
+        const report = await FinancialDueDiligenceReport.findOne({
             _id: reportId,
             userId: req.user.userId
         });
@@ -299,7 +321,7 @@ export const generatePdfReport = async (req: Request, res: Response): Promise<vo
         const lineHeight = fontSize * 1.2;
 
         // Add title
-        page.drawText(`${report.reportType === 'analysis' ? 'Financial Analysis' : 'Audit Report'}`, {
+        page.drawText(report.executiveSummary?.headline || 'Financial Due Diligence Report', {
             x: 50,
             y: height - 50,
             size: 24,
@@ -332,7 +354,7 @@ export const generatePdfReport = async (req: Request, res: Response): Promise<vo
         });
 
         // Split summary into lines to fit the page width
-        const summaryLines = splitTextIntoLines(report.summary, 70);
+        const summaryLines = splitTextIntoLines(report.executiveSummary?.summary || '', 70);
         let currentY = height - 150;
 
         for (const line of summaryLines) {
@@ -355,7 +377,12 @@ export const generatePdfReport = async (req: Request, res: Response): Promise<vo
         });
         currentY -= 20;
 
-        for (const metric of report.metrics) {
+        // Use metrics from executiveSummary.keyMetrics if available, otherwise use financialAnalysis.metrics
+        const metrics = report.executiveSummary?.keyMetrics?.length > 0
+            ? report.executiveSummary.keyMetrics
+            : (report.financialAnalysis?.metrics || []);
+
+        for (const metric of metrics) {
             page.drawText(`${metric.name}: ${metric.value} (${metric.status})`, {
                 x: 50,
                 y: currentY,
@@ -462,8 +489,8 @@ export const generatePdfReport = async (req: Request, res: Response): Promise<vo
             currentY -= 10;
         }
 
-        // Add compliance items for audit reports
-        if (report.reportType === 'audit' && report.complianceItems && report.complianceItems.length > 0) {
+        // Add compliance items if available
+        if (report.complianceItems && report.complianceItems.length > 0) {
             if (currentY < 150) {
                 // Add a new page if we're running out of space
                 const newPage = pdfDoc.addPage([595.28, 841.89]);
@@ -530,7 +557,7 @@ export const generatePdfReport = async (req: Request, res: Response): Promise<vo
 
         // Set response headers
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="${report.companyName.replace(/\s+/g, '_')}_${report.reportType}_report.pdf"`);
+        res.setHeader('Content-Disposition', `attachment; filename="${report.companyName.replace(/\s+/g, '_')}_financial_report.pdf"`);
 
         // Send the PDF as the response
         res.send(Buffer.from(pdfBytes));

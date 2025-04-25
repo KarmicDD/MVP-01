@@ -82,8 +82,7 @@ async function checkRateLimit(userId: string): Promise<RateLimitResult> {
  * Analyze financial due diligence between a startup and an investor
  */
 export const analyzeFinancialDueDiligence = async (req: Request, res: Response): Promise<void> => {
-    // Get report type from query parameter, default to 'analysis'
-    const reportType = req.query.reportType === 'audit' ? 'audit' : 'analysis';
+    // We now generate a combined report that includes both analysis and audit
     try {
         console.log('Received request for financial due diligence analysis');
         console.log('Params:', req.params);
@@ -126,14 +125,24 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
             if (oldAnalysis) {
                 // Return old analysis with a flag indicating it's old data
                 res.json({
-                    summary: oldAnalysis.summary,
-                    metrics: oldAnalysis.metrics,
+                    executiveSummary: oldAnalysis.executiveSummary || {
+                        headline: "Financial Due Diligence Report",
+                        summary: "This is a previously generated report.",
+                        keyFindings: [],
+                        recommendedActions: [],
+                        keyMetrics: []
+                    },
+                    financialAnalysis: oldAnalysis.financialAnalysis || {
+                        metrics: [],
+                        trends: []
+                    },
                     recommendations: oldAnalysis.recommendations,
                     riskFactors: oldAnalysis.riskFactors,
                     complianceItems: oldAnalysis.complianceItems,
                     financialStatements: oldAnalysis.financialStatements,
                     ratioAnalysis: oldAnalysis.ratioAnalysis,
                     taxCompliance: oldAnalysis.taxCompliance,
+                    auditFindings: oldAnalysis.auditFindings,
                     perspective: oldAnalysis.perspective,
                     generatedDate: oldAnalysis.createdAt,
                     isOldData: true,
@@ -191,14 +200,24 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 // Return cached analysis
                 console.log('Found existing analysis, returning cached result');
                 res.json({
-                    summary: existingAnalysis.summary,
-                    metrics: existingAnalysis.metrics,
+                    executiveSummary: existingAnalysis.executiveSummary || {
+                        headline: "Financial Due Diligence Report",
+                        summary: "This is a previously generated report.",
+                        keyFindings: [],
+                        recommendedActions: [],
+                        keyMetrics: []
+                    },
+                    financialAnalysis: existingAnalysis.financialAnalysis || {
+                        metrics: [],
+                        trends: []
+                    },
                     recommendations: existingAnalysis.recommendations,
                     riskFactors: existingAnalysis.riskFactors,
                     complianceItems: existingAnalysis.complianceItems,
                     financialStatements: existingAnalysis.financialStatements,
                     ratioAnalysis: existingAnalysis.ratioAnalysis,
                     taxCompliance: existingAnalysis.taxCompliance,
+                    auditFindings: existingAnalysis.auditFindings,
                     perspective: existingAnalysis.perspective,
                     generatedDate: existingAnalysis.createdAt
                 });
@@ -332,7 +351,6 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
             const financialData = await enhancedDocumentProcessingService.extractFinancialData(
                 combinedContent,
                 perspective === 'startup' ? startup.companyName : investor.companyName,
-                reportType as 'analysis' | 'audit',
                 startupInfo,
                 investorInfo,
                 missingDocumentTypes // Pass missing document types to Gemini
@@ -387,10 +405,24 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 investorId: investorId,
                 perspective: perspective,
                 companyName: startup.companyName,
-                reportType: reportType,
                 generatedBy: 'KarmicDD AI',
-                summary: financialData.summary,
-                metrics: financialData.metrics || [],
+
+                // Executive Summary Section
+                executiveSummary: financialData.executiveSummary || {
+                    headline: "Financial Due Diligence Report",
+                    summary: financialData.summary || "Financial analysis of the provided documents.",
+                    keyFindings: [],
+                    recommendedActions: [],
+                    keyMetrics: financialData.metrics || []
+                },
+
+                // Financial Analysis Section
+                financialAnalysis: financialData.financialAnalysis || {
+                    metrics: financialData.metrics || [],
+                    trends: []
+                },
+
+                // Other sections
                 recommendations: financialData.recommendations || [],
                 riskFactors: financialData.riskFactors || [],
                 complianceItems: financialData.complianceItems || [],
@@ -401,6 +433,14 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                     incomeTax: { status: 'compliant', details: 'Not evaluated' },
                     tds: { status: 'compliant', details: 'Not evaluated' }
                 },
+
+                // Audit Findings
+                auditFindings: financialData.auditFindings || {
+                    findings: [],
+                    overallAssessment: "No audit findings available."
+                },
+
+                // Metadata
                 documentSources: documents.map(doc => doc._id ? doc._id.toString() : ''),
                 status: 'final',
                 createdAt: new Date(),
@@ -415,14 +455,15 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
 
             // Return complete analysis data with current date as generation date
             res.json({
-                summary: financialReport.summary,
-                metrics: financialReport.metrics,
+                executiveSummary: financialReport.executiveSummary,
+                financialAnalysis: financialReport.financialAnalysis,
                 recommendations: financialReport.recommendations,
                 riskFactors: financialReport.riskFactors,
                 complianceItems: financialReport.complianceItems,
                 financialStatements: financialReport.financialStatements,
                 ratioAnalysis: financialReport.ratioAnalysis,
                 taxCompliance: financialReport.taxCompliance,
+                auditFindings: financialReport.auditFindings,
                 perspective: financialReport.perspective,
                 generatedDate: financialReport.createdAt,
                 startupInfo: startupInfo,  // Include all startup information
@@ -502,14 +543,24 @@ export const getFinancialDueDiligenceReport = async (req: Request, res: Response
 
         // Return the report
         res.json({
-            summary: report.summary,
-            metrics: report.metrics,
+            executiveSummary: report.executiveSummary || {
+                headline: "Financial Due Diligence Report",
+                summary: "Financial analysis of the provided documents.",
+                keyFindings: [],
+                recommendedActions: [],
+                keyMetrics: []
+            },
+            financialAnalysis: report.financialAnalysis || {
+                metrics: [],
+                trends: []
+            },
             recommendations: report.recommendations,
             riskFactors: report.riskFactors,
             complianceItems: report.complianceItems,
             financialStatements: report.financialStatements,
             ratioAnalysis: report.ratioAnalysis,
             taxCompliance: report.taxCompliance,
+            auditFindings: report.auditFindings,
             perspective: report.perspective,
             generatedDate: report.createdAt
         });

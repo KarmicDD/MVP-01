@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FiDownload, FiShare2, FiDollarSign, FiTrendingUp, FiAlertCircle, FiCheckCircle, FiBarChart2, FiFileText } from 'react-icons/fi';
+import { FiDownload, FiShare2, FiDollarSign, FiTrendingUp, FiAlertCircle, FiCheckCircle, FiBarChart2, FiFileText, FiInfo } from 'react-icons/fi';
 import { FinancialDueDiligenceReport } from '../../../hooks/useFinancialDueDiligence';
 
 interface FinancialDueDiligenceReportContentProps {
@@ -78,6 +78,24 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
         </div>
       )}
 
+      {/* Show warning for incomplete financial data extraction */}
+      {report.reportCalculated === false && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                <span className="font-medium">Limited Analysis Available:</span> Our system was unable to extract complete financial data from the provided documents. The analysis below is based on limited information and may not be comprehensive.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-5">
         <div className="flex justify-between items-center">
@@ -116,8 +134,30 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
       <div className="p-6 space-y-8">
         {/* Executive Summary */}
         <div className="bg-indigo-50 p-5 rounded-lg border border-indigo-100">
-          <h3 className="text-lg font-semibold text-indigo-800 mb-2">Executive Summary</h3>
-          <p className="text-gray-700">{report.summary}</p>
+          <h3 className="text-lg font-semibold text-indigo-800 mb-2">{report.executiveSummary?.headline || "Executive Summary"}</h3>
+          <p className="text-gray-700">{report.executiveSummary?.summary || "No summary available."}</p>
+
+          {report.executiveSummary?.keyFindings && report.executiveSummary.keyFindings.length > 0 && (
+            <div className="mt-4">
+              <h4 className="font-medium text-indigo-700 mb-2">Key Findings</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                {report.executiveSummary.keyFindings.map((finding, index) => (
+                  <li key={index} className="text-gray-700">{finding}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {report.executiveSummary?.recommendedActions && report.executiveSummary.recommendedActions.length > 0 && (
+            <div className="mt-4">
+              <h4 className="font-medium text-indigo-700 mb-2">Recommended Actions</h4>
+              <ul className="list-disc pl-5 space-y-1">
+                {report.executiveSummary.recommendedActions.map((action, index) => (
+                  <li key={index} className="text-gray-700">{action}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         {/* Key Financial Metrics */}
@@ -127,37 +167,148 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
             Key Financial Metrics
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {report.metrics.map((metric, index) => (
-              <motion.div
-                key={index}
-                className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-600">{metric.name}</span>
-                  {metric.status === 'good' ? (
-                    <FiCheckCircle className="text-green-500" />
-                  ) : metric.status === 'warning' ? (
-                    <FiAlertCircle className="text-yellow-500" />
-                  ) : (
-                    <FiAlertCircle className="text-red-500" />
+            {/* Display key metrics from executive summary if available */}
+            {report.executiveSummary?.keyMetrics && report.executiveSummary.keyMetrics.length > 0 ? (
+              report.executiveSummary.keyMetrics.map((metric, index) => (
+                <motion.div
+                  key={index}
+                  className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-600">{metric.name}</span>
+                    {metric.status === 'good' ? (
+                      <FiCheckCircle className="text-green-500" />
+                    ) : metric.status === 'warning' ? (
+                      <FiAlertCircle className="text-yellow-500" />
+                    ) : (
+                      <FiAlertCircle className="text-red-500" />
+                    )}
+                  </div>
+                  <div className={`text-lg font-bold ${metric.status === 'good' ? 'text-green-600' :
+                    metric.status === 'warning' ? 'text-yellow-600' :
+                      'text-red-600'
+                    }`}>
+                    {metric.value}
+                  </div>
+                  {metric.description && (
+                    <p className="text-xs text-gray-500 mt-1">{metric.description}</p>
                   )}
-                </div>
-                <div className={`text-lg font-bold ${metric.status === 'good' ? 'text-green-600' :
-                  metric.status === 'warning' ? 'text-yellow-600' :
-                    'text-red-600'
-                  }`}>
-                  {metric.value}
-                </div>
-                {metric.description && (
-                  <p className="text-xs text-gray-500 mt-1">{metric.description}</p>
-                )}
-              </motion.div>
-            ))}
+                </motion.div>
+              ))
+            ) : report.financialAnalysis?.metrics && report.financialAnalysis.metrics.length > 0 ? (
+              // Fall back to financial analysis metrics if executive summary metrics aren't available
+              report.financialAnalysis.metrics.map((metric, index) => (
+                <motion.div
+                  key={index}
+                  className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-600">{metric.name}</span>
+                    {metric.status === 'good' ? (
+                      <FiCheckCircle className="text-green-500" />
+                    ) : metric.status === 'warning' ? (
+                      <FiAlertCircle className="text-yellow-500" />
+                    ) : (
+                      <FiAlertCircle className="text-red-500" />
+                    )}
+                  </div>
+                  <div className={`text-lg font-bold ${metric.status === 'good' ? 'text-green-600' :
+                    metric.status === 'warning' ? 'text-yellow-600' :
+                      'text-red-600'
+                    }`}>
+                    {metric.value}
+                  </div>
+                  {metric.description && (
+                    <p className="text-xs text-gray-500 mt-1">{metric.description}</p>
+                  )}
+                </motion.div>
+              ))
+            ) : (
+              // Fall back to legacy metrics if neither are available
+              report.metrics && report.metrics.map((metric, index) => (
+                <motion.div
+                  key={index}
+                  className="bg-white p-4 rounded-lg shadow-sm border border-gray-200"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-600">{metric.name}</span>
+                    {metric.status === 'good' ? (
+                      <FiCheckCircle className="text-green-500" />
+                    ) : metric.status === 'warning' ? (
+                      <FiAlertCircle className="text-yellow-500" />
+                    ) : (
+                      <FiAlertCircle className="text-red-500" />
+                    )}
+                  </div>
+                  <div className={`text-lg font-bold ${metric.status === 'good' ? 'text-green-600' :
+                    metric.status === 'warning' ? 'text-yellow-600' :
+                      'text-red-600'
+                    }`}>
+                    {metric.value}
+                  </div>
+                  {metric.description && (
+                    <p className="text-xs text-gray-500 mt-1">{metric.description}</p>
+                  )}
+                </motion.div>
+              ))
+            )}
           </div>
         </div>
+
+        {/* Financial Trends */}
+        {report.financialAnalysis?.trends && report.financialAnalysis.trends.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+              <FiTrendingUp className="mr-2" />
+              Financial Trends
+            </h3>
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {report.financialAnalysis.trends.map((trend, index) => (
+                  <motion.div
+                    key={index}
+                    className="p-3 rounded-lg border"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    style={{
+                      borderColor: trend.impact === 'positive' ? '#10B981' :
+                        trend.impact === 'negative' ? '#EF4444' : '#6B7280',
+                      backgroundColor: trend.impact === 'positive' ? 'rgba(16, 185, 129, 0.1)' :
+                        trend.impact === 'negative' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(107, 114, 128, 0.1)'
+                    }}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-medium text-gray-800">{trend.name}</span>
+                      <span className={`text-xs px-2 py-1 rounded-full ${trend.trend === 'increasing' ? 'bg-blue-100 text-blue-800' :
+                        trend.trend === 'decreasing' ? 'bg-purple-100 text-purple-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                        {trend.trend}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600">{trend.description}</p>
+                    <div className="mt-2 text-xs font-medium" style={{
+                      color: trend.impact === 'positive' ? '#10B981' :
+                        trend.impact === 'negative' ? '#EF4444' : '#6B7280'
+                    }}>
+                      Impact: {trend.impact}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Recommendations and Risk Factors */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -325,6 +476,46 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
           </div>
         )}
 
+        {/* Audit Findings (if available) */}
+        {report.auditFindings && report.auditFindings.findings && report.auditFindings.findings.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+              <FiFileText className="mr-2" />
+              Audit Findings
+            </h3>
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              {report.auditFindings.overallAssessment && (
+                <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <h4 className="font-medium text-blue-800 mb-1">Overall Assessment</h4>
+                  <p className="text-sm text-gray-700">{report.auditFindings.overallAssessment}</p>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {report.auditFindings.findings.map((finding, index) => (
+                  <div key={index} className="p-3 rounded-lg border border-gray-200">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-medium text-gray-800">{finding.area}</h4>
+                      <span className={`text-xs px-2 py-1 rounded-full ${finding.severity === 'high' ? 'bg-red-100 text-red-800' :
+                        finding.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                        {finding.severity} severity
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-700 mb-2">{finding.description}</p>
+                    {finding.recommendation && (
+                      <div className="mt-2 text-sm">
+                        <span className="font-medium text-indigo-700">Recommendation:</span> {finding.recommendation}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tax Compliance (if available) */}
         {report.taxCompliance && (
           <div>
@@ -417,8 +608,86 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
           </div>
         )}
 
-        {/* Missing Documents Section */}
-        {report.missingDocuments && report.missingDocuments.list.length > 0 && (
+        {/* Document Analysis Section */}
+        {report.documentAnalysis && (
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+              <FiFileText className="mr-2" />
+              Document Analysis
+            </h3>
+
+            {/* Available Documents Analysis */}
+            {report.documentAnalysis.availableDocuments && report.documentAnalysis.availableDocuments.length > 0 && (
+              <div className="mb-6">
+                <h4 className="font-medium text-gray-800 mb-3">Available Documents Analysis</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {report.documentAnalysis.availableDocuments.map((doc, index) => (
+                    <div key={index} className="bg-white p-4 rounded-lg border border-gray-200">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-medium text-gray-800">
+                          {doc.documentType.replace('financial_', '').replace(/_/g, ' ').split(' ').map(word =>
+                            word.charAt(0).toUpperCase() + word.slice(1)
+                          ).join(' ')}
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded-full ${doc.quality === 'good' ? 'bg-green-100 text-green-800' :
+                          doc.quality === 'moderate' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                          {doc.quality}
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-600 mb-2">
+                        <span className="font-medium">Completeness:</span> {doc.completeness}
+                      </div>
+                      {doc.keyInsights && doc.keyInsights.length > 0 && (
+                        <div>
+                          <span className="text-sm font-medium text-gray-700">Key Insights:</span>
+                          <ul className="list-disc pl-5 mt-1 space-y-1">
+                            {doc.keyInsights.map((insight, i) => (
+                              <li key={i} className="text-xs text-gray-600">{insight}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Missing Documents Section */}
+            {report.documentAnalysis.missingDocuments && report.documentAnalysis.missingDocuments.list.length > 0 && (
+              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                <h4 className="font-medium text-gray-800 mb-2">Missing Documents</h4>
+                <p className="text-sm text-gray-700 mb-3">
+                  {report.documentAnalysis.missingDocuments.impact}
+                </p>
+
+                <h5 className="font-medium text-gray-700 mb-2">Missing Document List:</h5>
+                <ul className="list-disc pl-5 mb-4 space-y-1">
+                  {report.documentAnalysis.missingDocuments.list.map((doc, index) => (
+                    <li key={index} className="text-sm text-gray-700">
+                      {typeof doc === 'string' ?
+                        doc.replace('financial_', '').replace(/_/g, ' ').split(' ').map(word =>
+                          word.charAt(0).toUpperCase() + word.slice(1)
+                        ).join(' ') : doc}
+                    </li>
+                  ))}
+                </ul>
+
+                <h5 className="font-medium text-gray-700 mb-2">Recommendations:</h5>
+                <ul className="list-disc pl-5 space-y-1">
+                  {report.documentAnalysis.missingDocuments.recommendations.map((rec, index) => (
+                    <li key={index} className="text-sm text-gray-700">{rec}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Legacy Missing Documents Section - for backward compatibility */}
+        {!report.documentAnalysis && report.missingDocuments && report.missingDocuments.list.length > 0 && (
           <div className="mt-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
               <FiFileText className="mr-2" />

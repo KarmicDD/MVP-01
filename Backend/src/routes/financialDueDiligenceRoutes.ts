@@ -9,11 +9,19 @@ import {
     generatePdfReport
 } from '../controllers/financialDueDiligenceController';
 import {
+    analyzeFinancialDueDiligence as analyzeMatchFinancialDueDiligence,
+    getFinancialDueDiligenceReport as getMatchFinancialDueDiligenceReport,
+    shareFinancialDueDiligenceReport as shareMatchFinancialDueDiligenceReport,
+    exportFinancialDueDiligenceReportPdf as exportMatchFinancialDueDiligenceReportPdf
+} from '../controllers/FinancialDueDiligenceMatchController';
+import {
     analyzeFinancialDueDiligence,
     getFinancialDueDiligenceReport,
+    generateFinancialDueDiligenceReport,
     shareFinancialDueDiligenceReport,
-    exportFinancialDueDiligenceReportPdf
-} from '../controllers/FinancialDueDiligenceMatchController';
+    exportFinancialDueDiligenceReportPdf,
+    getEntityDocumentDetails
+} from '../controllers/EntityFinancialDueDiligenceController';
 
 const router = express.Router();
 
@@ -344,7 +352,7 @@ router.get(
 router.get(
     '/match/:startupId/:investorId',
     authenticateJWT,
-    analyzeFinancialDueDiligence
+    analyzeMatchFinancialDueDiligence
 );
 
 /**
@@ -392,7 +400,7 @@ router.get(
 router.get(
     '/match/:startupId/:investorId/report',
     authenticateJWT,
-    getFinancialDueDiligenceReport
+    getMatchFinancialDueDiligenceReport
 );
 
 /**
@@ -463,7 +471,7 @@ router.get(
 router.post(
     '/match/:startupId/:investorId/share',
     authenticateJWT,
-    shareFinancialDueDiligenceReport
+    shareMatchFinancialDueDiligenceReport
 );
 
 /**
@@ -509,7 +517,321 @@ router.post(
 router.get(
     '/match/:startupId/:investorId/pdf',
     authenticateJWT,
+    exportMatchFinancialDueDiligenceReportPdf
+);
+
+/**
+ * @swagger
+ * /financial/entity/{entityId}:
+ *   get:
+ *     tags:
+ *       - Financial Due Diligence
+ *     summary: Analyze financial due diligence for a single entity
+ *     description: Analyze financial due diligence for a single entity (startup or investor)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: entityId
+ *         in: path
+ *         description: ID of the entity to analyze
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - name: entityType
+ *         in: query
+ *         description: Type of entity (startup or investor)
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [startup, investor]
+ *     responses:
+ *       '200':
+ *         description: Analysis completed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 executiveSummary:
+ *                   type: object
+ *                 financialAnalysis:
+ *                   type: object
+ *                 recommendations:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 availableDocuments:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 missingDocumentTypes:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *       '401':
+ *         description: Unauthorized
+ *       '404':
+ *         description: Entity profile not found or no documents available
+ *       '500':
+ *         description: Server error
+ */
+router.get(
+    '/entity/:entityId',
+    authenticateJWT,
+    analyzeFinancialDueDiligence
+);
+
+/**
+ * @swagger
+ * /financial/entity/{entityId}/report:
+ *   get:
+ *     tags:
+ *       - Financial Due Diligence
+ *     summary: Get financial due diligence report for an entity
+ *     description: Get the financial due diligence report for a single entity
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: entityId
+ *         in: path
+ *         description: ID of the entity
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - name: entityType
+ *         in: query
+ *         description: Type of entity (startup or investor)
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [startup, investor]
+ *     responses:
+ *       '200':
+ *         description: Report retrieved successfully
+ *       '401':
+ *         description: Unauthorized
+ *       '404':
+ *         description: Report not found
+ *       '500':
+ *         description: Server error
+ */
+router.get(
+    '/entity/:entityId/report',
+    authenticateJWT,
+    getFinancialDueDiligenceReport
+);
+
+/**
+ * @swagger
+ * /financial/entity/{entityId}/generate:
+ *   post:
+ *     tags:
+ *       - Financial Due Diligence
+ *     summary: Generate a new financial due diligence report
+ *     description: Generate a new financial due diligence report for an entity
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: entityId
+ *         in: path
+ *         description: ID of the entity
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               entityType:
+ *                 type: string
+ *                 enum: [startup, investor]
+ *                 description: Type of entity
+ *             required:
+ *               - entityType
+ *     responses:
+ *       '200':
+ *         description: Report generated successfully
+ *       '401':
+ *         description: Unauthorized
+ *       '404':
+ *         description: Entity not found
+ *       '500':
+ *         description: Server error
+ */
+router.post(
+    '/entity/:entityId/generate',
+    authenticateJWT,
+    generateFinancialDueDiligenceReport
+);
+
+/**
+ * @swagger
+ * /financial/entity/{entityId}/share:
+ *   post:
+ *     tags:
+ *       - Financial Due Diligence
+ *     summary: Share financial due diligence report
+ *     description: Share the financial due diligence report with specified recipients
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: entityId
+ *         in: path
+ *         description: ID of the entity
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - name: entityType
+ *         in: query
+ *         description: Type of entity (startup or investor)
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [startup, investor]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               emails:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: email
+ *                 description: List of recipient email addresses
+ *             required:
+ *               - emails
+ *     responses:
+ *       '200':
+ *         description: Report shared successfully
+ *       '401':
+ *         description: Unauthorized
+ *       '404':
+ *         description: Report not found
+ *       '500':
+ *         description: Server error
+ */
+router.post(
+    '/entity/:entityId/share',
+    authenticateJWT,
+    shareFinancialDueDiligenceReport
+);
+
+/**
+ * @swagger
+ * /financial/entity/{entityId}/pdf:
+ *   get:
+ *     tags:
+ *       - Financial Due Diligence
+ *     summary: Export financial due diligence report as PDF
+ *     description: Export the financial due diligence report as a PDF document
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: entityId
+ *         in: path
+ *         description: ID of the entity
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - name: entityType
+ *         in: query
+ *         description: Type of entity (startup or investor)
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [startup, investor]
+ *     responses:
+ *       '200':
+ *         description: PDF generated successfully
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       '401':
+ *         description: Unauthorized
+ *       '404':
+ *         description: Report not found
+ *       '500':
+ *         description: Server error
+ */
+router.get(
+    '/entity/:entityId/pdf',
+    authenticateJWT,
     exportFinancialDueDiligenceReportPdf
+);
+
+/**
+ * @swagger
+ * /financial/entity/{entityId}/documents:
+ *   get:
+ *     tags:
+ *       - Financial Due Diligence
+ *     summary: Get document details for an entity
+ *     description: Get available and missing document types for an entity
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: entityId
+ *         in: path
+ *         description: ID of the entity
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - name: entityType
+ *         in: query
+ *         description: Type of entity (startup or investor)
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [startup, investor]
+ *     responses:
+ *       '200':
+ *         description: Document details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 availableDocuments:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       documentId:
+ *                         type: string
+ *                       documentName:
+ *                         type: string
+ *                       documentType:
+ *                         type: string
+ *                       uploadDate:
+ *                         type: string
+ *                         format: date-time
+ *                 missingDocumentTypes:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *       '401':
+ *         description: Unauthorized
+ *       '500':
+ *         description: Server error
+ */
+router.get(
+    '/entity/:entityId/documents',
+    authenticateJWT,
+    getEntityDocumentDetails
 );
 
 export default router;

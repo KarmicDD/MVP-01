@@ -35,9 +35,9 @@ export interface FinancialRatio {
   status: 'good' | 'warning' | 'critical';
 }
 
-export interface StartupInfo {
+export interface EntityInfo {
   companyName: string;
-  industry: string;
+  industry?: string;
   stage?: string;
   foundingDate?: string;
   description?: string;
@@ -47,14 +47,9 @@ export interface StartupInfo {
   fundingRound?: string;
   fundingAmount?: string;
   valuation?: string;
-}
-
-export interface InvestorInfo {
-  name?: string;
   investmentStage?: string;
   investmentSize?: string;
   sectors?: string[] | string;
-  location?: string;
   portfolio?: string[] | string;
 }
 
@@ -83,6 +78,13 @@ export interface AuditFinding {
   severity: 'high' | 'medium' | 'low';
   description: string;
   recommendation: string;
+}
+
+export interface FinancialDocument {
+  documentId: string;
+  documentName: string;
+  documentType: string;
+  uploadDate: string;
 }
 
 export interface FinancialDueDiligenceReport {
@@ -147,39 +149,33 @@ export interface FinancialDueDiligenceReport {
     overallAssessment: string;
   };
 
-  // Document Analysis
+  // Document Analysis Section
   documentAnalysis?: {
     availableDocuments: DocumentAnalysisItem[];
     missingDocuments: MissingDocuments;
   };
 
+  // Document Information
+  availableDocuments: FinancialDocument[];
+  missingDocumentTypes: string[];
+
   // Additional Information
-  missingDocuments?: MissingDocuments;
-  perspective: string;
   generatedDate: string;
-  startupInfo?: StartupInfo;
-  investorInfo?: InvestorInfo;
+  entityProfile?: EntityInfo;
   isOldData?: boolean;
   message?: string;
+  reportCalculated?: boolean;
 }
 
-export interface FinancialDocument {
-  id: string;
-  userId: string;
-  documentType: string;
-  originalName: string;
-  fileSize: number;
-  uploadDate: string;
-}
-
-export function useFinancialDueDiligence(startupId: string | null, investorId: string | null, perspective: 'startup' | 'investor' = 'startup') {
+export function useEntityFinancialDueDiligence(entityId: string | null, entityType: 'startup' | 'investor' = 'startup') {
   const [report, setReport] = useState<FinancialDueDiligenceReport | null>(null);
   const reportRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [documentsAvailable, setDocumentsAvailable] = useState<boolean | null>(null);
   const [checkingDocuments, setCheckingDocuments] = useState(true);
-  const [entityDocuments, setEntityDocuments] = useState<FinancialDocument[]>([]);
+  const [availableDocuments, setAvailableDocuments] = useState<FinancialDocument[]>([]);
+  const [missingDocumentTypes, setMissingDocumentTypes] = useState<string[]>([]);
 
   // First check if financial documents are available
   useEffect(() => {
@@ -188,32 +184,26 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
         setCheckingDocuments(true);
         console.log('Checking financial documents availability...');
 
-        if (!startupId) {
+        if (!entityId) {
           setDocumentsAvailable(false);
           setLoading(false);
           setCheckingDocuments(false);
           return;
         }
 
-        // We need to check the documents of the selected entity (the counterparty), not the logged-in user
-        // If perspective is 'startup', we want to analyze the startup's documents (startupId)
-        // If perspective is 'investor', we want to analyze the investor's documents (investorId)
-        const entityIdToCheck = perspective === 'startup' ? startupId : investorId;
+        console.log(`Checking documents for entity ID: ${entityId} with type: ${entityType}`);
 
-        console.log(`Checking documents for entity ID: ${entityIdToCheck} with perspective: ${perspective}`);
+        // Fetch documents for the entity using the new endpoint
+        const response = await api.get(`/financial/entity/${entityId}/documents?entityType=${entityType}`);
 
-        // Fetch documents for the selected entity
-        const response = await api.get(`/profile/documents?userId=${entityIdToCheck}`);
-
-        // Filter for financial documents (any document type starting with 'financial_')
-        const financialDocuments = response.data.documents ?
-          response.data.documents.filter((doc: any) => doc.documentType.startsWith('financial_')) : [];
+        const { availableDocuments, missingDocumentTypes } = response.data;
 
         // Store the documents for display
-        setEntityDocuments(financialDocuments);
+        setAvailableDocuments(availableDocuments);
+        setMissingDocumentTypes(missingDocumentTypes);
 
         // Check if documents are available
-        const hasDocuments = financialDocuments.length > 0;
+        const hasDocuments = availableDocuments.length > 0;
         setDocumentsAvailable(hasDocuments);
 
         if (!hasDocuments) {
@@ -229,7 +219,7 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
     };
 
     checkDocumentsAvailability();
-  }, [startupId, investorId, perspective]);
+  }, [entityId, entityType]);
 
   // Only fetch report if documents are available
   useEffect(() => {
@@ -244,9 +234,9 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
       return;
     }
 
-    // If we're here, documents are available, so fetch report if IDs are provided
+    // If we're here, documents are available, so fetch report if ID is provided
     const fetchReport = async () => {
-      if (!startupId || !investorId) {
+      if (!entityId) {
         setLoading(false);
         return;
       }
@@ -254,11 +244,10 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
       try {
         setLoading(true);
         setError(null);
-        console.log(`Fetching financial due diligence report for startup ${startupId} and investor ${investorId} with perspective ${perspective}`);
+        console.log(`Fetching financial due diligence report for entity ${entityId} with type ${entityType}`);
 
-        // Call the financial due diligence API with perspective
-        // The perspective parameter ensures we're analyzing the correct entity's documents
-        const response = await api.get(`/financial/match/${startupId}/${investorId}?perspective=${perspective}`);
+        // Call the financial due diligence API with entity type
+        const response = await api.get(`/financial/entity/${entityId}?entityType=${entityType}`);
         setReport(response.data);
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -267,9 +256,9 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
               data?: {
                 message?: string,
                 errorCode?: string,
-                startupInfo?: StartupInfo,
-                investorInfo?: InvestorInfo,
-                missingDocuments?: string[]
+                entityProfile?: EntityInfo,
+                availableDocuments?: FinancialDocument[],
+                missingDocumentTypes?: string[]
               }
             }
           };
@@ -278,12 +267,11 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
           if (errorObj.response?.data?.errorCode === 'NO_FINANCIAL_DOCUMENTS') {
             setDocumentsAvailable(false);
 
-            // Create a more specific error message based on the perspective
-            const entityType = perspective === 'startup' ? 'startup' : 'investor';
+            // Create a more specific error message
             setError(`No financial documents available for the selected ${entityType}.`);
 
-            // If the API returned startup and investor info, save it for display
-            if (errorObj.response?.data?.startupInfo || errorObj.response?.data?.investorInfo) {
+            // If the API returned entity info, save it for display
+            if (errorObj.response?.data?.entityProfile) {
               setReport({
                 executiveSummary: {
                   headline: `No Financial Documents Available`,
@@ -298,10 +286,18 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
                 },
                 recommendations: [],
                 riskFactors: [],
-                perspective: perspective,
+                documentAnalysis: {
+                  availableDocuments: [],
+                  missingDocuments: {
+                    list: errorObj.response?.data?.missingDocumentTypes || [],
+                    impact: "No financial documents are available for analysis, which prevents a comprehensive financial assessment.",
+                    recommendations: ["Upload the required financial documents to enable a complete analysis."]
+                  }
+                },
+                availableDocuments: errorObj.response?.data?.availableDocuments || [],
+                missingDocumentTypes: errorObj.response?.data?.missingDocumentTypes || [],
                 generatedDate: new Date().toISOString(),
-                startupInfo: errorObj.response?.data?.startupInfo,
-                investorInfo: errorObj.response?.data?.investorInfo
+                entityProfile: errorObj.response?.data?.entityProfile
               });
             }
           } else {
@@ -317,7 +313,7 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
     };
 
     fetchReport();
-  }, [startupId, investorId, perspective, documentsAvailable, checkingDocuments]);
+  }, [entityId, entityType, documentsAvailable, checkingDocuments]);
 
   const handleExportPDF = async () => {
     if (!reportRef.current) {
@@ -337,8 +333,8 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
       });
 
       // Calculate PDF dimensions (A4)
-      const imgWidth = 210;
-      const pageHeight = 295;
+      const imgWidth = 210; // Width in mm (A4)
+      const pageHeight = 295; // Height in mm (A4)
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
       // Create PDF document
@@ -359,7 +355,7 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
       }
 
       // Save PDF file
-      pdf.save(`financial-due-diligence-report-${startupId}-${investorId}.pdf`);
+      pdf.save(`financial-due-diligence-report-${entityId}.pdf`);
 
       // Show success notification
       toast.success('Report downloaded successfully!');
@@ -376,7 +372,7 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
   };
 
   const handleShareReport = async () => {
-    if (!startupId || !investorId) return;
+    if (!entityId) return;
 
     const emailInput = window.prompt('Enter email addresses separated by commas:');
     if (!emailInput) return;
@@ -384,7 +380,7 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
     const emails = emailInput.split(',').map(email => email.trim());
 
     try {
-      await api.post(`/financial/match/${startupId}/${investorId}/share`, { emails });
+      await api.post(`/financial/entity/${entityId}/share?entityType=${entityType}`, { emails });
       toast.success('Report shared successfully!');
     } catch (err: unknown) {
       console.error('Error sharing report:', err);
@@ -404,8 +400,8 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
 
   // Function to trigger report generation
   const generateReport = async () => {
-    if (!startupId || !investorId) {
-      toast.error('Missing startup or investor information');
+    if (!entityId) {
+      toast.error('Missing entity information');
       return;
     }
 
@@ -414,10 +410,9 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
       setError(null);
 
       // Call the financial due diligence API endpoint to generate a new report
-      // Make sure we're using the correct perspective to analyze the selected entity's documents
-      console.log(`Generating report for startupId: ${startupId}, investorId: ${investorId}, perspective: ${perspective}`);
-      const response = await api.post(`/financial/match/${startupId}/${investorId}/generate`, {
-        perspective: perspective
+      console.log(`Generating report for entityId: ${entityId}, entityType: ${entityType}`);
+      const response = await api.post(`/financial/entity/${entityId}/generate`, {
+        entityType: entityType
       });
 
       setReport(response.data);
@@ -441,7 +436,8 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
     error,
     documentsAvailable,
     checkingDocuments,
-    entityDocuments,
+    availableDocuments,
+    missingDocumentTypes,
     handleExportPDF,
     handleShareReport,
     generateReport,

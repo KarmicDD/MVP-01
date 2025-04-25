@@ -4,7 +4,7 @@ import { FiDownload, FiFileText, FiBarChart2, FiList, FiClipboard, FiInfo, FiX, 
 import SimpleSpinner from '../../SimpleSpinner';
 import { profileService } from '../../../services/api';
 import { toast } from 'react-hot-toast';
-import { useFinancialDueDiligence } from '../../../hooks/useFinancialDueDiligence';
+import { useEntityFinancialDueDiligence } from '../../../hooks/useEntityFinancialDueDiligence';
 import FinancialDueDiligenceReportContent from './FinancialDueDiligenceReportContent';
 import { LoadingSpinner } from '../../Loading';
 import TutorialButton from '../../Tutorial/TutorialButton';
@@ -21,48 +21,41 @@ interface FinancialDueDiligenceProps {
 const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfile, selectedMatchId }) => {
   // State for document upload and report generation UI
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedReportType, setSelectedReportType] = useState<'analysis' | 'audit'>('analysis');
   const [financialReports, setFinancialReports] = useState<any[]>([]);
   const [showReportsList, setShowReportsList] = useState(false);
   const [entityName, setEntityName] = useState<string>('');
 
-  // Determine startup and investor IDs based on user role and selected match
-  let startupId = null;
-  let investorId = null;
+  // Determine the entity ID and type based on user role and selected match
+  let entityId = null;
+  let entityType: 'startup' | 'investor' = 'startup';
 
   if (selectedMatchId && userProfile) {
-    if (userProfile.role === 'startup') {
-      startupId = userProfile.userId;
-      investorId = selectedMatchId;
-    } else {
-      investorId = userProfile.userId;
-      startupId = selectedMatchId;
-    }
+    // We want to analyze the selected entity (the counterparty), not the logged-in user
+    entityId = selectedMatchId;
+
+    // If user is a startup, we want to analyze the investor
+    // If user is an investor, we want to analyze the startup
+    entityType = userProfile.role === 'startup' ? 'investor' : 'startup';
   }
 
   // Use the tutorial hook for the help button functionality
   useTutorial('financial-dd-tutorial');
 
-  // We want to analyze the selected entity's documents, not the logged-in user's
-  // If user is a startup, we want to analyze the investor's documents (perspective = 'investor')
-  // If user is an investor, we want to analyze the startup's documents (perspective = 'startup')
-  // This ensures we're looking at the selected entity's documents (the counterparty)
-  const perspective = userProfile.role === 'startup' ? 'investor' : 'startup';
-
-  // Use the financial due diligence hook with the selected report type and correct perspective
+  // Use the entity financial due diligence hook with the correct entity type
   const {
     report,
     loading,
     error,
     documentsAvailable,
     checkingDocuments,
-    entityDocuments,
+    availableDocuments,
+    missingDocumentTypes,
     handleExportPDF,
     handleShareReport,
     generateReport,
     formatDate,
     reportRef
-  } = useFinancialDueDiligence(startupId, investorId, selectedReportType, perspective);
+  } = useEntityFinancialDueDiligence(entityId, entityType);
 
   // Fetch existing reports on component mount
   useEffect(() => {
@@ -246,39 +239,12 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
         </div>
       )}
 
-      {/* Report Type Selection Buttons */}
+      {/* Report Title */}
       {report && (
-        <div className="mb-6 flex justify-center space-x-4">
-          <motion.button
-            className={`px-4 py-2 rounded-lg shadow-sm flex items-center ${report.reportType === 'analysis' || !report.reportType ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}`}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              if (startupId && investorId) {
-                // Re-fetch with analysis type
-                setSelectedReportType('analysis');
-                window.location.reload();
-              }
-            }}
-          >
-            <FiBarChart2 className="mr-2" />
-            Due Diligence Report
-          </motion.button>
-          <motion.button
-            className={`px-4 py-2 rounded-lg shadow-sm flex items-center ${report.reportType === 'audit' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}`}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              if (startupId && investorId) {
-                // Re-fetch with audit type
-                setSelectedReportType('audit');
-                window.location.reload();
-              }
-            }}
-          >
-            <FiClipboard className="mr-2" />
-            Audit Report
-          </motion.button>
+        <div className="mb-6 flex justify-center">
+          <h2 className="text-xl font-semibold text-gray-800">
+            Comprehensive Financial Due Diligence Report
+          </h2>
         </div>
       )}
 
@@ -322,46 +288,25 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
               </div>
             </div>
 
-            {/* Report Type Selection */}
+            {/* Report Description */}
             <div className="bg-white rounded-lg p-6 border border-gray-200 analysis-types-section">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Select Report Type</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Comprehensive Financial Due Diligence</h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div
-                  className={`p-4 rounded-lg border cursor-pointer transition-all ${selectedReportType === 'analysis' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'}`}
-                  onClick={() => setSelectedReportType('analysis')}
-                >
-                  <div className="flex items-start">
-                    <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 ${selectedReportType === 'analysis' ? 'border-indigo-600 bg-indigo-600' : 'border-gray-400'}`}>
-                      {selectedReportType === 'analysis' && (
-                        <svg className="w-full h-full text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="ml-3">
-                      <h4 className="font-medium text-gray-900">Financial Analysis</h4>
-                      <p className="text-sm text-gray-600 mt-1">Comprehensive analysis of financial health, growth metrics, and business sustainability</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  className={`p-4 rounded-lg border cursor-pointer transition-all ${selectedReportType === 'audit' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-indigo-300'}`}
-                  onClick={() => setSelectedReportType('audit')}
-                >
-                  <div className="flex items-start">
-                    <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 ${selectedReportType === 'audit' ? 'border-indigo-600 bg-indigo-600' : 'border-gray-400'}`}>
-                      {selectedReportType === 'audit' && (
-                        <svg className="w-full h-full text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="ml-3">
-                      <h4 className="font-medium text-gray-900">Audit Report</h4>
-                      <p className="text-sm text-gray-600 mt-1">Detailed audit with compliance assessment based on Indian regulatory standards</p>
-                    </div>
+              <div className="p-4 rounded-lg border border-indigo-100 bg-indigo-50">
+                <div className="flex items-start">
+                  <div className="ml-3">
+                    <h4 className="font-medium text-gray-900">Complete Financial Analysis & Audit</h4>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Our comprehensive report combines financial analysis and audit in one complete package, providing:
+                    </p>
+                    <ul className="mt-2 space-y-1 text-sm text-gray-600 list-disc pl-5">
+                      <li>Executive summary with key metrics and findings</li>
+                      <li>Detailed financial analysis with trends and projections</li>
+                      <li>Compliance assessment based on Indian regulatory standards</li>
+                      <li>Risk assessment and mitigation recommendations</li>
+                      <li>Tax compliance evaluation</li>
+                      <li>Audit findings and recommendations</li>
+                    </ul>
                   </div>
                 </div>
               </div>
@@ -420,20 +365,20 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
               )}
 
               {/* Entity Documents List */}
-              {entityDocuments.length > 0 ? (
+              {availableDocuments && availableDocuments.length > 0 ? (
                 <div className="mb-6">
                   <p className="text-sm text-gray-600 mb-3">
                     The following financial documents were uploaded by {entityName} and will be used for analysis:
                   </p>
                   <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {entityDocuments.map((doc, index) => (
+                      {availableDocuments.map((doc, index) => (
                         <div key={index} className="flex items-center p-2 hover:bg-white rounded-md">
                           <FiFileText className="text-indigo-500 mr-2" />
                           <div>
                             <p className="text-sm font-medium text-gray-800">{getFormattedDocumentType(doc.documentType)}</p>
                             <p className="text-xs text-gray-500">
-                              {doc.originalName} • {(doc.fileSize / 1024 / 1024).toFixed(2)} MB •
+                              {doc.documentName} •
                               Uploaded: {new Date(doc.uploadDate).toLocaleDateString()}
                             </p>
                           </div>
@@ -462,7 +407,7 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
               <motion.button
                 className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md flex items-center mx-auto generate-report-button"
                 onClick={handleGenerateReportClick}
-                disabled={isGenerating || entityDocuments.length === 0}
+                disabled={isGenerating || !availableDocuments || availableDocuments.length === 0}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -474,14 +419,14 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
                 ) : (
                   <>
                     <FiBarChart2 className="mr-2" />
-                    Generate {selectedReportType === 'analysis' ? 'Financial Analysis' : 'Audit Report'}
+                    Generate Comprehensive Report
                   </>
                 )}
               </motion.button>
               <p className="text-sm text-gray-500 mt-2">
-                {entityDocuments.length === 0
+                {!availableDocuments || availableDocuments.length === 0
                   ? `No financial documents available from ${entityName}`
-                  : `Generate a ${selectedReportType === 'analysis' ? 'financial analysis' : 'audit report'} based on ${entityName}'s documents`}
+                  : `Generate a comprehensive financial due diligence report based on ${entityName}'s documents`}
               </p>
             </div>
           </div>

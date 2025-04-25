@@ -172,12 +172,32 @@ export const beliefSystemService = {
 };
 
 export const financialDueDiligenceService = {
-    getReport: async (startupId: string, investorId: string, reportType: 'analysis' | 'audit' = 'analysis') => {
+    getReport: async (startupId: string, investorId: string, perspective: 'startup' | 'investor' = 'startup') => {
         try {
-            const response = await api.get(`/financial/match/${startupId}/${investorId}?reportType=${reportType}`);
+            const response = await api.get(`/financial/match/${startupId}/${investorId}?perspective=${perspective}`);
             return response.data;
         } catch (error) {
             console.error("Error fetching financial due diligence report:", error);
+            throw error;
+        }
+    },
+
+    getEntityReport: async (entityId: string, entityType: 'startup' | 'investor' = 'startup') => {
+        try {
+            const response = await api.get(`/financial/entity/${entityId}?entityType=${entityType}`);
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching entity financial due diligence report:", error);
+            throw error;
+        }
+    },
+
+    getEntityDocuments: async (entityId: string, entityType: 'startup' | 'investor' = 'startup') => {
+        try {
+            const response = await api.get(`/financial/entity/${entityId}/documents?entityType=${entityType}`);
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching entity financial documents:", error);
             throw error;
         }
     },
@@ -194,6 +214,18 @@ export const financialDueDiligenceService = {
         }
     },
 
+    exportEntityReportPDF: async (entityId: string, entityType: 'startup' | 'investor' = 'startup') => {
+        try {
+            const response = await api.get(`/financial/entity/${entityId}/pdf?entityType=${entityType}`, {
+                responseType: 'blob'
+            });
+            return response.data;
+        } catch (error) {
+            console.error("Error exporting entity financial due diligence report as PDF:", error);
+            throw error;
+        }
+    },
+
     shareReport: async (startupId: string, investorId: string, emailAddresses: string[]) => {
         try {
             const response = await api.post(`/financial/match/${startupId}/${investorId}/share`, {
@@ -202,6 +234,30 @@ export const financialDueDiligenceService = {
             return response.data;
         } catch (error) {
             console.error("Error sharing financial due diligence report:", error);
+            throw error;
+        }
+    },
+
+    shareEntityReport: async (entityId: string, entityType: 'startup' | 'investor', emailAddresses: string[]) => {
+        try {
+            const response = await api.post(`/financial/entity/${entityId}/share?entityType=${entityType}`, {
+                emails: emailAddresses
+            });
+            return response.data;
+        } catch (error) {
+            console.error("Error sharing entity financial due diligence report:", error);
+            throw error;
+        }
+    },
+
+    generateEntityReport: async (entityId: string, entityType: 'startup' | 'investor' = 'startup') => {
+        try {
+            const response = await api.post(`/financial/entity/${entityId}/generate`, {
+                entityType
+            });
+            return response.data;
+        } catch (error) {
+            console.error("Error generating entity financial due diligence report:", error);
             throw error;
         }
     }
@@ -348,12 +404,11 @@ export const profileService = {
         }
     },
 
-    generateFinancialReport: async (documentIds: string[], companyName: string, reportType: 'analysis' | 'audit') => {
+    generateFinancialReport: async (documentIds: string[], companyName: string) => {
         try {
             const response = await api.post('/financial/generate', {
                 documentIds,
-                companyName,
-                reportType
+                companyName
             });
 
             return response.data;
