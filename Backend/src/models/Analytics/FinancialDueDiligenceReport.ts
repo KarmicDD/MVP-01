@@ -5,6 +5,10 @@ export interface IFinancialMetric {
   value: string | number;
   status: 'good' | 'warning' | 'critical';
   description: string;
+  trend?: 'increasing' | 'decreasing' | 'stable';
+  percentChange?: string;
+  industryComparison?: 'above_average' | 'average' | 'below_average' | 'N/A';
+  industryValue?: string | number;
 }
 
 export interface IRiskFactor {
@@ -14,6 +18,8 @@ export interface IRiskFactor {
   description: string;
   impact: string;
   mitigation?: string; // Added for backward compatibility
+  mitigationStrategy?: string;
+  timeHorizon?: 'short_term' | 'medium_term' | 'long_term';
 }
 
 export interface IComplianceItem {
@@ -22,14 +28,21 @@ export interface IComplianceItem {
   details: string;
   severity: 'high' | 'medium' | 'low';
   recommendation?: string;
+  deadline?: string;
+  regulatoryBody?: string;
 }
 
 export interface IFinancialRatio {
   name: string;
-  value: number;
-  industry_average?: number;
+  value: number | string; // Allow for both numbers and strings like "N/A"
+  industry_average?: number | string; // Allow for both numbers and strings like "N/A"
   description: string;
   status: 'good' | 'warning' | 'critical';
+  trend?: 'improving' | 'stable' | 'deteriorating';
+  historicalData?: {
+    period: string;
+    value: number | string; // Allow for both numbers and strings like "N/A"
+  }[];
 }
 
 export interface IFinancialDueDiligenceReport extends Document {
@@ -70,6 +83,18 @@ export interface IFinancialDueDiligenceReport extends Document {
       description: string;
       trend: 'increasing' | 'decreasing' | 'stable';
       impact: 'positive' | 'negative' | 'neutral';
+      data?: {
+        period: string;
+        value: number;
+      }[];
+    }[];
+    growthProjections?: {
+      metric: string;
+      currentValue: number;
+      projectedValue: number;
+      timeframe: string;
+      cagr: string;
+      confidence: 'high' | 'medium' | 'low';
     }[];
   };
 
@@ -84,9 +109,39 @@ export interface IFinancialDueDiligenceReport extends Document {
 
   // Financial Statements Section
   financialStatements: {
-    balanceSheet?: any;
-    incomeStatement?: any;
-    cashFlow?: any;
+    balanceSheet?: {
+      assets?: any;
+      liabilities?: any;
+      equity?: any;
+      yearOverYearChange?: {
+        assets?: string;
+        liabilities?: string;
+        equity?: string;
+      };
+    };
+    incomeStatement?: {
+      revenue?: number | string; // Allow for both numbers and strings like "N/A"
+      costOfGoodsSold?: number | string; // Allow for both numbers and strings like "N/A"
+      grossProfit?: number | string; // Allow for both numbers and strings like "N/A"
+      operatingExpenses?: number | string; // Allow for both numbers and strings like "N/A"
+      operatingIncome?: number | string; // Allow for both numbers and strings like "N/A"
+      netIncome?: number | string; // Allow for both numbers and strings like "N/A"
+      yearOverYearChange?: {
+        revenue?: string;
+        grossProfit?: string;
+        netIncome?: string;
+      };
+    };
+    cashFlow?: {
+      operatingActivities?: number | string; // Allow for both numbers and strings like "N/A"
+      investingActivities?: number | string; // Allow for both numbers and strings like "N/A"
+      financingActivities?: number | string; // Allow for both numbers and strings like "N/A"
+      netCashFlow?: number | string; // Allow for both numbers and strings like "N/A"
+      yearOverYearChange?: {
+        operatingActivities?: string;
+        netCashFlow?: string;
+      };
+    };
   };
 
   // Ratio Analysis Section
@@ -102,14 +157,32 @@ export interface IFinancialDueDiligenceReport extends Document {
     gst: {
       status: 'compliant' | 'partial' | 'non-compliant';
       details: string;
+      filingHistory?: {
+        period: string;
+        status: 'filed' | 'pending' | 'overdue';
+        dueDate: string;
+      }[];
+      recommendations?: string[];
     };
     incomeTax: {
       status: 'compliant' | 'partial' | 'non-compliant';
       details: string;
+      filingHistory?: {
+        period: string;
+        status: 'filed' | 'pending' | 'overdue';
+        dueDate: string;
+      }[];
+      recommendations?: string[];
     };
     tds: {
       status: 'compliant' | 'partial' | 'non-compliant';
       details: string;
+      filingHistory?: {
+        period: string;
+        status: 'filed' | 'pending' | 'overdue';
+        dueDate: string;
+      }[];
+      recommendations?: string[];
     };
   };
 
@@ -120,8 +193,13 @@ export interface IFinancialDueDiligenceReport extends Document {
       severity: 'high' | 'medium' | 'low';
       description: string;
       recommendation: string;
+      impact?: string;
+      timelineToResolve?: string;
     }[];
     overallAssessment: string;
+    complianceScore?: string;
+    keyStrengths?: string[];
+    keyWeaknesses?: string[];
   };
 
   // Document Analysis Section
@@ -129,14 +207,32 @@ export interface IFinancialDueDiligenceReport extends Document {
     availableDocuments: {
       documentType: string;
       quality: 'good' | 'moderate' | 'poor';
-      completeness: 'complete' | 'partial' | 'incomplete';
+      completeness: string;
       keyInsights: string[];
+      dataReliability?: string;
+      recommendations?: string[];
     }[];
     missingDocuments: {
       list: string[];
       impact: string;
       recommendations: string[];
+      priorityLevel?: 'high' | 'medium' | 'low';
     };
+  };
+
+  // Industry Benchmarking Section
+  industryBenchmarking?: {
+    overview: string;
+    metrics: {
+      name: string;
+      companyValue: number | string; // Allow for both numbers and strings like "N/A"
+      industryAverage: number | string; // Allow for both numbers and strings like "N/A"
+      percentile?: string;
+      status: 'above_average' | 'average' | 'below_average' | 'N/A';
+    }[];
+    competitivePosition: string;
+    strengths: string[];
+    challenges: string[];
   };
 
   // Document Sources and Metadata
@@ -154,7 +250,11 @@ const FinancialMetricSchema = new Schema({
   name: { type: String, required: true },
   value: { type: Schema.Types.Mixed, required: true },
   status: { type: String, enum: ['good', 'warning', 'critical'], required: true },
-  description: { type: String, required: true }
+  description: { type: String, required: true },
+  trend: { type: String, enum: ['increasing', 'decreasing', 'stable'] },
+  percentChange: { type: String },
+  industryComparison: { type: String, enum: ['above_average', 'average', 'below_average', 'N/A'] },
+  industryValue: { type: Schema.Types.Mixed }
 });
 
 const RiskFactorSchema = new Schema({
@@ -163,7 +263,9 @@ const RiskFactorSchema = new Schema({
   severity: { type: String, enum: ['high', 'medium', 'low'] }, // Added for backward compatibility
   description: { type: String, required: true },
   impact: { type: String, required: true },
-  mitigation: { type: String } // Added for backward compatibility
+  mitigation: { type: String }, // Added for backward compatibility
+  mitigationStrategy: { type: String },
+  timeHorizon: { type: String, enum: ['short_term', 'medium_term', 'long_term'] }
 });
 
 const ComplianceItemSchema = new Schema({
@@ -171,15 +273,22 @@ const ComplianceItemSchema = new Schema({
   status: { type: String, enum: ['compliant', 'partial', 'non-compliant'], required: true },
   details: { type: String, required: true },
   severity: { type: String, enum: ['high', 'medium', 'low'], required: true },
-  recommendation: { type: String }
+  recommendation: { type: String },
+  deadline: { type: String },
+  regulatoryBody: { type: String }
 });
 
 const FinancialRatioSchema = new Schema({
   name: { type: String, required: true },
-  value: { type: Number, required: false }, // Make value optional
-  industry_average: { type: Number },
+  value: { type: Schema.Types.Mixed, required: false }, // Allow for both numbers and strings like "N/A"
+  industry_average: { type: Schema.Types.Mixed }, // Allow for both numbers and strings like "N/A"
   description: { type: String, required: true },
-  status: { type: String, enum: ['good', 'warning', 'critical'], required: true }
+  status: { type: String, enum: ['good', 'warning', 'critical'], required: true },
+  trend: { type: String, enum: ['improving', 'stable', 'deteriorating'] },
+  historicalData: [{
+    period: { type: String },
+    value: { type: Schema.Types.Mixed } // Allow for both numbers and strings like "N/A"
+  }]
 });
 
 // Define schema for trend analysis
@@ -187,7 +296,21 @@ const TrendSchema = new Schema({
   name: { type: String, required: true },
   description: { type: String, required: true },
   trend: { type: String, enum: ['increasing', 'decreasing', 'stable'], required: true },
-  impact: { type: String, enum: ['positive', 'negative', 'neutral'], required: true }
+  impact: { type: String, enum: ['positive', 'negative', 'neutral'], required: true },
+  data: [{
+    period: { type: String },
+    value: { type: Schema.Types.Mixed } // Allow for both numbers and strings like "N/A"
+  }]
+});
+
+// Define schema for growth projections
+const GrowthProjectionSchema = new Schema({
+  metric: { type: String, required: true },
+  currentValue: { type: Schema.Types.Mixed, required: true }, // Allow for both numbers and strings like "N/A"
+  projectedValue: { type: Schema.Types.Mixed, required: true }, // Allow for both numbers and strings like "N/A"
+  timeframe: { type: String, required: true },
+  cagr: { type: String, required: true },
+  confidence: { type: String, enum: ['high', 'medium', 'low'], required: true }
 });
 
 // Define schema for audit findings
@@ -195,7 +318,9 @@ const AuditFindingSchema = new Schema({
   area: { type: String, required: true },
   severity: { type: String, enum: ['high', 'medium', 'low'], required: true },
   description: { type: String, required: true },
-  recommendation: { type: String, required: true }
+  recommendation: { type: String, required: true },
+  impact: { type: String },
+  timelineToResolve: { type: String }
 });
 
 // Define schema for available documents
@@ -210,14 +335,34 @@ const AvailableDocumentSchema = new Schema({
 const DocumentAnalysisItemSchema = new Schema({
   documentType: { type: String, required: true },
   quality: { type: String, enum: ['good', 'moderate', 'poor'], required: true },
-  completeness: { type: String, enum: ['complete', 'partial', 'incomplete'], required: true },
-  keyInsights: [String]
+  completeness: { type: String, required: true },
+  keyInsights: [String],
+  dataReliability: { type: String },
+  recommendations: [String]
 });
 
 const MissingDocumentsSchema = new Schema({
   list: [String],
   impact: { type: String, required: true },
-  recommendations: [String]
+  recommendations: [String],
+  priorityLevel: { type: String, enum: ['high', 'medium', 'low'] }
+});
+
+// Define schema for industry benchmarking
+const IndustryBenchmarkingMetricSchema = new Schema({
+  name: { type: String, required: true },
+  companyValue: { type: Schema.Types.Mixed, required: true }, // Allow for both numbers and strings like "N/A"
+  industryAverage: { type: Schema.Types.Mixed, required: true }, // Allow for both numbers and strings like "N/A"
+  percentile: { type: String },
+  status: { type: String, enum: ['above_average', 'average', 'below_average', 'N/A'], required: true }
+});
+
+const IndustryBenchmarkingSchema = new Schema({
+  overview: { type: String, required: true },
+  metrics: [IndustryBenchmarkingMetricSchema],
+  competitivePosition: { type: String, required: true },
+  strengths: [String],
+  challenges: [String]
 });
 
 const FinancialDueDiligenceReportSchema: Schema = new Schema({
@@ -248,7 +393,8 @@ const FinancialDueDiligenceReportSchema: Schema = new Schema({
   // Financial Analysis Section
   financialAnalysis: {
     metrics: [FinancialMetricSchema],
-    trends: [TrendSchema]
+    trends: [TrendSchema],
+    growthProjections: [GrowthProjectionSchema]
   },
 
   // Recommendations Section
@@ -263,8 +409,22 @@ const FinancialDueDiligenceReportSchema: Schema = new Schema({
   // Financial Statements Section
   financialStatements: {
     balanceSheet: Schema.Types.Mixed,
-    incomeStatement: Schema.Types.Mixed,
-    cashFlow: Schema.Types.Mixed
+    incomeStatement: {
+      revenue: { type: Schema.Types.Mixed },
+      costOfGoodsSold: { type: Schema.Types.Mixed },
+      grossProfit: { type: Schema.Types.Mixed },
+      operatingExpenses: { type: Schema.Types.Mixed },
+      operatingIncome: { type: Schema.Types.Mixed },
+      netIncome: { type: Schema.Types.Mixed },
+      yearOverYearChange: Schema.Types.Mixed
+    },
+    cashFlow: {
+      operatingActivities: { type: Schema.Types.Mixed },
+      investingActivities: { type: Schema.Types.Mixed },
+      financingActivities: { type: Schema.Types.Mixed },
+      netCashFlow: { type: Schema.Types.Mixed },
+      yearOverYearChange: Schema.Types.Mixed
+    }
   },
 
   // Ratio Analysis Section
@@ -294,7 +454,10 @@ const FinancialDueDiligenceReportSchema: Schema = new Schema({
   // Audit Findings Section
   auditFindings: {
     findings: [AuditFindingSchema],
-    overallAssessment: String
+    overallAssessment: String,
+    complianceScore: String,
+    keyStrengths: [String],
+    keyWeaknesses: [String]
   },
 
   // Document Analysis Section
@@ -302,6 +465,9 @@ const FinancialDueDiligenceReportSchema: Schema = new Schema({
     availableDocuments: [DocumentAnalysisItemSchema],
     missingDocuments: MissingDocumentsSchema
   },
+
+  // Industry Benchmarking Section
+  industryBenchmarking: IndustryBenchmarkingSchema,
 
   // Document Sources and Metadata
   documentSources: [String],

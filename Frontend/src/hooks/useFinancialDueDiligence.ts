@@ -10,6 +10,10 @@ export interface FinancialMetric {
   value: string | number;
   status: 'good' | 'warning' | 'critical';
   description: string;
+  trend?: 'increasing' | 'decreasing' | 'stable';
+  percentChange?: string;
+  industryComparison?: 'above_average' | 'average' | 'below_average';
+  industryValue?: string | number;
 }
 
 export interface RiskFactor {
@@ -17,6 +21,8 @@ export interface RiskFactor {
   level: 'high' | 'medium' | 'low';
   description: string;
   impact: string;
+  mitigationStrategy?: string;
+  timeHorizon?: 'short_term' | 'medium_term' | 'long_term';
 }
 
 export interface ComplianceItem {
@@ -25,6 +31,8 @@ export interface ComplianceItem {
   details: string;
   severity: 'high' | 'medium' | 'low';
   recommendation?: string;
+  deadline?: string;
+  regulatoryBody?: string;
 }
 
 export interface FinancialRatio {
@@ -33,6 +41,11 @@ export interface FinancialRatio {
   industry_average?: number;
   description: string;
   status: 'good' | 'warning' | 'critical';
+  trend?: 'improving' | 'stable' | 'deteriorating';
+  historicalData?: {
+    period: string;
+    value: number;
+  }[];
 }
 
 export interface StartupInfo {
@@ -63,12 +76,15 @@ export interface DocumentAnalysisItem {
   quality: 'good' | 'moderate' | 'poor';
   completeness: 'complete' | 'partial' | 'incomplete';
   keyInsights: string[];
+  dataReliability?: 'high' | 'medium' | 'low';
+  recommendations?: string[];
 }
 
 export interface MissingDocuments {
   list: string[];
   impact: string;
   recommendations: string[];
+  priorityLevel?: 'high' | 'medium' | 'low';
 }
 
 export interface FinancialTrend {
@@ -76,6 +92,10 @@ export interface FinancialTrend {
   description: string;
   trend: 'increasing' | 'decreasing' | 'stable';
   impact: 'positive' | 'negative' | 'neutral';
+  data?: {
+    period: string;
+    value: number;
+  }[];
 }
 
 export interface AuditFinding {
@@ -83,6 +103,8 @@ export interface AuditFinding {
   severity: 'high' | 'medium' | 'low';
   description: string;
   recommendation: string;
+  impact?: string;
+  timelineToResolve?: string;
 }
 
 export interface FinancialDueDiligenceReport {
@@ -99,6 +121,14 @@ export interface FinancialDueDiligenceReport {
   financialAnalysis: {
     metrics: FinancialMetric[];
     trends: FinancialTrend[];
+    growthProjections?: {
+      metric: string;
+      currentValue: number;
+      projectedValue: number;
+      timeframe: string;
+      cagr: string;
+      confidence: 'high' | 'medium' | 'low';
+    }[];
   };
 
   // Recommendations Section
@@ -112,9 +142,39 @@ export interface FinancialDueDiligenceReport {
 
   // Financial Statements Section
   financialStatements?: {
-    balanceSheet?: any;
-    incomeStatement?: any;
-    cashFlow?: any;
+    balanceSheet?: {
+      assets?: any;
+      liabilities?: any;
+      equity?: any;
+      yearOverYearChange?: {
+        assets?: string;
+        liabilities?: string;
+        equity?: string;
+      };
+    };
+    incomeStatement?: {
+      revenue?: number;
+      costOfGoodsSold?: number;
+      grossProfit?: number;
+      operatingExpenses?: number;
+      operatingIncome?: number;
+      netIncome?: number;
+      yearOverYearChange?: {
+        revenue?: string;
+        grossProfit?: string;
+        netIncome?: string;
+      };
+    };
+    cashFlow?: {
+      operatingActivities?: number;
+      investingActivities?: number;
+      financingActivities?: number;
+      netCashFlow?: number;
+      yearOverYearChange?: {
+        operatingActivities?: string;
+        netCashFlow?: string;
+      };
+    };
   };
 
   // Ratio Analysis Section
@@ -130,14 +190,32 @@ export interface FinancialDueDiligenceReport {
     gst: {
       status: 'compliant' | 'partial' | 'non-compliant';
       details: string;
+      filingHistory?: {
+        period: string;
+        status: 'filed' | 'pending' | 'overdue';
+        dueDate: string;
+      }[];
+      recommendations?: string[];
     };
     incomeTax: {
       status: 'compliant' | 'partial' | 'non-compliant';
       details: string;
+      filingHistory?: {
+        period: string;
+        status: 'filed' | 'pending' | 'overdue';
+        dueDate: string;
+      }[];
+      recommendations?: string[];
     };
     tds: {
       status: 'compliant' | 'partial' | 'non-compliant';
       details: string;
+      filingHistory?: {
+        period: string;
+        status: 'filed' | 'pending' | 'overdue';
+        dueDate: string;
+      }[];
+      recommendations?: string[];
     };
   };
 
@@ -145,12 +223,30 @@ export interface FinancialDueDiligenceReport {
   auditFindings?: {
     findings: AuditFinding[];
     overallAssessment: string;
+    complianceScore?: string;
+    keyStrengths?: string[];
+    keyWeaknesses?: string[];
   };
 
   // Document Analysis
   documentAnalysis?: {
     availableDocuments: DocumentAnalysisItem[];
     missingDocuments: MissingDocuments;
+  };
+
+  // Industry Benchmarking
+  industryBenchmarking?: {
+    overview: string;
+    metrics: {
+      name: string;
+      companyValue: number;
+      industryAverage: number;
+      percentile?: string;
+      status: 'above_average' | 'average' | 'below_average';
+    }[];
+    competitivePosition: string;
+    strengths: string[];
+    challenges: string[];
   };
 
   // Additional Information
