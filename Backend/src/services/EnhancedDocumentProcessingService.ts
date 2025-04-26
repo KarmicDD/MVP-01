@@ -331,7 +331,7 @@ export class EnhancedDocumentProcessingService {
             ` : '';
 
       prompt = `
-                You are a specialized financial analyst and auditor with expertise in Indian company standards and regulations.
+                You are a specialized financial analyst and auditor with expertise in Indian company standards and regulations. Your task is to perform a comprehensive financial due diligence analysis and audit for ${companyName}.
 
                 TASK: Analyze the following financial documents for ${companyName} and provide a comprehensive, professional financial due diligence report that combines both financial analysis and audit findings. Your analysis should be thorough, detailed, and presented in a visually appealing format with color-coded metrics and graphical data.
                 ${startupContext}
