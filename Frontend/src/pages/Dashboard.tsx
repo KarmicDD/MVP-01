@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import ComingSoon from '../components/ComingSoon/ComingSoon';
 import { useNavigate } from 'react-router-dom';
-import Header from '../components/Dashboard/MatchesPage/Header';
 import { Match, UserProfile } from '../types/Dashboard.types';
 import api from '../services/api';
 import {
@@ -16,8 +15,6 @@ import {
     PaginationType
 } from '../services/searchServices';
 import { useTutorial } from '../hooks/useTutorial';
-// import TutorialButton from '../components/Tutorial/TutorialButton'; // Imported but not used
-
 
 // Define a custom pagination type for our components
 interface ComponentPaginationType {
@@ -26,11 +23,18 @@ interface ComponentPaginationType {
     total: number;
 }
 
-// Import new modular components
+// Import legacy components for backward compatibility
+import Header from '../components/Dashboard/MatchesPage/Header';
 import SearchFilters from '../components/Dashboard/SearchFilters';
 import MatchesList from '../components/Dashboard/MatchesList';
 import CompatibilitySection from '../components/Dashboard/CompatibilitySection';
 import AnalyticsTabs from '../components/Dashboard/AnalyticsTabs';
+
+// Import new dashboard components
+import DashboardLayout from '../components/Dashboard/DashboardLayout';
+import OverviewSection from '../components/Dashboard/Overview/OverviewSection';
+import MatchesSection from '../components/Dashboard/Matches/MatchesSection';
+import AnalyticsSection from '../components/Dashboard/Analytics/AnalyticsSection';
 
 const Dashboard: React.FC = () => {
     // State - keeping your existing state
@@ -233,9 +237,67 @@ const Dashboard: React.FC = () => {
             try {
                 setLoading(true);
 
-                // Get user profile
+                // Get user profile (basic info)
                 const profileResponse = await axios.get(`${API_URL}/profile/user-type`, { headers });
-                setUserProfile(profileResponse.data);
+                const userBasicInfo = profileResponse.data;
+                console.log('User basic info:', userBasicInfo);
+
+                // Get complete profile data based on role
+                let completeProfile;
+                if (userBasicInfo.role === 'startup') {
+                    try {
+                        const startupProfileResponse = await axios.get(`${API_URL}/profile/startup`, { headers });
+                        console.log('Startup profile response:', startupProfileResponse.data);
+
+                        // Check different possible response structures
+                        const companyName =
+                            startupProfileResponse.data.profile?.companyName ||
+                            startupProfileResponse.data.companyName ||
+                            'Startup';
+
+                        completeProfile = {
+                            ...userBasicInfo,
+                            companyName: companyName,
+                            name: companyName
+                        };
+                    } catch (error) {
+                        console.error('Error fetching startup profile:', error);
+                        completeProfile = {
+                            ...userBasicInfo,
+                            companyName: 'Startup',
+                            name: 'Startup'
+                        };
+                    }
+                } else {
+                    try {
+                        const investorProfileResponse = await axios.get(`${API_URL}/profile/investor`, { headers });
+                        console.log('Investor profile response:', investorProfileResponse.data);
+
+                        // Check different possible response structures
+                        const companyName =
+                            investorProfileResponse.data.profile?.companyName ||
+                            investorProfileResponse.data.companyName ||
+                            'Investor';
+
+                        completeProfile = {
+                            ...userBasicInfo,
+                            companyName: companyName,
+                            name: companyName
+                        };
+                    } catch (error) {
+                        console.error('Error fetching investor profile:', error);
+                        completeProfile = {
+                            ...userBasicInfo,
+                            companyName: 'Investor',
+                            name: 'Investor'
+                        };
+                    }
+                }
+
+                console.log('Complete profile:', completeProfile);
+
+                // Set the complete profile with name/company name
+                setUserProfile(completeProfile);
 
                 // Load filter options for search dropdowns
                 const options = await getFilterOptions();
@@ -368,31 +430,71 @@ const Dashboard: React.FC = () => {
 
 
 
-    // Render the component with improved UI
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-            {/* Keep the Header component as is */}
-            {userProfile && (
-                <Header
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    handleLogout={handleLogout}
-                    userProfile={userProfile}
-                />
-            )}
+    // Render loading state
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-gray-50">
+                <div className="text-center">
+                    <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+                    <p className="mt-4 text-gray-600">Loading your dashboard...</p>
+                </div>
+            </div>
+        );
+    }
 
-            {/* Main content with improved styling */}
-            <main className="container mx-auto px-4 py-8">
-                <AnimatePresence mode="wait">
-                    {activeTab === 'matches' && (
-                        <motion.div
-                            key="matches"
-                            initial="hidden"
-                            animate="visible"
-                            exit={{ opacity: 0 }}
-                            variants={containerVariants}
-                        >
-                            {/* Search and filters with improved UI */}
+    // Render error state
+    if (error) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-gray-50">
+                <div className="text-center max-w-md p-6 bg-white rounded-xl shadow-sm border border-gray-200">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-800 mb-2">Something went wrong</h2>
+                    <p className="text-gray-600 mb-4">{error}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                        Retry
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // Use the new dashboard layout
+    return (
+        <DashboardLayout
+            userProfile={userProfile}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+        >
+            <AnimatePresence mode="wait">
+                {activeTab === 'overview' && (
+                    <motion.div
+                        key="overview"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        <OverviewSection userProfile={userProfile} />
+                    </motion.div>
+                )}
+
+                {activeTab === 'matches' && (
+                    <motion.div
+                        key="matches"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        {/* Legacy matches view - will be replaced by MatchesSection in future */}
+                        <div className="legacy-matches-view">
                             <SearchFilters
                                 searchQuery={searchQuery}
                                 setSearchQuery={setSearchQuery}
@@ -441,10 +543,22 @@ const Dashboard: React.FC = () => {
                                 itemVariants={itemVariants}
                                 userProfile={userProfile}
                             />
-                        </motion.div>
-                    )}
+                        </div>
 
-                    {activeTab === 'analytics' && (
+                        {/* Uncomment to use the new MatchesSection component */}
+                        {/* <MatchesSection userProfile={userProfile} /> */}
+                    </motion.div>
+                )}
+
+                {activeTab === 'analytics' && (
+                    <motion.div
+                        key="analytics"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        {/* Legacy analytics view */}
                         <AnalyticsTabs
                             analyticsTab={analyticsTab}
                             setAnalyticsTab={setAnalyticsTab}
@@ -452,28 +566,31 @@ const Dashboard: React.FC = () => {
                             selectedMatchId={selectedMatchId}
                             itemVariants={itemVariants}
                         />
-                    )}
 
-                    {activeTab !== 'matches' && activeTab !== 'analytics' && (
-                        <motion.div
-                            key="coming-soon"
-                            initial="hidden"
-                            animate="visible"
-                            exit={{ opacity: 0 }}
-                            variants={containerVariants}
-                            className="mt-8"
-                        >
-                            <ComingSoon
-                                title={`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Coming Soon!`}
-                                subtitle="We're working hard to bring you this feature."
-                            />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </main>
+                        {/* Uncomment to use the new AnalyticsSection component */}
+                        {/* <AnalyticsSection
+                            userProfile={userProfile}
+                            selectedMatchId={selectedMatchId}
+                        /> */}
+                    </motion.div>
+                )}
 
-
-        </div>
+                {!['overview', 'matches', 'analytics'].includes(activeTab) && (
+                    <motion.div
+                        key="coming-soon"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        <ComingSoon
+                            title={`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Coming Soon!`}
+                            subtitle="We're working hard to bring you this feature."
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </DashboardLayout>
     );
 };
 

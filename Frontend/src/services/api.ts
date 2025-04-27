@@ -318,7 +318,7 @@ export const profileService = {
     },
 
     // Document management methods
-    uploadDocument: async (file: File, metadata: { description?: string, documentType?: string, isPublic?: boolean }) => {
+    uploadDocument: async (file: File, metadata: { description?: string, documentType?: string, timePeriod?: string, isPublic?: boolean }) => {
         try {
             const formData = new FormData();
             formData.append('document', file);
@@ -329,6 +329,10 @@ export const profileService = {
 
             if (metadata.documentType) {
                 formData.append('documentType', metadata.documentType);
+            }
+
+            if (metadata.timePeriod) {
+                formData.append('timePeriod', metadata.timePeriod);
             }
 
             if (metadata.isPublic !== undefined) {
@@ -368,7 +372,7 @@ export const profileService = {
         }
     },
 
-    updateDocumentMetadata: async (documentId: string, metadata: { description?: string, documentType?: string, isPublic?: boolean }) => {
+    updateDocumentMetadata: async (documentId: string, metadata: { description?: string, documentType?: string, timePeriod?: string, isPublic?: boolean }) => {
         try {
             const response = await api.put(`/profile/documents/${documentId}`, metadata);
             return response.data;

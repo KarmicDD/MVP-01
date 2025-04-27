@@ -2,6 +2,8 @@ export interface UserProfile {
     userId: string;
     email: string;
     role: string;
+    name?: string;
+    companyName?: string;
 }
 
 export interface Match {

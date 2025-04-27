@@ -562,7 +562,7 @@ export const uploadDocument = async (req: Request & { file?: any }, res: Respons
                 return;
             }
 
-            const { description, documentType, isPublic } = req.body;
+            const { description, documentType, isPublic, timePeriod } = req.body;
 
             // Store relative path instead of absolute path
             const relativePath = path.relative(path.join(__dirname, '../..'), req.file.path);
@@ -577,6 +577,7 @@ export const uploadDocument = async (req: Request & { file?: any }, res: Respons
                 filePath: relativePath, // Store relative path
                 description: description || '',
                 documentType: documentType || 'other',
+                timePeriod: timePeriod || '', // Add time period field
                 isPublic: isPublic === 'true'
             });
 
@@ -592,6 +593,7 @@ export const uploadDocument = async (req: Request & { file?: any }, res: Respons
                     fileSize: document.fileSize,
                     description: document.description,
                     documentType: document.documentType,
+                    timePeriod: document.timePeriod, // Include time period in response
                     isPublic: document.isPublic,
                     createdAt: document.createdAt
                 }
@@ -630,6 +632,7 @@ export const getUserDocuments = async (req: Request, res: Response): Promise<voi
                 fileSize: doc.fileSize,
                 description: doc.description,
                 documentType: doc.documentType,
+                timePeriod: doc.timePeriod || '', // Include time period in response
                 isPublic: doc.isPublic,
                 createdAt: doc.createdAt,
                 uploadDate: doc.createdAt
@@ -733,7 +736,7 @@ export const updateDocumentMetadata = async (req: Request, res: Response): Promi
         }
 
         const { documentId } = req.params;
-        const { description, documentType, isPublic } = req.body;
+        const { description, documentType, isPublic, timePeriod } = req.body;
 
         // Find the document
         const document = await DocumentModel.findById(documentId);
@@ -756,6 +759,7 @@ export const updateDocumentMetadata = async (req: Request, res: Response): Promi
             const validDocType = documentType as import('../models/Profile/Document').DocumentType;
             document.documentType = validDocType;
         }
+        if (timePeriod !== undefined) document.timePeriod = timePeriod;
         if (isPublic !== undefined) document.isPublic = isPublic === true || isPublic === 'true';
 
         await document.save();
@@ -770,6 +774,7 @@ export const updateDocumentMetadata = async (req: Request, res: Response): Promi
                 fileSize: document.fileSize,
                 description: document.description,
                 documentType: document.documentType,
+                timePeriod: document.timePeriod || '',
                 isPublic: document.isPublic,
                 createdAt: document.createdAt,
                 updatedAt: document.updatedAt

@@ -18,6 +18,7 @@ export interface IDocument extends MongooseDocument {
     filePath: string;
     description?: string;
     documentType: DocumentType;
+    timePeriod?: string; // Added field for time period (e.g., "Q1 2023", "FY 2022")
     isPublic: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -64,6 +65,10 @@ const DocumentSchema: Schema = new Schema({
             'financial_cap_table', 'financial_funding_history', 'financial_debt_schedule'
         ],
         default: 'other'
+    },
+    timePeriod: {
+        type: String,
+        default: ''
     },
     isPublic: {
         type: Boolean,
