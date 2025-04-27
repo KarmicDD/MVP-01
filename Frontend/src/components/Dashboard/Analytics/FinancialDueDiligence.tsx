@@ -9,6 +9,7 @@ import FinancialDueDiligenceReportContent from './FinancialDueDiligenceReportCon
 import { LoadingSpinner } from '../../Loading';
 import TutorialButton from '../../Tutorial/TutorialButton';
 import { useTutorial } from '../../../hooks/useTutorial';
+import ErrorDisplay from '../../common/ErrorDisplay';
 
 interface FinancialDueDiligenceProps {
   userProfile: {
@@ -151,66 +152,113 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
 
   // Show error if any
   if (error) {
-    return (
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-        <div className="bg-gradient-to-r from-amber-50 to-red-50 p-6 border-b border-red-100">
-          <div className="flex items-center">
-            <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center mr-4 border border-red-200">
-              <FiFileText className="text-red-500 text-xl" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">Financial Documents Required</h3>
-              <p className="text-red-600 text-sm font-medium">No financial documents available for analysis</p>
-            </div>
-          </div>
-        </div>
+    // Check if error is a string or an object
+    const errorObj = typeof error === 'string'
+      ? { message: error }
+      : error;
 
-        <div className="p-6">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-            <div className="flex">
-              <FiInfo className="text-amber-500 mt-1 mr-3 flex-shrink-0" />
+    // Check if it's a document availability error or a processing error
+    const isDocumentError = errorObj.errorCode === 'NO_FINANCIAL_DOCUMENTS' ||
+      errorObj.errorCode === 'INSUFFICIENT_DOCUMENTS' ||
+      !availableDocuments ||
+      availableDocuments.length === 0;
+
+    if (isDocumentError) {
+      // Show document availability error UI
+      return (
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="bg-gradient-to-r from-amber-50 to-red-50 p-6 border-b border-red-100">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center mr-4 border border-red-200">
+                <FiFileText className="text-red-500 text-xl" />
+              </div>
               <div>
-                <p className="text-gray-700 mb-2">
-                  {entityName} has not uploaded any financial documents yet. Financial documents are required to generate a due diligence report.
-                </p>
-                <p className="text-sm text-gray-600">
-                  Financial documents may include balance sheets, income statements, cash flow statements, and other financial records.
-                </p>
+                <h3 className="text-lg font-semibold text-gray-800">Financial Documents Required</h3>
+                <p className="text-red-600 text-sm font-medium">No financial documents available for analysis</p>
               </div>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <h4 className="font-medium text-gray-700">Required Documents:</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {['Balance Sheet', 'Income Statement', 'Cash Flow Statement', 'Financial Projections', 'Tax Returns'].map((doc, index) => (
-                <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center mr-3">
-                    <FiX className="text-red-500 text-sm" />
-                  </div>
-                  <span className="text-sm text-gray-700">{doc}</span>
+          <div className="p-6">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+              <div className="flex">
+                <FiInfo className="text-amber-500 mt-1 mr-3 flex-shrink-0" />
+                <div>
+                  <p className="text-gray-700 mb-2">
+                    {entityName} has not uploaded any financial documents yet. Financial documents are required to generate a due diligence report.
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Financial documents may include balance sheets, income statements, cash flow statements, and other financial records.
+                  </p>
                 </div>
-              ))}
+              </div>
             </div>
 
-            <div className="mt-6 text-center">
-              <p className="text-gray-600 mb-4">
-                Please ask {entityName} to upload the required financial documents in their profile.
-              </p>
-              <motion.button
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 transition-colors flex items-center mx-auto"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => window.open('/profile', '_blank')}
-              >
-                <FiUpload className="mr-2" />
-                Go to Profile Documents
-              </motion.button>
+            <div className="space-y-4">
+              <h4 className="font-medium text-gray-700">Required Documents:</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {['Balance Sheet', 'Income Statement', 'Cash Flow Statement', 'Financial Projections', 'Tax Returns'].map((doc, index) => (
+                  <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center mr-3">
+                      <FiX className="text-red-500 text-sm" />
+                    </div>
+                    <span className="text-sm text-gray-700">{doc}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 text-center">
+                <p className="text-gray-600 mb-4">
+                  Please ask {entityName} to upload the required financial documents in their profile.
+                </p>
+                <motion.button
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 transition-colors flex items-center mx-auto"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => window.open('/profile', '_blank')}
+                >
+                  <FiUpload className="mr-2" />
+                  Go to Profile Documents
+                </motion.button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    );
+      );
+    } else {
+      // Show processing error UI with our new ErrorDisplay component
+      return (
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Financial Due Diligence</h3>
+
+          <ErrorDisplay
+            error={errorObj}
+            onRetry={handleGenerateReportClick}
+            onDismiss={() => window.location.reload()}
+          />
+
+          {availableDocuments && availableDocuments.length > 0 && (
+            <div className="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <h4 className="font-medium text-gray-700 mb-3">Available Documents</h4>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {availableDocuments.map((doc, index) => (
+                  <div key={index} className="flex items-center p-2 hover:bg-white rounded-md">
+                    <FiFileText className="text-indigo-500 mr-2" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{getFormattedDocumentType(doc.documentType)}</p>
+                      <p className="text-xs text-gray-500">
+                        {doc.documentName} •
+                        Uploaded: {new Date(doc.uploadDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
   }
 
   return (
@@ -239,14 +287,7 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
         </div>
       )}
 
-      {/* Report Title */}
-      {report && (
-        <div className="mb-6 flex justify-center">
-          <h2 className="text-xl font-semibold text-gray-800">
-            Comprehensive Financial Due Diligence Report
-          </h2>
-        </div>
-      )}
+      {/* Report title is now handled in FinancialDueDiligenceReportContent component */}
 
       {/* Main content */}
       <div ref={reportRef}>

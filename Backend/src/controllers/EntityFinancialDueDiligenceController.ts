@@ -10,6 +10,54 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import fs from 'fs';
 import path from 'path';
 
+/**
+ * Helper function to handle errors in a standardized way
+ * @param res Express response object
+ * @param error Error object
+ * @param defaultMessage Default error message
+ * @param statusCode HTTP status code to return
+ */
+const handleControllerError = (
+    res: Response,
+    error: any,
+    defaultMessage: string = 'An error occurred',
+    statusCode: number = 500
+) => {
+    console.error(`${defaultMessage}:`, error);
+
+    // Determine if this is a validation error
+    const isValidationError = error instanceof Error &&
+        error.message &&
+        error.message.includes('validation failed');
+
+    // Extract specific validation error details if available
+    let validationDetails: Record<string, any> = {};
+    if (isValidationError && 'errors' in error) {
+        const validationErrors = error.errors as Record<string, any>;
+        Object.keys(validationErrors).forEach(key => {
+            validationDetails[key] = {
+                message: validationErrors[key]?.message || 'Unknown validation error',
+                value: validationErrors[key]?.value || 'Unknown value',
+                path: validationErrors[key]?.path || key
+            };
+        });
+    }
+
+    // Return appropriate error response
+    res.status(isValidationError ? 400 : statusCode).json({
+        message: isValidationError
+            ? 'Validation failed. Please check the data format.'
+            : defaultMessage,
+        errorCode: isValidationError ? 'VALIDATION_ERROR' : 'PROCESSING_ERROR',
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        validationDetails: isValidationError ? validationDetails : undefined,
+        suggestedAction: isValidationError
+            ? 'Please check the data format and ensure all required fields have valid values.'
+            : 'Please try again or contact support if the issue persists.',
+        timestamp: new Date().toISOString()
+    });
+};
+
 // Load environment variables
 dotenv.config();
 
@@ -435,7 +483,7 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                     availableDocuments: availableDocuments.map(doc => ({
                         documentType: doc.documentType,
                         quality: "moderate",
-                        completeness: "partial",
+                        completeness: "partial", // Using valid enum value: 'complete', 'partial', or 'incomplete'
                         keyInsights: ["Document was processed but detailed analysis not available"]
                     })),
                     missingDocuments: {
@@ -475,18 +523,20 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 entityProfile
             });
         } catch (error) {
-            console.error('Error in financial due diligence analysis:', error);
-
-            // Return an error response with a specific error code
-            res.status(400).json({
-                message: 'Failed to process financial documents or extract financial data',
-                errorCode: 'FINANCIAL_ANALYSIS_FAILED',
-                error: error instanceof Error ? error.message : 'Unknown error occurred during financial analysis'
-            });
+            handleControllerError(
+                res,
+                error,
+                'Failed to process financial documents or extract financial data',
+                400
+            );
         }
     } catch (error) {
-        console.error('Financial due diligence analysis error:', error);
-        res.status(500).json({ message: 'Server error' });
+        handleControllerError(
+            res,
+            error,
+            'Server error occurred while processing financial due diligence',
+            500
+        );
     }
 };
 
@@ -544,8 +594,12 @@ export const getFinancialDueDiligenceReport = async (req: Request, res: Response
             reportCalculated: report.reportCalculated
         });
     } catch (error) {
-        console.error('Get financial due diligence report error:', error);
-        res.status(500).json({ message: 'Server error' });
+        handleControllerError(
+            res,
+            error,
+            'Error retrieving financial due diligence report',
+            500
+        );
     }
 };
 
@@ -581,8 +635,12 @@ export const generateFinancialDueDiligenceReport = async (req: Request, res: Res
         // Cast to unknown first to avoid TypeScript errors
         await analyzeFinancialDueDiligence(modifiedReq as unknown as Request, res);
     } catch (error) {
-        console.error('Generate financial due diligence report error:', error);
-        res.status(500).json({ message: 'Server error' });
+        handleControllerError(
+            res,
+            error,
+            'Error generating financial due diligence report',
+            500
+        );
     }
 };
 
@@ -632,8 +690,12 @@ export const shareFinancialDueDiligenceReport = async (req: Request, res: Respon
             recipientCount: emails.length
         });
     } catch (error) {
-        console.error('Share financial due diligence report error:', error);
-        res.status(500).json({ message: 'Server error' });
+        handleControllerError(
+            res,
+            error,
+            'Error sharing financial due diligence report',
+            500
+        );
     }
 };
 
@@ -785,8 +847,12 @@ export const exportFinancialDueDiligenceReportPdf = async (req: Request, res: Re
         // Send the PDF as the response
         res.send(Buffer.from(pdfBytes));
     } catch (error) {
-        console.error('Export financial due diligence report as PDF error:', error);
-        res.status(500).json({ message: 'Server error' });
+        handleControllerError(
+            res,
+            error,
+            'Error exporting financial due diligence report as PDF',
+            500
+        );
     }
 };
 
@@ -820,8 +886,12 @@ export const getEntityDocumentDetails = async (req: Request, res: Response): Pro
             missingDocumentTypes
         });
     } catch (error) {
-        console.error('Get entity document details error:', error);
-        res.status(500).json({ message: 'Server error' });
+        handleControllerError(
+            res,
+            error,
+            'Error retrieving entity document details',
+            500
+        );
     }
 };
 

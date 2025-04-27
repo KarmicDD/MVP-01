@@ -45,6 +45,12 @@ export class EnhancedDocumentProcessingService {
    */
   async extractPdfText(filePath: string): Promise<string> {
     try {
+      // First check if the file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`PDF file not found: ${filePath}`);
+        return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+      }
+
       const options: PDFExtractOptions = {};
       const data = await pdfExtractAsync(filePath, options);
 
@@ -61,10 +67,11 @@ export class EnhancedDocumentProcessingService {
         });
       }
 
-      return textContent;
+      return textContent || '[No text content extracted from PDF]';
     } catch (error) {
       console.error('Error extracting PDF text:', error);
-      throw new Error('Failed to extract text from PDF');
+      // Return a placeholder message instead of throwing an error
+      return `[Error processing PDF: ${error instanceof Error ? error.message : 'Unknown error'}]`;
     }
   }
 
@@ -75,6 +82,12 @@ export class EnhancedDocumentProcessingService {
    */
   async extractExcelData(filePath: string): Promise<string> {
     try {
+      // First check if the file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`Excel file not found: ${filePath}`);
+        return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+      }
+
       const workbook = XLSX.readFile(filePath);
       let result = '';
 
@@ -95,10 +108,11 @@ export class EnhancedDocumentProcessingService {
         result += '\n\n';
       });
 
-      return result;
+      return result || '[No data extracted from Excel file]';
     } catch (error) {
       console.error('Error extracting Excel data:', error);
-      throw new Error('Failed to extract data from Excel file');
+      // Return a placeholder message instead of throwing an error
+      return `[Error processing Excel file: ${error instanceof Error ? error.message : 'Unknown error'}]`;
     }
   }
 
@@ -109,6 +123,12 @@ export class EnhancedDocumentProcessingService {
    */
   async extractCsvData(filePath: string): Promise<string> {
     try {
+      // First check if the file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`CSV file not found: ${filePath}`);
+        return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+      }
+
       const content = await readFileAsync(filePath, 'utf8');
       const lines = content.split('\n');
 
@@ -120,10 +140,11 @@ export class EnhancedDocumentProcessingService {
         }
       });
 
-      return result;
+      return result || '[No data extracted from CSV file]';
     } catch (error) {
       console.error('Error extracting CSV data:', error);
-      throw new Error('Failed to extract data from CSV file');
+      // Return a placeholder message instead of throwing an error
+      return `[Error processing CSV file: ${error instanceof Error ? error.message : 'Unknown error'}]`;
     }
   }
 
@@ -134,6 +155,12 @@ export class EnhancedDocumentProcessingService {
    */
   async extractPptText(filePath: string): Promise<string> {
     try {
+      // First check if the file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`PowerPoint file not found: ${filePath}`);
+        return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+      }
+
       const fileBuffer = await readFileAsync(filePath);
 
       // Use Gemini to extract text from PowerPoint
@@ -150,10 +177,11 @@ export class EnhancedDocumentProcessingService {
       ]);
 
       const response = result.response;
-      return response.text();
+      return response.text() || '[No text content extracted from PowerPoint]';
     } catch (error) {
       console.error('Error extracting PPT text:', error);
-      throw new Error('Failed to extract text from PowerPoint');
+      // Return a placeholder message instead of throwing an error
+      return `[Error processing PowerPoint file: ${error instanceof Error ? error.message : 'Unknown error'}]`;
     }
   }
 
@@ -164,11 +192,18 @@ export class EnhancedDocumentProcessingService {
    */
   async extractWordText(filePath: string): Promise<string> {
     try {
+      // First check if the file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`Word document not found: ${filePath}`);
+        return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+      }
+
       const result = await mammoth.extractRawText({ path: filePath });
-      return result.value;
+      return result.value || '[No text content extracted from Word document]';
     } catch (error) {
       console.error('Error extracting Word text:', error);
-      throw new Error('Failed to extract text from Word document');
+      // Return a placeholder message instead of throwing an error
+      return `[Error processing Word document: ${error instanceof Error ? error.message : 'Unknown error'}]`;
     }
   }
 
@@ -179,6 +214,12 @@ export class EnhancedDocumentProcessingService {
    */
   async extractImageText(filePath: string): Promise<string> {
     try {
+      // First check if the file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`Image file not found: ${filePath}`);
+        return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+      }
+
       const worker = await createWorker();
       // Use the correct methods for Tesseract.js v6
       await worker.reinitialize('eng');
@@ -187,10 +228,11 @@ export class EnhancedDocumentProcessingService {
       const text = result.data.text;
       await worker.terminate();
 
-      return text;
+      return text || '[No text content extracted from image]';
     } catch (error) {
       console.error('Error extracting image text:', error);
-      throw new Error('Failed to extract text from image');
+      // Return a placeholder message instead of throwing an error
+      return `[Error processing image file: ${error instanceof Error ? error.message : 'Unknown error'}]`;
     }
   }
 
@@ -201,11 +243,18 @@ export class EnhancedDocumentProcessingService {
    */
   async extractTextFileContent(filePath: string): Promise<string> {
     try {
+      // First check if the file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`Text file not found: ${filePath}`);
+        return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+      }
+
       const content = await readFileAsync(filePath, 'utf8');
-      return content;
+      return content || '[No content extracted from text file]';
     } catch (error) {
       console.error('Error extracting text file content:', error);
-      throw new Error('Failed to extract content from text file');
+      // Return a placeholder message instead of throwing an error
+      return `[Error processing text file: ${error instanceof Error ? error.message : 'Unknown error'}]`;
     }
   }
 
@@ -215,37 +264,49 @@ export class EnhancedDocumentProcessingService {
    * @returns Extracted content
    */
   async processDocument(filePath: string): Promise<string> {
-    // Convert to absolute path if it's a relative path
-    const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, '../..', filePath);
-    const fileExtension = path.extname(absolutePath).toLowerCase();
+    try {
+      // Convert to absolute path if it's a relative path
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, '../..', filePath);
 
-    switch (fileExtension) {
-      case '.pdf':
-        return this.extractPdfText(absolutePath);
-      case '.ppt':
-      case '.pptx':
-        return this.extractPptText(absolutePath);
-      case '.xls':
-      case '.xlsx':
-        return this.extractExcelData(absolutePath);
-      case '.csv':
-        return this.extractCsvData(absolutePath);
-      case '.doc':
-      case '.docx':
-        return this.extractWordText(absolutePath);
-      case '.jpg':
-      case '.jpeg':
-      case '.png':
-      case '.gif':
-      case '.bmp':
-        return this.extractImageText(absolutePath);
-      case '.txt':
-      case '.md':
-      case '.json':
-      case '.xml':
-        return this.extractTextFileContent(absolutePath);
-      default:
-        throw new Error(`Unsupported file type: ${fileExtension}`);
+      // Check if file exists before processing
+      if (!fs.existsSync(absolutePath)) {
+        console.error(`File not found: ${absolutePath}`);
+        return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+      }
+
+      const fileExtension = path.extname(absolutePath).toLowerCase();
+
+      switch (fileExtension) {
+        case '.pdf':
+          return this.extractPdfText(absolutePath);
+        case '.ppt':
+        case '.pptx':
+          return this.extractPptText(absolutePath);
+        case '.xls':
+        case '.xlsx':
+          return this.extractExcelData(absolutePath);
+        case '.csv':
+          return this.extractCsvData(absolutePath);
+        case '.doc':
+        case '.docx':
+          return this.extractWordText(absolutePath);
+        case '.jpg':
+        case '.jpeg':
+        case '.png':
+        case '.gif':
+        case '.bmp':
+          return this.extractImageText(absolutePath);
+        case '.txt':
+        case '.md':
+        case '.json':
+        case '.xml':
+          return this.extractTextFileContent(absolutePath);
+        default:
+          return `[Unsupported file type: ${fileExtension}. The system cannot process this type of document.]`;
+      }
+    } catch (error) {
+      console.error(`Error processing document ${filePath}:`, error);
+      return `[Error processing document: ${error instanceof Error ? error.message : 'Unknown error'}]`;
     }
   }
 

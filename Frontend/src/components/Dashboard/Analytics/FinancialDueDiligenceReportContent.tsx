@@ -1,9 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FiDownload, FiShare2, FiDollarSign, FiTrendingUp, FiAlertCircle, FiCheckCircle, FiBarChart2, FiFileText, FiInfo, FiArrowUp, FiArrowDown, FiMinus, FiActivity, FiTarget, FiGlobe } from 'react-icons/fi';
-import { FinancialDueDiligenceReport } from '../../../hooks/useFinancialDueDiligence';
+import { FinancialDueDiligenceReport as MatchFinancialDueDiligenceReport } from '../../../hooks/useFinancialDueDiligence';
+import { FinancialDueDiligenceReport as EntityFinancialDueDiligenceReport } from '../../../hooks/useEntityFinancialDueDiligence';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip as ChartTooltip, Legend } from 'chart.js';
 import { Line, Bar, Pie } from 'react-chartjs-2';
+
+// Create a union type that can handle both report types
+type FinancialDueDiligenceReport = MatchFinancialDueDiligenceReport | EntityFinancialDueDiligenceReport;
 
 interface FinancialDueDiligenceReportContentProps {
   report: FinancialDueDiligenceReport;

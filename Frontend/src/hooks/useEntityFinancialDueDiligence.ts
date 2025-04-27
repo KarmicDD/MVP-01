@@ -171,7 +171,7 @@ export function useEntityFinancialDueDiligence(entityId: string | null, entityTy
   const [report, setReport] = useState<FinancialDueDiligenceReport | null>(null);
   const reportRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<any | null>(null);
   const [documentsAvailable, setDocumentsAvailable] = useState<boolean | null>(null);
   const [checkingDocuments, setCheckingDocuments] = useState(true);
   const [availableDocuments, setAvailableDocuments] = useState<FinancialDocument[]>([]);
@@ -256,10 +256,15 @@ export function useEntityFinancialDueDiligence(entityId: string | null, entityTy
               data?: {
                 message?: string,
                 errorCode?: string,
+                error?: string,
+                validationDetails?: Record<string, any>,
+                suggestedAction?: string,
+                timestamp?: string,
                 entityProfile?: EntityInfo,
                 availableDocuments?: FinancialDocument[],
                 missingDocumentTypes?: string[]
-              }
+              },
+              status?: number
             }
           };
 
@@ -267,8 +272,12 @@ export function useEntityFinancialDueDiligence(entityId: string | null, entityTy
           if (errorObj.response?.data?.errorCode === 'NO_FINANCIAL_DOCUMENTS') {
             setDocumentsAvailable(false);
 
-            // Create a more specific error message
-            setError(`No financial documents available for the selected ${entityType}.`);
+            // Create a structured error object
+            setError({
+              message: `No financial documents available for the selected ${entityType}.`,
+              errorCode: 'NO_FINANCIAL_DOCUMENTS',
+              suggestedAction: `Upload financial documents for the ${entityType} to enable analysis.`
+            });
 
             // If the API returned entity info, save it for display
             if (errorObj.response?.data?.entityProfile) {
@@ -300,11 +309,44 @@ export function useEntityFinancialDueDiligence(entityId: string | null, entityTy
                 entityProfile: errorObj.response?.data?.entityProfile
               });
             }
+          } else if (errorObj.response?.data?.errorCode === 'VALIDATION_ERROR') {
+            // Handle validation errors
+            setError({
+              message: errorObj.response?.data?.message || 'Validation error in financial report',
+              errorCode: 'VALIDATION_ERROR',
+              error: errorObj.response?.data?.error,
+              validationDetails: errorObj.response?.data?.validationDetails,
+              suggestedAction: errorObj.response?.data?.suggestedAction || 'Please try again with valid data',
+              timestamp: errorObj.response?.data?.timestamp
+            });
+          } else if (errorObj.response?.data) {
+            // Use the structured error from the API if available
+            setError({
+              message: errorObj.response.data.message || 'Failed to load financial due diligence report',
+              errorCode: errorObj.response.data.errorCode || 'API_ERROR',
+              error: errorObj.response.data.error,
+              validationDetails: errorObj.response.data.validationDetails,
+              suggestedAction: errorObj.response.data.suggestedAction,
+              timestamp: errorObj.response.data.timestamp,
+              status: errorObj.response.status
+            });
           } else {
-            setError(errorObj.response?.data?.message || err.message || 'Failed to load financial due diligence report');
+            // Fallback to a basic error object
+            setError({
+              message: err.message || 'Failed to load financial due diligence report',
+              errorCode: 'CLIENT_ERROR',
+              error: err.toString(),
+              timestamp: new Date().toISOString()
+            });
           }
         } else {
-          setError('Failed to load financial due diligence report');
+          // Handle non-Error objects
+          setError({
+            message: 'Failed to load financial due diligence report',
+            errorCode: 'UNKNOWN_ERROR',
+            error: String(err),
+            timestamp: new Date().toISOString()
+          });
         }
         console.error('Error fetching financial due diligence report:', err);
       } finally {
@@ -420,9 +462,49 @@ export function useEntityFinancialDueDiligence(entityId: string | null, entityTy
     } catch (err: unknown) {
       console.error('Error generating financial report:', err);
       if (err instanceof Error) {
-        const errorObj = err as { response?: { data?: { message?: string } } };
+        const errorObj = err as {
+          response?: {
+            data?: {
+              message?: string,
+              errorCode?: string,
+              error?: string,
+              validationDetails?: Record<string, any>,
+              suggestedAction?: string,
+              timestamp?: string
+            },
+            status?: number
+          }
+        };
+
+        // Create a structured error object
+        if (errorObj.response?.data) {
+          setError({
+            message: errorObj.response.data.message || 'Failed to generate financial report',
+            errorCode: errorObj.response.data.errorCode || 'GENERATION_ERROR',
+            error: errorObj.response.data.error,
+            validationDetails: errorObj.response.data.validationDetails,
+            suggestedAction: errorObj.response.data.suggestedAction || 'Please try again later',
+            timestamp: errorObj.response.data.timestamp || new Date().toISOString()
+          });
+        } else {
+          setError({
+            message: err.message || 'Failed to generate financial report',
+            errorCode: 'CLIENT_ERROR',
+            error: err.toString(),
+            timestamp: new Date().toISOString()
+          });
+        }
+
+        // Show toast notification
         toast.error('Failed to generate report: ' + (errorObj.response?.data?.message || err.message || 'Unknown error'));
       } else {
+        // Handle non-Error objects
+        setError({
+          message: 'Failed to generate financial report',
+          errorCode: 'UNKNOWN_ERROR',
+          error: String(err),
+          timestamp: new Date().toISOString()
+        });
         toast.error('Failed to generate report: Unknown error');
       }
     } finally {

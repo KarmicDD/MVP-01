@@ -207,7 +207,7 @@ export interface IFinancialDueDiligenceReport extends Document {
     availableDocuments: {
       documentType: string;
       quality: 'good' | 'moderate' | 'poor';
-      completeness: string;
+      completeness: 'complete' | 'partial' | 'incomplete';
       keyInsights: string[];
       dataReliability?: string;
       recommendations?: string[];
@@ -335,7 +335,7 @@ const AvailableDocumentSchema = new Schema({
 const DocumentAnalysisItemSchema = new Schema({
   documentType: { type: String, required: true },
   quality: { type: String, enum: ['good', 'moderate', 'poor'], required: true },
-  completeness: { type: String, required: true },
+  completeness: { type: String, enum: ['complete', 'partial', 'incomplete'], required: true },
   keyInsights: [String],
   dataReliability: { type: String },
   recommendations: [String]
