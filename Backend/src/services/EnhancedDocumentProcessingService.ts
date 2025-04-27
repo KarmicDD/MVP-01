@@ -9,7 +9,7 @@ import dotenv from 'dotenv';
 import mammoth from 'mammoth';
 import { createWorker } from 'tesseract.js';
 import { Document } from 'mongoose';
-import { cleanJsonResponse } from '../utils/jsonHelper';
+import { cleanJsonResponse, safeJsonParse } from '../utils/jsonHelper';
 
 // Load environment variables
 dotenv.config();
@@ -149,7 +149,7 @@ export class EnhancedDocumentProcessingService {
         { fileData: { mime_type: 'application/vnd.ms-powerpoint', data: fileBuffer.toString('base64') } as any }
       ]);
 
-      const response = await result.response;
+      const response = result.response;
       return response.text();
     } catch (error) {
       console.error('Error extracting PPT text:', error);
@@ -249,29 +249,156 @@ export class EnhancedDocumentProcessingService {
     }
   }
 
+
+
   /**
-   * Process multiple documents and combine their content
-   * @param filePaths Array of file paths
-   * @returns Combined extracted content
+   * Process multiple documents with metadata and combine their content with document type identifiers
+   * @param documents Array of document objects with filePath and documentType
+   * @returns Combined extracted content with document type identifiers
    */
-  async processMultipleDocuments(filePaths: string[]): Promise<string> {
-    const contentPromises = filePaths.map(async (filePath) => {
-      // Convert to absolute path if it's a relative path
-      const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, '../..', filePath);
-      const fileExtension = path.extname(absolutePath).toLowerCase();
-      const fileName = path.basename(absolutePath);
+  async processMultipleDocumentsWithMetadata(documents: Array<{ filePath: string, documentType: string, originalName: string }>): Promise<string> {
+    // Create a map to store content by document type
+    const contentByType: { [key: string]: string[] } = {};
+
+    // Process each document and categorize by type
+    const contentPromises = documents.map(async (doc) => {
+      const { filePath, documentType, originalName } = doc;
 
       try {
         const content = await this.processDocument(filePath); // This will handle the path conversion internally
-        return `--- Document: ${fileName} ---\n\n${content}\n\n`;
+
+        // Initialize array for this document type if it doesn't exist
+        if (!contentByType[documentType]) {
+          contentByType[documentType] = [];
+        }
+
+        // Add content with document name
+        contentByType[documentType].push(`--- Document: ${originalName} ---\n\n${content}\n\n`);
+
+        return {
+          documentType,
+          originalName,
+          content
+        };
       } catch (error) {
-        console.error(`Error processing ${fileName}:`, error);
-        return `--- Document: ${fileName} ---\n\nError: Failed to process this document\n\n`;
+        console.error(`Error processing ${originalName}:`, error);
+
+        // Initialize array for this document type if it doesn't exist
+        if (!contentByType[documentType]) {
+          contentByType[documentType] = [];
+        }
+
+        // Add error message
+        contentByType[documentType].push(`--- Document: ${originalName} ---\n\nError: Failed to process this document\n\n`);
+
+        return {
+          documentType,
+          originalName,
+          error: true
+        };
       }
     });
 
-    const contents = await Promise.all(contentPromises);
-    return contents.join('\n');
+    // Wait for all documents to be processed
+    await Promise.all(contentPromises);
+
+    // Combine content with document type identifiers
+    let combinedContent = '';
+
+    // Add each document type section
+    for (const [docType, contents] of Object.entries(contentByType)) {
+      // Format document type for display (remove 'financial_' prefix, replace underscores with spaces, and capitalize)
+      const formattedDocType = docType.replace('financial_', '')
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
+      combinedContent += `=== ${formattedDocType} ===\n\n`;
+      combinedContent += contents.join('\n');
+      combinedContent += '\n\n';
+    }
+
+    return combinedContent;
+  }
+
+  /**
+   * Process multiple documents and combine their content with document type identifiers
+   * @param filePaths Array of file paths
+   * @returns Combined extracted content with document type identifiers
+   */
+  async processMultipleDocuments(filePaths: string[]): Promise<string> {
+    // Create a map to store content by document type
+    const contentByType: { [key: string]: string[] } = {};
+
+    // Process each document and categorize by type
+    const contentPromises = filePaths.map(async (filePath) => {
+      // Convert to absolute path if it's a relative path
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, '../..', filePath);
+      const fileName = path.basename(absolutePath);
+
+      // Extract document type from the file path if it contains financial_*
+      // Default to 'other' if no specific type is identified
+      let documentType = 'other';
+      const match = filePath.match(/financial_([a-z_]+)/);
+      if (match && match[1]) {
+        documentType = `financial_${match[1]}`;
+      }
+
+      try {
+        const content = await this.processDocument(filePath); // This will handle the path conversion internally
+
+        // Initialize array for this document type if it doesn't exist
+        if (!contentByType[documentType]) {
+          contentByType[documentType] = [];
+        }
+
+        // Add content with document name
+        contentByType[documentType].push(`--- Document: ${fileName} ---\n\n${content}\n\n`);
+
+        return {
+          documentType,
+          fileName,
+          content
+        };
+      } catch (error) {
+        console.error(`Error processing ${fileName}:`, error);
+
+        // Initialize array for this document type if it doesn't exist
+        if (!contentByType[documentType]) {
+          contentByType[documentType] = [];
+        }
+
+        // Add error message
+        contentByType[documentType].push(`--- Document: ${fileName} ---\n\nError: Failed to process this document\n\n`);
+
+        return {
+          documentType,
+          fileName,
+          error: true
+        };
+      }
+    });
+
+    // Wait for all documents to be processed
+    await Promise.all(contentPromises);
+
+    // Combine content with document type identifiers
+    let combinedContent = '';
+
+    // Add each document type section
+    for (const [docType, contents] of Object.entries(contentByType)) {
+      // Format document type for display (remove 'financial_' prefix, replace underscores with spaces, and capitalize)
+      const formattedDocType = docType.replace('financial_', '')
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
+      combinedContent += `=== ${formattedDocType} ===\n\n`;
+      combinedContent += contents.join('\n');
+      combinedContent += '\n\n';
+    }
+
+    return combinedContent;
   }
 
   /**
@@ -338,6 +465,13 @@ export class EnhancedDocumentProcessingService {
                 ${investorContext}
                 ${missingDocumentsContext}
 
+                IMPORTANT DOCUMENT ORGANIZATION:
+                The document content is organized by document type. Each document type section begins with a header in the format "=== Document Type ===" (e.g., "=== Balance Sheet ===").
+                Within each section, individual documents are marked with "--- Document: filename ---".
+
+                Pay special attention to these document type headers to correctly identify which documents are available.
+                For example, if you see a "=== Balance Sheet ===" section, you should NOT report balance sheet as missing.
+
                 RESPONSE FORMAT: Return ONLY valid JSON with this exact structure:
                 {
                   "reportCalculated": true or false, // IMPORTANT: Set to true if you were able to extract meaningful financial data, false otherwise
@@ -352,7 +486,7 @@ export class EnhancedDocumentProcessingService {
                         "value": "Metric value",
                         "status": "good" or "warning" or "critical",
                         "description": "Brief description of the metric",
-                        "trend": "increasing" or "decreasing" or "stable",
+                        "trend": "increasing" or "decreasing" or "stable" or "N/A",
                         "percentChange": "Percentage change from previous period (e.g., +15%)"
                       }
                     ]
@@ -364,7 +498,7 @@ export class EnhancedDocumentProcessingService {
                         "value": "Metric value",
                         "status": "good" or "warning" or "critical",
                         "description": "Brief description of the metric",
-                        "trend": "increasing" or "decreasing" or "stable",
+                        "trend": "increasing" or "decreasing" or "stable" or "N/A",
                         "percentChange": "Percentage change from previous period (e.g., +15%)",
                         "industryComparison": "above_average" or "average" or "below_average" or "N/A",
                         "industryValue": "Industry average value"
@@ -586,7 +720,7 @@ export class EnhancedDocumentProcessingService {
 
       // Call Gemini API
       const result = await model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       const text = response.text();
 
       // Parse the JSON response
@@ -594,7 +728,16 @@ export class EnhancedDocumentProcessingService {
         // Clean the response text by removing markdown code block markers
         const cleanedText = cleanJsonResponse(text);
 
-        return JSON.parse(cleanedText);
+        // Use our safe JSON parser that can handle common issues
+        const parsedData = safeJsonParse(cleanedText);
+
+        if (parsedData === null) {
+          console.error('Failed to parse Gemini response even with error correction');
+          console.log('Raw response:', text);
+          throw new Error('Failed to parse financial data from Gemini response');
+        }
+
+        return parsedData;
       } catch (error) {
         console.error('Error parsing Gemini response:', error);
         console.log('Raw response:', text);

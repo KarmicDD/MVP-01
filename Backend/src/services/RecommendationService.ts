@@ -4,7 +4,7 @@ import StartupProfileModel from '../models/Profile/StartupProfile';
 import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
 import QuestionnaireSubmissionModel from '../models/question/QuestionnaireSubmission';
 import RecommendationModel from '../models/RecommendationModel';
-import { cleanJsonResponse } from '../utils/jsonHelper';
+import { cleanJsonResponse, safeJsonParse } from '../utils/jsonHelper';
 
 // Load environment variables
 dotenv.config();
@@ -265,7 +265,15 @@ class RecommendationService {
 
             // Clean and parse the response
             const cleanedResponse = cleanJsonResponse(textResponse);
-            const parsedResponse = JSON.parse(cleanedResponse);
+
+            // Use our safe JSON parser that can handle common issues
+            const parsedResponse = safeJsonParse(cleanedResponse);
+
+            if (parsedResponse === null) {
+                console.error('Failed to parse Gemini response even with error correction');
+                console.error('Raw response:', textResponse);
+                throw new Error('Failed to parse Gemini response');
+            }
 
             // Ensure the response has the expected structure
             if (!parsedResponse.recommendations || !Array.isArray(parsedResponse.recommendations)) {

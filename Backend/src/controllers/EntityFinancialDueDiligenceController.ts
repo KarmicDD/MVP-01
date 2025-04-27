@@ -295,11 +295,16 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 _id: { $in: documentIds }
             });
 
-            const filePaths = documents.map(doc => doc.filePath);
+            // Prepare documents with metadata for processing
+            const documentsWithMetadata = documents.map(doc => ({
+                filePath: doc.filePath,
+                documentType: doc.documentType,
+                originalName: doc.originalName || path.basename(doc.filePath)
+            }));
 
-            // Process documents and extract content
-            console.log('Processing documents:', filePaths);
-            const combinedContent = await enhancedDocumentProcessingService.processMultipleDocuments(filePaths);
+            // Process documents and extract content with document type metadata
+            console.log('Processing documents with metadata:', documentsWithMetadata.map(d => d.documentType));
+            const combinedContent = await enhancedDocumentProcessingService.processMultipleDocumentsWithMetadata(documentsWithMetadata);
 
             // Check if document processing was successful
             if (!combinedContent || combinedContent.includes('Error: Failed to process this document')) {

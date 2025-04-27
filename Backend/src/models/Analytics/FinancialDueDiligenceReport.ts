@@ -5,7 +5,7 @@ export interface IFinancialMetric {
   value: string | number;
   status: 'good' | 'warning' | 'critical';
   description: string;
-  trend?: 'increasing' | 'decreasing' | 'stable';
+  trend?: 'increasing' | 'decreasing' | 'stable' | 'N/A';
   percentChange?: string;
   industryComparison?: 'above_average' | 'average' | 'below_average' | 'N/A';
   industryValue?: string | number;
@@ -251,7 +251,7 @@ const FinancialMetricSchema = new Schema({
   value: { type: Schema.Types.Mixed, required: true },
   status: { type: String, enum: ['good', 'warning', 'critical'], required: true },
   description: { type: String, required: true },
-  trend: { type: String, enum: ['increasing', 'decreasing', 'stable'] },
+  trend: { type: String, enum: ['increasing', 'decreasing', 'stable', 'N/A'] },
   percentChange: { type: String },
   industryComparison: { type: String, enum: ['above_average', 'average', 'below_average', 'N/A'] },
   industryValue: { type: Schema.Types.Mixed }

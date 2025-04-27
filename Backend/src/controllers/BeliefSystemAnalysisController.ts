@@ -6,7 +6,7 @@ import StartupProfileModel from '../models/Profile/StartupProfile';
 import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
 import ApiUsageModel from '../models/ApiUsageModel/ApiUsage';
 import BeliefSystemAnalysisModel from '../models/BeliefSystemAnalysisModel';
-import { cleanJsonResponse } from '../utils/jsonHelper';
+import { cleanJsonResponse, safeJsonParse } from '../utils/jsonHelper';
 import QuestionnaireSubmissionModel from '../models/question/QuestionnaireSubmission';
 
 // Load environment variables
@@ -619,7 +619,15 @@ Return ONLY valid JSON with this exact structure (no markdown, no explanations, 
         const cleanedResponse = cleanJsonResponse(textResponse);
 
         try {
-            const parsedResponse = JSON.parse(cleanedResponse);
+            // Use our safe JSON parser that can handle common issues
+            const parsedResponse = safeJsonParse(cleanedResponse);
+
+            if (parsedResponse === null) {
+                console.error('Failed to parse AI response even with error correction');
+                console.error('Raw response:', textResponse);
+                console.error('Cleaned response:', cleanedResponse);
+                throw new Error('Failed to parse AI response');
+            }
 
             // Ensure the response has the expected structure
             return adaptLegacyAnalysisData(parsedResponse);
