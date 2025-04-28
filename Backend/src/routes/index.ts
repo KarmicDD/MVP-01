@@ -11,6 +11,7 @@ import emailRoutes from './emailRoutes';
 import searchRoutes from './searchRoutes';
 import financialDueDiligenceRoutes from './financialDueDiligenceRoutes';
 import recommendationRoutes from './recommendationRoutes';
+import analyticsRoutes from './analyticsRoutes';
 
 const router = express.Router();
 
@@ -37,5 +38,9 @@ router.use('/financial', financialDueDiligenceRoutes);
 // Recommendation routes
 console.log('Registering recommendation routes');
 router.use('/recommendations', recommendationRoutes);
+
+// Analytics routes
+console.log('Registering analytics routes');
+router.use('/analytics', analyticsRoutes);
 
 export default router;

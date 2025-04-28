@@ -5,7 +5,7 @@ export interface IFinancialMetric {
   value: string | number;
   status: 'good' | 'warning' | 'critical';
   description: string;
-  trend?: 'increasing' | 'decreasing' | 'stable' | 'N/A';
+  trend?: string; // Accept any string value for trend
   percentChange?: string;
   industryComparison?: 'above_average' | 'average' | 'below_average' | 'N/A';
   industryValue?: string | number;
@@ -38,7 +38,7 @@ export interface IFinancialRatio {
   industry_average?: number | string; // Allow for both numbers and strings like "N/A"
   description: string;
   status: 'good' | 'warning' | 'critical';
-  trend?: 'improving' | 'stable' | 'deteriorating';
+  trend?: string; // Accept any string value for trend
   historicalData?: {
     period: string;
     value: number | string; // Allow for both numbers and strings like "N/A"
@@ -81,7 +81,7 @@ export interface IFinancialDueDiligenceReport extends Document {
     trends: {
       name: string;
       description: string;
-      trend: 'increasing' | 'decreasing' | 'stable';
+      trend: string; // Accept any string value for trend
       impact: 'positive' | 'negative' | 'neutral';
       data?: {
         period: string;
@@ -251,7 +251,7 @@ const FinancialMetricSchema = new Schema({
   value: { type: Schema.Types.Mixed, required: true },
   status: { type: String, enum: ['good', 'warning', 'critical'], required: true },
   description: { type: String, required: true },
-  trend: { type: String, enum: ['increasing', 'decreasing', 'stable', 'N/A'] },
+  trend: { type: String }, // Accept any string value for trend
   percentChange: { type: String },
   industryComparison: { type: String, enum: ['above_average', 'average', 'below_average', 'N/A'] },
   industryValue: { type: Schema.Types.Mixed }
@@ -284,7 +284,7 @@ const FinancialRatioSchema = new Schema({
   industry_average: { type: Schema.Types.Mixed }, // Allow for both numbers and strings like "N/A"
   description: { type: String, required: true },
   status: { type: String, enum: ['good', 'warning', 'critical'], required: true },
-  trend: { type: String, enum: ['improving', 'stable', 'deteriorating'] },
+  trend: { type: String }, // Accept any string value for trend
   historicalData: [{
     period: { type: String },
     value: { type: Schema.Types.Mixed } // Allow for both numbers and strings like "N/A"
@@ -295,7 +295,7 @@ const FinancialRatioSchema = new Schema({
 const TrendSchema = new Schema({
   name: { type: String, required: true },
   description: { type: String, required: true },
-  trend: { type: String, enum: ['increasing', 'decreasing', 'stable'], required: true },
+  trend: { type: String, required: true }, // Accept any string value for trend
   impact: { type: String, enum: ['positive', 'negative', 'neutral'], required: true },
   data: [{
     period: { type: String },

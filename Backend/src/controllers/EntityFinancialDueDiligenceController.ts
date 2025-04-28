@@ -368,13 +368,42 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
 
             // Extract financial data using Gemini with enhanced context
             console.log('Extracting financial data using Gemini');
-            const financialData = await enhancedDocumentProcessingService.extractFinancialData(
-                combinedContent,
-                companyName,
-                entityProfile,
-                null, // No counterparty info needed
-                missingDocumentTypes // Pass missing document types to Gemini
-            );
+            let financialData;
+            try {
+                financialData = await enhancedDocumentProcessingService.extractFinancialData(
+                    combinedContent,
+                    companyName,
+                    entityProfile,
+                    null, // No counterparty info needed
+                    missingDocumentTypes // Pass missing document types to Gemini
+                );
+            } catch (error) {
+                console.error('Error extracting financial data:', error);
+
+                // Check if it's a network-related error
+                if (error instanceof Error && (
+                    error.message.includes('fetch failed') ||
+                    error.message.includes('network') ||
+                    error.message.includes('connection')
+                )) {
+                    res.status(503).json({
+                        message: 'Internet connection error at server. Please wait 10 minutes and try again.',
+                        errorCode: 'SERVER_CONNECTIVITY_ERROR',
+                        availableDocuments,
+                        missingDocumentTypes
+                    });
+                    return;
+                }
+
+                // For other errors
+                res.status(500).json({
+                    message: 'Failed to extract financial data from documents',
+                    errorCode: 'FINANCIAL_DATA_EXTRACTION_FAILED',
+                    availableDocuments,
+                    missingDocumentTypes
+                });
+                return;
+            }
 
             // Process ratio analysis data to ensure all required fields are present
             const processRatioData = (ratios: any[] = []) => {

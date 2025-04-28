@@ -5,11 +5,30 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import api from '../services/api';
 
+export interface ChartData {
+  type: 'line' | 'bar' | 'pie' | 'radar';
+  labels: string[];
+  datasets: {
+    label: string;
+    data: (number | null)[];
+    backgroundColor?: string | string[];
+    borderColor?: string | string[];
+    borderWidth?: number;
+    borderDash?: number[];
+    fill?: boolean;
+  }[];
+}
+
 export interface FinancialMetric {
   name: string;
   value: string | number;
   status: 'good' | 'warning' | 'critical';
   description: string;
+  trend?: string;
+  percentChange?: string;
+  industryComparison?: 'above_average' | 'average' | 'below_average' | 'N/A';
+  industryValue?: string | number;
+  chartData?: ChartData;
 }
 
 export interface RiskFactor {
@@ -29,10 +48,18 @@ export interface ComplianceItem {
 
 export interface FinancialRatio {
   name: string;
-  value: number;
-  industry_average?: number;
+  value: number | string;
+  formula?: string;
+  industry_average?: number | string;
   description: string;
+  interpretation?: string;
   status: 'good' | 'warning' | 'critical';
+  trend?: string;
+  historicalData?: {
+    period: string;
+    value: number | string;
+  }[];
+  chartData?: ChartData;
 }
 
 export interface EntityInfo {
@@ -69,8 +96,13 @@ export interface MissingDocuments {
 export interface FinancialTrend {
   name: string;
   description: string;
-  trend: 'increasing' | 'decreasing' | 'stable';
+  trend: string;
   impact: 'positive' | 'negative' | 'neutral';
+  data?: {
+    period: string;
+    value: number | string;
+  }[];
+  chartData?: ChartData;
 }
 
 export interface AuditFinding {
@@ -78,6 +110,11 @@ export interface AuditFinding {
   severity: 'high' | 'medium' | 'low';
   description: string;
   recommendation: string;
+  impact?: string;
+  timelineToResolve?: string;
+  regulatoryImplications?: string;
+  financialImpact?: number | string;
+  status?: 'new' | 'recurring' | 'resolved';
 }
 
 export interface FinancialDocument {
@@ -88,6 +125,9 @@ export interface FinancialDocument {
 }
 
 export interface FinancialDueDiligenceReport {
+  // Report Type
+  reportType?: string;
+
   // Executive Summary Section
   executiveSummary: {
     headline: string;
@@ -95,12 +135,38 @@ export interface FinancialDueDiligenceReport {
     keyFindings: string[];
     recommendedActions: string[];
     keyMetrics: FinancialMetric[];
+    auditOpinion?: {
+      type: 'unqualified' | 'qualified' | 'adverse' | 'disclaimer';
+      statement: string;
+      qualifications?: string[];
+    };
   };
 
   // Financial Analysis Section
   financialAnalysis: {
+    overview?: string;
     metrics: FinancialMetric[];
     trends: FinancialTrend[];
+    growthProjections?: {
+      metric: string;
+      currentValue: number | string;
+      projectedValue: number | string;
+      timeframe: string;
+      cagr: string;
+      confidence: 'high' | 'medium' | 'low';
+      chartData?: ChartData;
+    }[];
+    financialHealthScore?: {
+      score: number;
+      rating: 'Excellent' | 'Good' | 'Fair' | 'Poor' | 'Critical';
+      description: string;
+      components: {
+        category: string;
+        score: number;
+        weight: number;
+      }[];
+      chartData?: ChartData;
+    };
   };
 
   // Recommendations Section
@@ -114,17 +180,49 @@ export interface FinancialDueDiligenceReport {
 
   // Financial Statements Section
   financialStatements?: {
-    balanceSheet?: any;
-    incomeStatement?: any;
-    cashFlow?: any;
+    balanceSheet?: {
+      assets: any;
+      liabilities: any;
+      equity: any;
+      yearOverYearChange?: {
+        assets: string;
+        liabilities: string;
+        equity: string;
+      };
+    };
+    incomeStatement?: {
+      revenue: number | string;
+      costOfGoodsSold: number | string;
+      grossProfit: number | string;
+      operatingExpenses: number | string;
+      operatingIncome: number | string;
+      netIncome: number | string;
+      yearOverYearChange?: {
+        revenue: string;
+        grossProfit: string;
+        netIncome: string;
+      };
+    };
+    cashFlow?: {
+      operatingActivities: number | string;
+      investingActivities: number | string;
+      financingActivities: number | string;
+      netCashFlow: number | string;
+      yearOverYearChange?: {
+        operatingActivities: string;
+        netCashFlow: string;
+      };
+    };
   };
 
   // Ratio Analysis Section
   ratioAnalysis?: {
+    overview?: string;
     liquidityRatios: FinancialRatio[];
     profitabilityRatios: FinancialRatio[];
     solvencyRatios: FinancialRatio[];
     efficiencyRatios: FinancialRatio[];
+    ratioComparisonChart?: ChartData;
   };
 
   // Tax Compliance Section
@@ -132,27 +230,120 @@ export interface FinancialDueDiligenceReport {
     gst: {
       status: 'compliant' | 'partial' | 'non-compliant';
       details: string;
+      filingHistory?: {
+        period: string;
+        status: 'filed' | 'pending' | 'overdue';
+        dueDate: string;
+      }[];
+      recommendations?: string[];
     };
     incomeTax: {
       status: 'compliant' | 'partial' | 'non-compliant';
       details: string;
+      filingHistory?: {
+        period: string;
+        status: 'filed' | 'pending' | 'overdue';
+        dueDate: string;
+      }[];
+      recommendations?: string[];
     };
     tds: {
       status: 'compliant' | 'partial' | 'non-compliant';
       details: string;
+      filingHistory?: {
+        period: string;
+        status: 'filed' | 'pending' | 'overdue';
+        dueDate: string;
+      }[];
+      recommendations?: string[];
     };
   };
 
   // Audit Findings Section
   auditFindings?: {
+    auditScope?: string;
+    auditMethodology?: string;
+    auditStandards?: string[];
     findings: AuditFinding[];
     overallAssessment: string;
+    complianceScore?: string;
+    keyStrengths?: string[];
+    keyWeaknesses?: string[];
+    materialWeaknesses?: {
+      area: string;
+      description: string;
+      impact: string;
+      remediation: string;
+    }[];
+    internalControlAssessment?: {
+      overview: string;
+      controlEnvironment: string;
+      riskAssessment: string;
+      controlActivities: string;
+      informationAndCommunication: string;
+      monitoring: string;
+      significantDeficiencies?: {
+        area: string;
+        description: string;
+        impact: string;
+        recommendation: string;
+      }[];
+    };
+    findingsByCategory?: ChartData;
+    findingsBySeverity?: ChartData;
   };
 
   // Document Analysis Section
   documentAnalysis?: {
     availableDocuments: DocumentAnalysisItem[];
     missingDocuments: MissingDocuments;
+  };
+
+  // Industry Benchmarking Section
+  industryBenchmarking?: {
+    overview: string;
+    industryContext?: string;
+    peerComparison?: string;
+    metrics: {
+      name: string;
+      companyValue: number | string;
+      industryAverage: number | string;
+      percentile?: string;
+      status: 'above_average' | 'average' | 'below_average' | 'N/A';
+      interpretation?: string;
+      chartData?: ChartData;
+    }[];
+    competitivePosition: string;
+    marketShareAnalysis?: string;
+    strengths: string[];
+    challenges: string[];
+    opportunities?: string[];
+    threats?: string[];
+    industryOutlook?: string;
+    benchmarkingCharts?: {
+      financialPerformance?: ChartData;
+      operationalEfficiency?: ChartData;
+    };
+  };
+
+  // Legal and Regulatory Compliance Section
+  legalAndRegulatoryCompliance?: {
+    overview: string;
+    complianceAreas: {
+      area: string;
+      status: 'compliant' | 'partial' | 'non-compliant';
+      description: string;
+      risks: string[];
+      recommendations: string[];
+      deadlines?: string;
+    }[];
+    pendingLegalMatters?: {
+      matter: string;
+      status: 'pending' | 'resolved' | 'in_progress';
+      potentialImpact: string;
+      recommendedAction: string;
+    }[];
+    complianceChart?: ChartData;
   };
 
   // Document Information

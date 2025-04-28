@@ -22,7 +22,7 @@ if (!apiKey) {
 
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.0-flash-thinking-exp-01-21",
+  model: "gemini-2.5-flash-preview-04-17",
 });
 
 // Promisify fs functions
@@ -523,9 +523,12 @@ export class EnhancedDocumentProcessingService {
             ` : '';
 
       prompt = `
-                You are a specialized financial analyst and auditor with expertise in Indian company standards and regulations. Your task is to perform a comprehensive financial due diligence analysis and audit for ${companyName}.
+                *** IMPORTANT: THIS IS BOTH A FINANCIAL DUE DILIGENCE AND FORMAL AUDITING REPORT. YOUR ANALYSIS MUST MEET PROFESSIONAL STANDARDS THAT COULD REPLACE THE WORK OF LAWYERS AND CHARTERED ACCOUNTANTS. ***
 
-                TASK: Analyze the following financial documents for ${companyName} and provide a comprehensive, professional financial due diligence report that combines both financial analysis and audit findings. Your analysis should be thorough, detailed, and presented in a visually appealing format with color-coded metrics and graphical data.
+                You are a specialized financial analyst and auditor with expertise in Indian company standards and regulations. Your task is to perform a comprehensive financial due diligence analysis and formal audit for ${companyName} that would satisfy legal and regulatory requirements.
+
+                TASK: Analyze the following financial documents for ${companyName} and provide a comprehensive, professional financial due diligence and audit report that combines both financial analysis and audit findings. Your analysis should be thorough, detailed, and presented in a visually appealing format with color-coded metrics and graphical data. Include data visualizations and charts wherever possible.
+
                 ${startupContext}
                 ${investorContext}
                 ${missingDocumentsContext}
@@ -537,9 +540,22 @@ export class EnhancedDocumentProcessingService {
                 Pay special attention to these document type headers to correctly identify which documents are available.
                 For example, if you see a "=== Balance Sheet ===" section, you should NOT report balance sheet as missing.
 
+                DOCUMENT TYPE HANDLING GUIDELINES:
+                - For each document type, extract all relevant financial information with the precision of a professional auditor
+                - Balance Sheet: Extract assets, liabilities, equity, and calculate key ratios; verify asset valuation methods and liability recognition
+                - Income Statement: Extract revenue, expenses, profits, and calculate profitability ratios; verify revenue recognition policies and expense categorization
+                - Cash Flow Statement: Extract operating, investing, and financing cash flows; verify cash flow classification and reconciliation with other statements
+                - Tax Documents: Extract GST, income tax, and TDS compliance information; verify tax calculation methods and compliance with latest tax regulations
+                - Bank Statements: Extract cash position, major transactions, and cash flow patterns; verify reconciliation with accounting records
+                - Financial Projections: Extract growth forecasts and assess reasonableness; verify assumptions and methodologies
+                - Audit Reports: Extract key findings, compliance issues, and recommendations; verify implementation of previous audit recommendations
+                - If a document appears to be in a non-standard format, make your best effort to extract relevant information using professional judgment
+                - If a document is partially readable or has quality issues, extract what you can and note the limitations with appropriate audit qualifications
+
                 RESPONSE FORMAT: Return ONLY valid JSON with this exact structure:
                 {
                   "reportCalculated": true or false, // IMPORTANT: Set to true if you were able to extract meaningful financial data, false otherwise
+                  "reportType": "Financial Due Diligence and Audit Report", // Always include this exact title
                   "executiveSummary": {
                     "headline": "Brief headline summarizing the financial health",
                     "summary": "Detailed summary of financial analysis and audit findings",
@@ -551,35 +567,75 @@ export class EnhancedDocumentProcessingService {
                         "value": "Metric value",
                         "status": "good" or "warning" or "critical",
                         "description": "Brief description of the metric",
-                        "trend": "increasing" or "decreasing" or "stable" or "N/A",
-                        "percentChange": "Percentage change from previous period (e.g., +15%)"
+                        "trend": "Any trend description (e.g., increasing, decreasing, stable, improving, deteriorating, N/A)",
+                        "percentChange": "Percentage change from previous period (e.g., +15%)",
+                        "chartData": {
+                          "type": "line" or "bar" or "pie", // Type of chart that would best represent this data
+                          "labels": ["Period 1", "Period 2", "Period 3"], // Time periods or categories
+                          "datasets": [
+                            {
+                              "label": "Dataset label",
+                              "data": [value1, value2, value3], // Numeric values for each period
+                              "backgroundColor": ["#4CAF50", "#FFC107", "#F44336"] // Suggested colors (green, yellow, red)
+                            }
+                          ]
+                        }
                       }
-                    ]
+                    ],
+                    "auditOpinion": {
+                      "type": "unqualified" or "qualified" or "adverse" or "disclaimer", // Professional audit opinion type
+                      "statement": "Professional audit opinion statement",
+                      "qualifications": ["Qualification 1", "Qualification 2"] // Only if qualified, adverse, or disclaimer
+                    }
                   },
                   "financialAnalysis": {
+                    "overview": "Comprehensive overview of the financial analysis",
                     "metrics": [
                       {
                         "name": "Metric name",
                         "value": "Metric value",
                         "status": "good" or "warning" or "critical",
                         "description": "Brief description of the metric",
-                        "trend": "increasing" or "decreasing" or "stable" or "N/A",
+                        "trend": "Any trend description (e.g., increasing, decreasing, stable, improving, deteriorating, N/A)",
                         "percentChange": "Percentage change from previous period (e.g., +15%)",
                         "industryComparison": "above_average" or "average" or "below_average" or "N/A",
-                        "industryValue": "Industry average value"
+                        "industryValue": "Industry average value",
+                        "chartData": {
+                          "type": "line" or "bar" or "pie", // Type of chart that would best represent this data
+                          "labels": ["Period 1", "Period 2", "Period 3"], // Time periods or categories
+                          "datasets": [
+                            {
+                              "label": "Dataset label",
+                              "data": [value1, value2, value3], // Numeric values for each period
+                              "backgroundColor": ["#4CAF50", "#FFC107", "#F44336"] // Suggested colors (green, yellow, red)
+                            }
+                          ]
+                        }
                       }
                     ],
                     "trends": [
                       {
                         "name": "Trend name",
                         "description": "Description of the trend",
-                        "trend": "increasing" or "decreasing" or "stable",
+                        "trend": "Any trend description (e.g., increasing, decreasing, stable, improving, deteriorating)",
                         "impact": "positive" or "negative" or "neutral",
                         "data": [
                           {"period": "Period 1 (e.g., Q1 2023)", "value": numeric value or "N/A"},
                           {"period": "Period 2 (e.g., Q2 2023)", "value": numeric value or "N/A"},
                           {"period": "Period 3 (e.g., Q3 2023)", "value": numeric value or "N/A"}
-                        ]
+                        ],
+                        "chartData": {
+                          "type": "line" or "bar", // Type of chart that would best represent this trend
+                          "labels": ["Period 1", "Period 2", "Period 3"], // Time periods
+                          "datasets": [
+                            {
+                              "label": "Dataset label",
+                              "data": [value1, value2, value3], // Numeric values for each period
+                              "borderColor": "#2196F3", // Suggested color for line charts
+                              "backgroundColor": "rgba(33, 150, 243, 0.2)" // Suggested background color with transparency
+                            }
+                          ]
+                        }
                       }
                     ],
                     "growthProjections": [
@@ -589,9 +645,50 @@ export class EnhancedDocumentProcessingService {
                         "projectedValue": numeric value or "N/A",
                         "timeframe": "Timeframe (e.g., 1 year, 3 years)",
                         "cagr": "Compound Annual Growth Rate (e.g., 12.5%)",
-                        "confidence": "high" or "medium" or "low"
+                        "confidence": "high" or "medium" or "low",
+                        "chartData": {
+                          "type": "bar" or "line", // Type of chart that would best represent this projection
+                          "labels": ["Current", "Year 1", "Year 2", "Year 3"], // Projection periods
+                          "datasets": [
+                            {
+                              "label": "Projected Growth",
+                              "data": [currentValue, year1Value, year2Value, year3Value], // Numeric values for each period
+                              "backgroundColor": ["#9C27B0", "#9C27B0", "#9C27B0", "#9C27B0"] // Suggested color for projections
+                            }
+                          ]
+                        }
                       }
-                    ]
+                    ],
+                    "financialHealthScore": {
+                      "score": numeric value between 0 and 100,
+                      "rating": "Excellent" or "Good" or "Fair" or "Poor" or "Critical",
+                      "description": "Description of the financial health score",
+                      "components": [
+                        {
+                          "category": "Category name (e.g., Liquidity, Profitability)",
+                          "score": numeric value between 0 and 100,
+                          "weight": numeric value between 0 and 1 (sum of all weights should be 1)
+                        }
+                      ],
+                      "chartData": {
+                        "type": "radar", // Radar chart for financial health components
+                        "labels": ["Liquidity", "Profitability", "Solvency", "Efficiency", "Growth"],
+                        "datasets": [
+                          {
+                            "label": "Company Score",
+                            "data": [score1, score2, score3, score4, score5], // Scores for each component
+                            "backgroundColor": "rgba(33, 150, 243, 0.2)",
+                            "borderColor": "#2196F3"
+                          },
+                          {
+                            "label": "Industry Average",
+                            "data": [avg1, avg2, avg3, avg4, avg5], // Industry average scores
+                            "backgroundColor": "rgba(156, 39, 176, 0.2)",
+                            "borderColor": "#9C27B0"
+                          }
+                        ]
+                      }
+                    }
                   },
                   "recommendations": [
                     "Recommendation 1",
@@ -657,23 +754,165 @@ export class EnhancedDocumentProcessingService {
                     }
                   },
                   "ratioAnalysis": {
+                    "overview": "Overview of the ratio analysis with key insights",
                     "liquidityRatios": [
                       {
                         "name": "Ratio name",
                         "value": numeric value or "N/A",
+                        "formula": "Formula used to calculate the ratio",
                         "industry_average": numeric value or "N/A",
                         "description": "Description of ratio",
+                        "interpretation": "Professional interpretation of the ratio value",
                         "status": "good" or "warning" or "critical",
-                        "trend": "improving" or "stable" or "deteriorating",
+                        "trend": "Any trend description (e.g., improving, stable, deteriorating, increasing, decreasing)",
                         "historicalData": [
                           {"period": "Period 1", "value": numeric value or "N/A"},
                           {"period": "Period 2", "value": numeric value or "N/A"}
-                        ]
+                        ],
+                        "chartData": {
+                          "type": "line", // Type of chart that would best represent this ratio
+                          "labels": ["Period 1", "Period 2", "Period 3"], // Time periods
+                          "datasets": [
+                            {
+                              "label": "Company Ratio",
+                              "data": [value1, value2, value3], // Numeric values for each period
+                              "borderColor": "#2196F3",
+                              "backgroundColor": "rgba(33, 150, 243, 0.2)"
+                            },
+                            {
+                              "label": "Industry Average",
+                              "data": [avg1, avg2, avg3], // Industry average values
+                              "borderColor": "#9C27B0",
+                              "backgroundColor": "rgba(156, 39, 176, 0.2)",
+                              "borderDash": [5, 5] // Dashed line for industry average
+                            }
+                          ]
+                        }
                       }
                     ],
-                    "profitabilityRatios": [...],
-                    "solvencyRatios": [...],
-                    "efficiencyRatios": [...]
+                    "profitabilityRatios": [
+                      {
+                        "name": "Ratio name",
+                        "value": numeric value or "N/A",
+                        "formula": "Formula used to calculate the ratio",
+                        "industry_average": numeric value or "N/A",
+                        "description": "Description of ratio",
+                        "interpretation": "Professional interpretation of the ratio value",
+                        "status": "good" or "warning" or "critical",
+                        "trend": "Any trend description (e.g., improving, stable, deteriorating, increasing, decreasing)",
+                        "historicalData": [
+                          {"period": "Period 1", "value": numeric value or "N/A"},
+                          {"period": "Period 2", "value": numeric value or "N/A"}
+                        ],
+                        "chartData": {
+                          "type": "line", // Type of chart that would best represent this ratio
+                          "labels": ["Period 1", "Period 2", "Period 3"], // Time periods
+                          "datasets": [
+                            {
+                              "label": "Company Ratio",
+                              "data": [value1, value2, value3], // Numeric values for each period
+                              "borderColor": "#4CAF50",
+                              "backgroundColor": "rgba(76, 175, 80, 0.2)"
+                            },
+                            {
+                              "label": "Industry Average",
+                              "data": [avg1, avg2, avg3], // Industry average values
+                              "borderColor": "#9C27B0",
+                              "backgroundColor": "rgba(156, 39, 176, 0.2)",
+                              "borderDash": [5, 5] // Dashed line for industry average
+                            }
+                          ]
+                        }
+                      }
+                    ],
+                    "solvencyRatios": [
+                      {
+                        "name": "Ratio name",
+                        "value": numeric value or "N/A",
+                        "formula": "Formula used to calculate the ratio",
+                        "industry_average": numeric value or "N/A",
+                        "description": "Description of ratio",
+                        "interpretation": "Professional interpretation of the ratio value",
+                        "status": "good" or "warning" or "critical",
+                        "trend": "Any trend description (e.g., improving, stable, deteriorating, increasing, decreasing)",
+                        "historicalData": [
+                          {"period": "Period 1", "value": numeric value or "N/A"},
+                          {"period": "Period 2", "value": numeric value or "N/A"}
+                        ],
+                        "chartData": {
+                          "type": "line", // Type of chart that would best represent this ratio
+                          "labels": ["Period 1", "Period 2", "Period 3"], // Time periods
+                          "datasets": [
+                            {
+                              "label": "Company Ratio",
+                              "data": [value1, value2, value3], // Numeric values for each period
+                              "borderColor": "#FF9800",
+                              "backgroundColor": "rgba(255, 152, 0, 0.2)"
+                            },
+                            {
+                              "label": "Industry Average",
+                              "data": [avg1, avg2, avg3], // Industry average values
+                              "borderColor": "#9C27B0",
+                              "backgroundColor": "rgba(156, 39, 176, 0.2)",
+                              "borderDash": [5, 5] // Dashed line for industry average
+                            }
+                          ]
+                        }
+                      }
+                    ],
+                    "efficiencyRatios": [
+                      {
+                        "name": "Ratio name",
+                        "value": numeric value or "N/A",
+                        "formula": "Formula used to calculate the ratio",
+                        "industry_average": numeric value or "N/A",
+                        "description": "Description of ratio",
+                        "interpretation": "Professional interpretation of the ratio value",
+                        "status": "good" or "warning" or "critical",
+                        "trend": "Any trend description (e.g., improving, stable, deteriorating, increasing, decreasing)",
+                        "historicalData": [
+                          {"period": "Period 1", "value": numeric value or "N/A"},
+                          {"period": "Period 2", "value": numeric value or "N/A"}
+                        ],
+                        "chartData": {
+                          "type": "line", // Type of chart that would best represent this ratio
+                          "labels": ["Period 1", "Period 2", "Period 3"], // Time periods
+                          "datasets": [
+                            {
+                              "label": "Company Ratio",
+                              "data": [value1, value2, value3], // Numeric values for each period
+                              "borderColor": "#9C27B0",
+                              "backgroundColor": "rgba(156, 39, 176, 0.2)"
+                            },
+                            {
+                              "label": "Industry Average",
+                              "data": [avg1, avg2, avg3], // Industry average values
+                              "borderColor": "#607D8B",
+                              "backgroundColor": "rgba(96, 125, 139, 0.2)",
+                              "borderDash": [5, 5] // Dashed line for industry average
+                            }
+                          ]
+                        }
+                      }
+                    ],
+                    "ratioComparisonChart": {
+                      "type": "radar", // Radar chart for comparing all ratio categories
+                      "labels": ["Liquidity", "Profitability", "Solvency", "Efficiency"],
+                      "datasets": [
+                        {
+                          "label": "Company Performance",
+                          "data": [liquidityScore, profitabilityScore, solvencyScore, efficiencyScore], // Normalized scores (0-100)
+                          "backgroundColor": "rgba(33, 150, 243, 0.2)",
+                          "borderColor": "#2196F3"
+                        },
+                        {
+                          "label": "Industry Average",
+                          "data": [industryLiquidityScore, industryProfitabilityScore, industrySolvencyScore, industryEfficiencyScore], // Industry average scores
+                          "backgroundColor": "rgba(156, 39, 176, 0.2)",
+                          "borderColor": "#9C27B0"
+                        }
+                      ]
+                    }
                   },
                   "taxCompliance": {
                     "gst": {
@@ -702,6 +941,9 @@ export class EnhancedDocumentProcessingService {
                     }
                   },
                   "auditFindings": {
+                    "auditScope": "Description of the scope of the audit",
+                    "auditMethodology": "Description of the audit methodology used",
+                    "auditStandards": ["Relevant Indian Accounting Standard 1", "Relevant Indian Accounting Standard 2"],
                     "findings": [
                       {
                         "area": "Area of finding",
@@ -709,13 +951,61 @@ export class EnhancedDocumentProcessingService {
                         "description": "Description of finding",
                         "recommendation": "Recommendation to address finding",
                         "impact": "Financial or operational impact",
-                        "timelineToResolve": "Suggested timeline to resolve"
+                        "timelineToResolve": "Suggested timeline to resolve",
+                        "regulatoryImplications": "Potential regulatory implications",
+                        "financialImpact": numeric value or "Not quantifiable",
+                        "status": "new" or "recurring" or "resolved"
                       }
                     ],
                     "overallAssessment": "Overall assessment of audit findings",
                     "complianceScore": "Score out of 100",
                     "keyStrengths": ["Strength 1", "Strength 2"],
-                    "keyWeaknesses": ["Weakness 1", "Weakness 2"]
+                    "keyWeaknesses": ["Weakness 1", "Weakness 2"],
+                    "materialWeaknesses": [
+                      {
+                        "area": "Area with material weakness",
+                        "description": "Description of the material weakness",
+                        "impact": "Impact on financial reporting",
+                        "remediation": "Recommended remediation steps"
+                      }
+                    ],
+                    "internalControlAssessment": {
+                      "overview": "Overview of internal control assessment",
+                      "controlEnvironment": "Assessment of control environment",
+                      "riskAssessment": "Assessment of risk assessment processes",
+                      "controlActivities": "Assessment of control activities",
+                      "informationAndCommunication": "Assessment of information and communication systems",
+                      "monitoring": "Assessment of monitoring activities",
+                      "significantDeficiencies": [
+                        {
+                          "area": "Area with significant deficiency",
+                          "description": "Description of the deficiency",
+                          "impact": "Impact on financial reporting",
+                          "recommendation": "Recommendation to address the deficiency"
+                        }
+                      ]
+                    },
+                    "findingsByCategory": {
+                      "type": "pie", // Pie chart for findings by category
+                      "labels": ["Financial Reporting", "Regulatory Compliance", "Operational", "IT Controls", "Governance"],
+                      "datasets": [
+                        {
+                          "data": [count1, count2, count3, count4, count5], // Count of findings in each category
+                          "backgroundColor": ["#F44336", "#FF9800", "#FFEB3B", "#4CAF50", "#2196F3"]
+                        }
+                      ]
+                    },
+                    "findingsBySeverity": {
+                      "type": "bar", // Bar chart for findings by severity
+                      "labels": ["High", "Medium", "Low"],
+                      "datasets": [
+                        {
+                          "label": "Number of Findings",
+                          "data": [highCount, mediumCount, lowCount], // Count of findings by severity
+                          "backgroundColor": ["#F44336", "#FF9800", "#4CAF50"]
+                        }
+                      ]
+                    }
                   },
                   "documentAnalysis": {
                     "availableDocuments": [
@@ -737,28 +1027,124 @@ export class EnhancedDocumentProcessingService {
                   },
                   "industryBenchmarking": {
                     "overview": "Overview of industry benchmarking",
+                    "industryContext": "Description of the industry context and trends",
+                    "peerComparison": "Analysis of how the company compares to direct peers",
                     "metrics": [
                       {
                         "name": "Metric name",
                         "companyValue": numeric value or "N/A",
                         "industryAverage": numeric value or "N/A",
                         "percentile": "Percentile within industry (e.g., 75th)",
-                        "status": "above_average" or "average" or "below_average" or "N/A"
+                        "status": "above_average" or "average" or "below_average" or "N/A",
+                        "interpretation": "Professional interpretation of the company's position",
+                        "chartData": {
+                          "type": "bar", // Bar chart for company vs industry comparison
+                          "labels": ["Company", "Industry Average", "Top Quartile", "Bottom Quartile"],
+                          "datasets": [
+                            {
+                              "label": "Metric Values",
+                              "data": [companyValue, industryAvg, topQuartile, bottomQuartile], // Values for comparison
+                              "backgroundColor": ["#2196F3", "#9C27B0", "#4CAF50", "#F44336"]
+                            }
+                          ]
+                        }
                       }
                     ],
                     "competitivePosition": "Description of competitive position",
+                    "marketShareAnalysis": "Analysis of the company's market share and positioning",
                     "strengths": ["Strength 1", "Strength 2"],
-                    "challenges": ["Challenge 1", "Challenge 2"]
+                    "challenges": ["Challenge 1", "Challenge 2"],
+                    "opportunities": ["Opportunity 1", "Opportunity 2"],
+                    "threats": ["Threat 1", "Threat 2"],
+                    "industryOutlook": "Outlook for the industry over the next 1-3 years",
+                    "benchmarkingCharts": {
+                      "financialPerformance": {
+                        "type": "radar", // Radar chart for financial performance benchmarking
+                        "labels": ["Revenue Growth", "Profit Margin", "ROI", "Cash Flow", "Debt Ratio"],
+                        "datasets": [
+                          {
+                            "label": "Company",
+                            "data": [companyScore1, companyScore2, companyScore3, companyScore4, companyScore5], // Normalized scores (0-100)
+                            "backgroundColor": "rgba(33, 150, 243, 0.2)",
+                            "borderColor": "#2196F3"
+                          },
+                          {
+                            "label": "Industry Average",
+                            "data": [industryScore1, industryScore2, industryScore3, industryScore4, industryScore5], // Industry average scores
+                            "backgroundColor": "rgba(156, 39, 176, 0.2)",
+                            "borderColor": "#9C27B0"
+                          },
+                          {
+                            "label": "Top Performers",
+                            "data": [topScore1, topScore2, topScore3, topScore4, topScore5], // Top performers scores
+                            "backgroundColor": "rgba(76, 175, 80, 0.2)",
+                            "borderColor": "#4CAF50"
+                          }
+                        ]
+                      },
+                      "operationalEfficiency": {
+                        "type": "radar", // Radar chart for operational efficiency benchmarking
+                        "labels": ["Asset Turnover", "Inventory Turnover", "Receivables Turnover", "Employee Productivity", "Operating Cycle"],
+                        "datasets": [
+                          {
+                            "label": "Company",
+                            "data": [companyScore1, companyScore2, companyScore3, companyScore4, companyScore5], // Normalized scores (0-100)
+                            "backgroundColor": "rgba(33, 150, 243, 0.2)",
+                            "borderColor": "#2196F3"
+                          },
+                          {
+                            "label": "Industry Average",
+                            "data": [industryScore1, industryScore2, industryScore3, industryScore4, industryScore5], // Industry average scores
+                            "backgroundColor": "rgba(156, 39, 176, 0.2)",
+                            "borderColor": "#9C27B0"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "legalAndRegulatoryCompliance": {
+                    "overview": "Overview of legal and regulatory compliance",
+                    "complianceAreas": [
+                      {
+                        "area": "Area name (e.g., Companies Act, GST, Income Tax)",
+                        "status": "compliant" or "partial" or "non-compliant",
+                        "description": "Description of compliance status",
+                        "risks": ["Risk 1", "Risk 2"],
+                        "recommendations": ["Recommendation 1", "Recommendation 2"],
+                        "deadlines": "Upcoming compliance deadlines"
+                      }
+                    ],
+                    "pendingLegalMatters": [
+                      {
+                        "matter": "Description of legal matter",
+                        "status": "pending" or "resolved" or "in_progress",
+                        "potentialImpact": "Description of potential impact",
+                        "recommendedAction": "Recommended action"
+                      }
+                    ],
+                    "complianceChart": {
+                      "type": "pie", // Pie chart for compliance status
+                      "labels": ["Compliant", "Partial", "Non-compliant"],
+                      "datasets": [
+                        {
+                          "data": [compliantCount, partialCount, nonCompliantCount], // Count of compliance areas by status
+                          "backgroundColor": ["#4CAF50", "#FF9800", "#F44336"]
+                        }
+                      ]
+                    }
                   }
                 }
 
-                COMPREHENSIVE DUE DILIGENCE GUIDELINES:
-                - CRITICAL: Set "reportCalculated" to true ONLY if you were able to extract meaningful financial data and generate a useful report
+                COMPREHENSIVE DUE DILIGENCE AND AUDIT GUIDELINES:
+                - *** CRITICAL: This report MUST meet professional standards that could replace the work of lawyers and chartered accountants ***
+                - Set "reportCalculated" to true ONLY if you were able to extract meaningful financial data and generate a useful report
                 - Set "reportCalculated" to false if you cannot extract sufficient financial information from the documents
                 - Even if reportCalculated is false, still provide as much analysis as possible with the available data
                 - NEVER leave the report empty - always provide some analysis even if limited
+                - Include a formal audit opinion section that follows professional auditing standards
                 - Provide a professional, detailed executive summary with key findings and recommended actions
                 - Focus on key financial indicators, trends, and growth metrics with color-coded status indicators
+                - Include data visualizations and charts for all key metrics and trends
                 - Identify strengths, weaknesses, and areas for improvement with specific, actionable recommendations
                 - Evaluate compliance with Indian accounting standards and regulations in detail
                 - Assess internal controls and financial reporting processes with specific findings
@@ -771,13 +1157,46 @@ export class EnhancedDocumentProcessingService {
                 - Include historical data and trends wherever possible to show performance over time
                 - Provide industry benchmarking to show how the company compares to peers
                 - Include growth projections based on historical performance and industry trends
-                - IMPORTANT: Include a detailed analysis of available documents in the documentAnalysis section
+                - Include a detailed analysis of available documents in the documentAnalysis section
                 - For each available document, assess its quality, completeness, and key insights
                 - For missing documents, explain how this impacts the analysis and provide recommendations
                 - Ensure all metrics have appropriate status indicators (good/warning/critical)
                 - Include percentage changes and trends for all key metrics
                 - Provide detailed ratio analysis with industry comparisons
                 - Include specific, actionable recommendations for improvement
+                - Provide a comprehensive legal and regulatory compliance assessment
+                - Include a financial health score with detailed breakdown of components
+                - Provide a SWOT analysis (Strengths, Weaknesses, Opportunities, Threats)
+                - Include radar charts comparing company performance to industry benchmarks
+                - Provide trend analysis with line charts showing historical performance
+                - Include bar charts comparing key metrics to industry averages
+                - Provide pie charts showing breakdowns of key financial components
+                - Include a formal audit findings section with material weaknesses and significant deficiencies
+                - Provide a detailed internal control assessment following professional auditing standards
+                - Include a formal audit methodology section describing the approach used
+
+                TREND ANALYSIS GUIDELINES:
+                - Use any appropriate term to describe trends (increasing, decreasing, stable, improving, deteriorating, etc.)
+                - Be consistent in your terminology within each section
+                - For financial metrics, use terms like "increasing", "decreasing", "stable", "volatile", "improving", "deteriorating"
+                - For ratios, use terms like "improving", "stable", "deteriorating", "strengthening", "weakening"
+                - Always explain the significance of the trend in the context of the company's financial health
+                - Indicate whether a trend is positive or negative for the company
+
+                DOCUMENT QUALITY ASSESSMENT:
+                - For each document, assess quality based on completeness, clarity, and standardization with professional auditor's judgment
+                - Note any inconsistencies, errors, or suspicious patterns in the financial documents that would concern a professional auditor
+                - Identify any red flags that might indicate financial misrepresentation or require further investigation
+                - Assess whether documents follow standard accounting practices and Indian accounting standards
+                - Note any unusual transactions or accounting treatments that deviate from standard practices
+                - Evaluate whether the documents provide sufficient information for a comprehensive analysis and audit
+                - Identify any gaps in documentation that would prevent a complete audit opinion
+                - Assess the reliability of the financial data based on source documents
+                - Evaluate the consistency between different financial documents
+                - Note any discrepancies between reported figures in different documents
+                - Assess whether financial statements are prepared in accordance with applicable accounting standards
+                - Evaluate the adequacy of disclosures in the financial statements
+                - Identify any limitations in the scope of the audit due to document quality issues
 
                 DOCUMENT CONTENT:
                 ${documentContent}

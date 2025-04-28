@@ -1,10 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FiDownload, FiShare2, FiDollarSign, FiTrendingUp, FiAlertCircle, FiCheckCircle, FiBarChart2, FiFileText, FiInfo, FiArrowUp, FiArrowDown, FiMinus, FiActivity, FiTarget, FiGlobe } from 'react-icons/fi';
+import { FiDownload, FiShare2, FiDollarSign, FiTrendingUp, FiAlertCircle, FiCheckCircle, FiBarChart2, FiFileText, FiInfo, FiArrowUp, FiArrowDown, FiMinus, FiActivity, FiTarget, FiGlobe, FiAward, FiShield, FiLayers, FiPieChart } from 'react-icons/fi';
 import { FinancialDueDiligenceReport as MatchFinancialDueDiligenceReport } from '../../../hooks/useFinancialDueDiligence';
-import { FinancialDueDiligenceReport as EntityFinancialDueDiligenceReport } from '../../../hooks/useEntityFinancialDueDiligence';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip as ChartTooltip, Legend } from 'chart.js';
-import { Line, Bar, Pie } from 'react-chartjs-2';
+import { FinancialDueDiligenceReport as EntityFinancialDueDiligenceReport, ChartData } from '../../../hooks/useEntityFinancialDueDiligence';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, RadialLinearScale, Title, Tooltip as ChartTooltip, Legend, Filler } from 'chart.js';
+import { Line, Bar, Pie, Radar } from 'react-chartjs-2';
+import ChartRenderer from './ChartRenderer';
 
 // Create a union type that can handle both report types
 type FinancialDueDiligenceReport = MatchFinancialDueDiligenceReport | EntityFinancialDueDiligenceReport;
@@ -83,9 +84,11 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
     LineElement,
     BarElement,
     ArcElement,
+    RadialLinearScale,
     Title,
     ChartTooltip,
-    Legend
+    Legend,
+    Filler
   );
 
   // Chart colors
@@ -322,6 +325,13 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                     <p className="text-sm text-gray-600 mt-2 line-clamp-2">{metric.description}</p>
                   )}
 
+                  {/* Render chart if available */}
+                  {metric.chartData && (
+                    <div className="mt-3 mb-3">
+                      <ChartRenderer chartData={metric.chartData} height={120} />
+                    </div>
+                  )}
+
                   <div className="mt-3 flex justify-between items-center">
                     <span className={`px-2 py-1 text-xs rounded-full font-medium ${metric.status === 'good' ? 'bg-green-100 text-green-800' :
                       metric.status === 'warning' ? 'bg-yellow-100 text-yellow-800' :
@@ -444,6 +454,82 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
           </div>
         </div>
 
+        {/* Financial Health Score */}
+        {report.financialAnalysis?.financialHealthScore && (
+          <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200 mb-8">
+            <div className="flex items-center mb-5">
+              <div className="bg-blue-600 p-2 rounded-lg mr-3">
+                <FiAward className="text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">Financial Health Score</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-1">
+                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-xl border border-indigo-100 shadow-sm text-center">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-2">Overall Score</h4>
+                  <div className={`text-5xl font-bold mb-2 ${report.financialAnalysis.financialHealthScore.rating === 'Excellent' ? 'text-green-600' :
+                    report.financialAnalysis.financialHealthScore.rating === 'Good' ? 'text-blue-600' :
+                      report.financialAnalysis.financialHealthScore.rating === 'Fair' ? 'text-yellow-600' :
+                        report.financialAnalysis.financialHealthScore.rating === 'Poor' ? 'text-orange-600' :
+                          'text-red-600'
+                    }`}>
+                    {report.financialAnalysis.financialHealthScore.score}
+                  </div>
+                  <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${report.financialAnalysis.financialHealthScore.rating === 'Excellent' ? 'bg-green-100 text-green-800' :
+                    report.financialAnalysis.financialHealthScore.rating === 'Good' ? 'bg-blue-100 text-blue-800' :
+                      report.financialAnalysis.financialHealthScore.rating === 'Fair' ? 'bg-yellow-100 text-yellow-800' :
+                        report.financialAnalysis.financialHealthScore.rating === 'Poor' ? 'bg-orange-100 text-orange-800' :
+                          'bg-red-100 text-red-800'
+                    }`}>
+                    {report.financialAnalysis.financialHealthScore.rating}
+                  </div>
+                  <p className="mt-4 text-gray-600 text-sm">
+                    {report.financialAnalysis.financialHealthScore.description}
+                  </p>
+                </div>
+              </div>
+
+              <div className="md:col-span-2">
+                {report.financialAnalysis.financialHealthScore.chartData ? (
+                  <ChartRenderer
+                    chartData={report.financialAnalysis.financialHealthScore.chartData}
+                    height={250}
+                    className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm"
+                  />
+                ) : (
+                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <h4 className="font-semibold text-gray-800 mb-3">Score Components</h4>
+                    <div className="space-y-3">
+                      {report.financialAnalysis.financialHealthScore.components.map((component, index) => (
+                        <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-medium text-gray-700">{component.category}</span>
+                            <span className="text-sm font-semibold">{component.score}/100</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2.5">
+                            <div
+                              className="h-2.5 rounded-full"
+                              style={{
+                                width: `${component.score}%`,
+                                backgroundColor: component.score >= 80 ? '#10B981' :
+                                  component.score >= 60 ? '#3B82F6' :
+                                    component.score >= 40 ? '#F59E0B' :
+                                      component.score >= 20 ? '#F97316' : '#EF4444'
+                              }}
+                            ></div>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">Weight: {(component.weight * 100).toFixed(0)}%</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Financial Trends */}
         {report.financialAnalysis?.trends && report.financialAnalysis.trends.length > 0 && (
           <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
@@ -482,8 +568,13 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                     </div>
                   </div>
 
-                  {/* Chart if data is available */}
-                  {trend.data && trend.data.length > 0 && (
+                  {/* Chart if chartData is available */}
+                  {trend.chartData ? (
+                    <div className="h-40 mb-3">
+                      <ChartRenderer chartData={trend.chartData} height={160} />
+                    </div>
+                  ) : trend.data && trend.data.length > 0 ? (
+                    // Fallback to create chart from data if chartData is not available
                     <div className="h-40 mb-3">
                       <Line
                         data={{
@@ -491,7 +582,7 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                           datasets: [
                             {
                               label: trend.name,
-                              data: trend.data.map(item => item.value),
+                              data: trend.data.map(item => typeof item.value === 'number' ? item.value : 0),
                               borderColor: trend.impact === 'positive' ? CHART_COLORS.success :
                                 trend.impact === 'negative' ? CHART_COLORS.danger : CHART_COLORS.primary,
                               backgroundColor: trend.impact === 'positive' ? 'rgba(16, 185, 129, 0.1)' :
@@ -537,7 +628,7 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                         }}
                       />
                     </div>
-                  )}
+                  ) : null}
 
                   <p className="text-sm text-gray-600 mb-3">{trend.description}</p>
 
@@ -1589,6 +1680,42 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
               </div>
             </div>
 
+            {/* Benchmarking Charts */}
+            {report.industryBenchmarking.benchmarkingCharts && (
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-800 mb-3">Industry Performance Benchmarking</h4>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {report.industryBenchmarking.benchmarkingCharts.financialPerformance && (
+                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                      <h5 className="font-semibold text-gray-800 mb-3">Financial Performance</h5>
+                      <ChartRenderer
+                        chartData={report.industryBenchmarking.benchmarkingCharts.financialPerformance}
+                        height={250}
+                      />
+                    </div>
+                  )}
+
+                  {report.industryBenchmarking.benchmarkingCharts.operationalEfficiency && (
+                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                      <h5 className="font-semibold text-gray-800 mb-3">Operational Efficiency</h5>
+                      <ChartRenderer
+                        chartData={report.industryBenchmarking.benchmarkingCharts.operationalEfficiency}
+                        height={250}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Industry Outlook */}
+            {report.industryBenchmarking.industryOutlook && (
+              <div className="mb-6 bg-gradient-to-r from-teal-50 to-blue-50 p-4 rounded-lg border border-teal-100">
+                <h4 className="font-semibold text-teal-800 mb-2">Industry Outlook</h4>
+                <p className="text-gray-700">{report.industryBenchmarking.industryOutlook}</p>
+              </div>
+            )}
+
             {/* Benchmarking Metrics */}
             {report.industryBenchmarking.metrics && report.industryBenchmarking.metrics.length > 0 && (
               <div>
@@ -1625,73 +1752,79 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                       </div>
 
                       {/* Comparison chart */}
-                      <div className="mt-3 mb-1 h-16">
-                        <Bar
-                          data={{
-                            labels: ['Comparison'],
-                            datasets: [
-                              {
-                                label: 'Company',
-                                data: [metric.companyValue],
-                                backgroundColor: metric.status === 'above_average' ? CHART_COLORS.success :
-                                  metric.status === 'below_average' ? CHART_COLORS.danger : CHART_COLORS.primary,
-                                borderColor: 'white',
-                                borderWidth: 1,
-                                borderRadius: 4
-                              },
-                              {
-                                label: 'Industry Average',
-                                data: [metric.industryAverage],
-                                backgroundColor: CHART_COLORS.secondary,
-                                borderColor: 'white',
-                                borderWidth: 1,
-                                borderRadius: 4
-                              }
-                            ]
-                          }}
-                          options={{
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            indexAxis: 'y',
-                            scales: {
-                              x: {
-                                beginAtZero: true,
-                                grid: {
-                                  display: false
+                      {metric.chartData ? (
+                        <div className="mt-3 mb-1 h-16">
+                          <ChartRenderer chartData={metric.chartData} height={64} />
+                        </div>
+                      ) : (
+                        <div className="mt-3 mb-1 h-16">
+                          <Bar
+                            data={{
+                              labels: ['Comparison'],
+                              datasets: [
+                                {
+                                  label: 'Company',
+                                  data: [typeof metric.companyValue === 'number' ? metric.companyValue : 0],
+                                  backgroundColor: metric.status === 'above_average' ? CHART_COLORS.success :
+                                    metric.status === 'below_average' ? CHART_COLORS.danger : CHART_COLORS.primary,
+                                  borderColor: 'white',
+                                  borderWidth: 1,
+                                  borderRadius: 4
                                 },
-                                ticks: {
-                                  font: {
-                                    size: 10
+                                {
+                                  label: 'Industry Average',
+                                  data: [typeof metric.industryAverage === 'number' ? metric.industryAverage : 0],
+                                  backgroundColor: CHART_COLORS.secondary,
+                                  borderColor: 'white',
+                                  borderWidth: 1,
+                                  borderRadius: 4
+                                }
+                              ]
+                            }}
+                            options={{
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              indexAxis: 'y',
+                              scales: {
+                                x: {
+                                  beginAtZero: true,
+                                  grid: {
+                                    display: false
+                                  },
+                                  ticks: {
+                                    font: {
+                                      size: 10
+                                    }
                                   }
+                                },
+                                y: {
+                                  display: false
                                 }
                               },
-                              y: {
-                                display: false
-                              }
-                            },
-                            plugins: {
-                              legend: {
-                                position: 'bottom',
-                                labels: {
-                                  boxWidth: 12,
-                                  font: {
-                                    size: 10
+                              plugins: {
+                                legend: {
+                                  position: 'bottom',
+                                  labels: {
+                                    boxWidth: 12,
+                                    font: {
+                                      size: 10
+                                    }
                                   }
-                                }
-                              },
-                              tooltip: {
-                                callbacks: {
-                                  label: function (context) {
-                                    const label = context.dataset.label || '';
-                                    const value = context.raw || 0;
-                                    return `${label}: ${value}`;
+                                },
+                                tooltip: {
+                                  callbacks: {
+                                    label: function (context) {
+                                      const label = context.dataset.label || '';
+                                      const value = context.raw || 0;
+                                      return `${label}: ${value}`;
+                                    }
                                   }
                                 }
                               }
-                            }
-                          }}
-                        />
-                      </div>
+                            }}
+                          />
+                        </div>
+                      )}
 
                       {metric.percentile && (
                         <div className="mt-2 text-xs text-gray-600">
@@ -1703,6 +1836,163 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Legal and Regulatory Compliance */}
+        {report.legalAndRegulatoryCompliance && (
+          <div className="bg-white p-6 rounded-xl shadow-md border border-blue-100">
+            <div className="flex items-center mb-5">
+              <div className="bg-blue-600 p-2 rounded-lg mr-3">
+                <FiShield className="text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">Legal & Regulatory Compliance</h3>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-gray-700">{report.legalAndRegulatoryCompliance.overview}</p>
+            </div>
+
+            {/* Compliance Chart */}
+            {report.legalAndRegulatoryCompliance.complianceChart && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div className="md:col-span-1">
+                  <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm h-full">
+                    <h4 className="font-semibold text-gray-800 mb-3">Compliance Status</h4>
+                    <div className="h-64">
+                      <ChartRenderer chartData={report.legalAndRegulatoryCompliance.complianceChart} height={250} />
+                    </div>
+                  </div>
+                </div>
+                <div className="md:col-span-2">
+                  <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm h-full">
+                    <h4 className="font-semibold text-gray-800 mb-3">Compliance Areas</h4>
+                    <div className="space-y-3">
+                      {report.legalAndRegulatoryCompliance.complianceAreas.slice(0, 3).map((area, index) => (
+                        <div key={index} className="flex items-start">
+                          <div className={`p-1 rounded-full flex-shrink-0 mt-1 mr-2 ${area.status === 'compliant' ? 'bg-green-100' :
+                              area.status === 'partial' ? 'bg-yellow-100' :
+                                'bg-red-100'
+                            }`}>
+                            {area.status === 'compliant' ? (
+                              <FiCheckCircle className="text-green-600" size={14} />
+                            ) : area.status === 'partial' ? (
+                              <FiAlertCircle className="text-yellow-600" size={14} />
+                            ) : (
+                              <FiAlertCircle className="text-red-600" size={14} />
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-800">{area.area}</div>
+                            <div className="text-sm text-gray-600">{area.description}</div>
+                          </div>
+                        </div>
+                      ))}
+                      {report.legalAndRegulatoryCompliance.complianceAreas.length > 3 && (
+                        <div className="text-sm text-blue-600 font-medium">
+                          +{report.legalAndRegulatoryCompliance.complianceAreas.length - 3} more compliance areas
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Compliance Areas */}
+            <div className="mb-6">
+              <h4 className="font-semibold text-gray-800 mb-3">Compliance Areas</h4>
+              <div className="space-y-4">
+                {report.legalAndRegulatoryCompliance.complianceAreas.map((area, index) => (
+                  <div
+                    key={index}
+                    className={`p-4 rounded-lg border ${area.status === 'compliant' ? 'bg-green-50 border-green-200' :
+                        area.status === 'partial' ? 'bg-yellow-50 border-yellow-200' :
+                          'bg-red-50 border-red-200'
+                      }`}
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="font-semibold text-gray-800">{area.area}</div>
+                      <span className={`px-2 py-1 text-xs rounded-full ${area.status === 'compliant' ? 'bg-green-100 text-green-800' :
+                          area.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                        }`}>
+                        {area.status.replace('_', ' ')}
+                      </span>
+                    </div>
+
+                    <p className="text-sm text-gray-700 mb-3">{area.description}</p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {area.risks && area.risks.length > 0 && (
+                        <div className="bg-white p-3 rounded border border-red-100">
+                          <div className="text-sm font-medium text-red-700 mb-1">Risks:</div>
+                          <ul className="list-disc pl-4 space-y-1">
+                            {area.risks.map((risk, idx) => (
+                              <li key={idx} className="text-xs text-gray-700">{risk}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {area.recommendations && area.recommendations.length > 0 && (
+                        <div className="bg-white p-3 rounded border border-blue-100">
+                          <div className="text-sm font-medium text-blue-700 mb-1">Recommendations:</div>
+                          <ul className="list-disc pl-4 space-y-1">
+                            {area.recommendations.map((rec, idx) => (
+                              <li key={idx} className="text-xs text-gray-700">{rec}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    {area.deadlines && (
+                      <div className="mt-3 text-xs text-gray-600">
+                        <span className="font-medium">Upcoming deadlines:</span> {area.deadlines}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Pending Legal Matters */}
+            {report.legalAndRegulatoryCompliance.pendingLegalMatters &&
+              report.legalAndRegulatoryCompliance.pendingLegalMatters.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-3">Pending Legal Matters</h4>
+                  <div className="overflow-x-auto bg-white rounded-lg border border-gray-200">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matter</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Potential Impact</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recommended Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {report.legalAndRegulatoryCompliance.pendingLegalMatters.map((matter, index) => (
+                          <tr key={index} className="hover:bg-gray-50 transition-colors duration-150">
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{matter.matter}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${matter.status === 'resolved' ? 'bg-green-100 text-green-800' :
+                                  matter.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                    'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                {matter.status.replace('_', ' ')}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-500">{matter.potentialImpact}</td>
+                            <td className="px-6 py-4 text-sm text-gray-500">{matter.recommendedAction}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
           </div>
         )}
 

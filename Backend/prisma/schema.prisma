@@ -19,6 +19,8 @@ model User {
   updated_at            DateTime                @updatedAt
   profileShares         ProfileShare[]
   profileShareAnalytics ProfileShareAnalytics[]
+  documentViews         DocumentView[]
+  documentDownloads     DocumentDownload[]
 
   @@map("users")
 }
@@ -47,4 +49,36 @@ model ProfileShareAnalytics {
 
   @@index([user_id])
   @@map("profile_share_analytics")
+}
+
+model DocumentView {
+  id          Int      @id @default(autoincrement())
+  document_id String
+  viewer_id   String
+  viewer_type String // 'startup' or 'investor'
+  entity_id   String
+  entity_type String // 'startup' or 'investor'
+  viewed_at   DateTime @default(now())
+  user        User     @relation(fields: [viewer_id], references: [user_id], onDelete: Cascade)
+
+  @@index([document_id])
+  @@index([viewer_id])
+  @@index([entity_id])
+  @@map("document_views")
+}
+
+model DocumentDownload {
+  id              Int      @id @default(autoincrement())
+  document_id     String
+  downloader_id   String
+  downloader_type String // 'startup' or 'investor'
+  entity_id       String
+  entity_type     String // 'startup' or 'investor'
+  downloaded_at   DateTime @default(now())
+  user            User     @relation(fields: [downloader_id], references: [user_id], onDelete: Cascade)
+
+  @@index([document_id])
+  @@index([downloader_id])
+  @@index([entity_id])
+  @@map("document_downloads")
 }

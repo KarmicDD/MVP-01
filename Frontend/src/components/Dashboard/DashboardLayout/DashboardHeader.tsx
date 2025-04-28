@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiMenu, FiBell, FiUser, FiSettings, FiLogOut, FiSearch, FiChevronDown } from 'react-icons/fi';
+import { FiMenu, FiBell, FiUser, FiSettings, FiLogOut, FiSearch, FiChevronDown, FiPlus, FiFileText, FiMessageSquare, FiHelpCircle } from 'react-icons/fi';
 import { colours } from '../../../utils/colours';
 import DropdownPortal from './DropdownPortal';
 
@@ -45,16 +45,60 @@ const DashboardHeader: React.FC<HeaderProps> = ({ toggleSidebar, userProfile, on
             <FiMenu size={22} />
           </motion.button>
 
-          {/* Search bar */}
+          {/* Quick Actions */}
           <div className="hidden md:flex ml-4 relative">
-            <div className="relative">
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 w-64 text-sm bg-white/80"
-                style={{ borderColor: `${primaryColor}30` }}
-              />
+            <div className="flex items-center space-x-2">
+              <motion.button
+                className="flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                style={{
+                  background: `${primaryColor}15`,
+                  color: primaryColor
+                }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <FiPlus className="mr-1.5" size={16} />
+                <span>New</span>
+              </motion.button>
+
+              <motion.button
+                className="p-2 rounded-lg transition-colors"
+                style={{
+                  background: `${primaryColor}10`,
+                  color: primaryColor
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title="Documents"
+              >
+                <FiFileText size={18} />
+              </motion.button>
+
+              <motion.button
+                className="p-2 rounded-lg transition-colors"
+                style={{
+                  background: `${primaryColor}10`,
+                  color: primaryColor
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title="Messages"
+              >
+                <FiMessageSquare size={18} />
+              </motion.button>
+
+              <motion.button
+                className="p-2 rounded-lg transition-colors"
+                style={{
+                  background: `${primaryColor}10`,
+                  color: primaryColor
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title="Help"
+              >
+                <FiHelpCircle size={18} />
+              </motion.button>
             </div>
           </div>
         </div>
