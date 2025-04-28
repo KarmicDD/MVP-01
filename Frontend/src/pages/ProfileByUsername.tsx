@@ -180,6 +180,7 @@ const ProfileByUsername: React.FC = () => {
                             onEditToggle={() => { }}
                             onCancelEdit={() => { }}
                             isViewOnly={true}
+                            isOwnProfile={false}
                         />
 
                         {/* Profile Content */}

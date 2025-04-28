@@ -221,6 +221,14 @@ export const updateExtendedProfile = async (req: Request, res: Response): Promis
             return;
         }
 
+        // Verify that the user is updating their own profile
+        const profileUserId = req.params.userId || req.user.userId;
+
+        if (profileUserId !== req.user.userId) {
+            res.status(403).json({ message: 'Forbidden: You can only update your own profile' });
+            return;
+        }
+
         const {
             avatarUrl,
             socialLinks,

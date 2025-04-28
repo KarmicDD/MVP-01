@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEdit2, FiSave, FiX, FiMapPin, FiUsers, FiShare2 } from 'react-icons/fi';
+import { FiEdit2, FiSave, FiX, FiMapPin, FiUsers, FiShare2, FiUser } from 'react-icons/fi';
 import { colours } from '../../utils/colours';
 import AvatarUpload from './AvatarUpload';
 import { profileService } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import SocialShareModal from './SocialShareModal';
+import { authService } from '../../services/api';
 
 interface ProfileHeaderProps {
   userType: 'startup' | 'investor' | null;
@@ -18,6 +19,7 @@ interface ProfileHeaderProps {
   avatarUrl?: string;
   onAvatarChange?: (file: File | null) => void;
   onSave?: () => void;
+  isOwnProfile?: boolean;
 }
 
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({
@@ -30,9 +32,11 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   onEditToggle = () => { },
   onSave = () => { },
   onCancelEdit = () => { },
-  isViewOnly = false
+  isViewOnly = false,
+  isOwnProfile = false
 }) => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const isAuthenticated = authService.isAuthenticated();
 
   // Get direct profile URL (with underscores instead of spaces)
   const getProfileUrl = () => {
@@ -198,12 +202,28 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                   transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
                 ></motion.div>
                 <div className="relative z-10">
-                  <AvatarUpload
-                    currentAvatar={avatarUrl}
-                    onAvatarChange={onAvatarChange}
-                    size="lg"
-                    userType={userType}
-                  />
+                  {isAuthenticated && isOwnProfile ? (
+                    <AvatarUpload
+                      currentAvatar={avatarUrl}
+                      onAvatarChange={onAvatarChange}
+                      size="lg"
+                      userType={userType}
+                    />
+                  ) : (
+                    <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-white flex items-center justify-center bg-gray-50">
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                          <FiUser className="text-gray-400 text-5xl" />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </div>

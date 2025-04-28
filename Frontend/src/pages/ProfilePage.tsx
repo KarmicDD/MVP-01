@@ -440,6 +440,7 @@ const ProfilePage: React.FC = () => {
                             onEditToggle={() => setIsEditing(true)}
                             onSave={handleSave}
                             onCancelEdit={handleCancel}
+                            isOwnProfile={true}
                         />
 
                         {/* Profile Content */}

@@ -225,6 +225,7 @@ const ViewProfilePage: React.FC = () => {
                 userType={userType}
                 isEditing={false}
                 isViewOnly={true}
+                isOwnProfile={false}
               />
 
               {/* Profile Content */}
