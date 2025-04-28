@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 import axios from 'axios';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { PDFExtract, PDFExtractOptions } from 'pdf.js-extract';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
@@ -88,20 +88,24 @@ export class EnhancedDocumentProcessingService {
         return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
       }
 
-      const workbook = XLSX.readFile(filePath);
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(filePath);
       let result = '';
 
       // Process each sheet
-      workbook.SheetNames.forEach(sheetName => {
+      workbook.eachSheet((worksheet, sheetId) => {
+        const sheetName = worksheet.name;
         result += `Sheet: ${sheetName}\n\n`;
 
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        // Process each row
+        worksheet.eachRow((row, rowNumber) => {
+          const rowValues: string[] = [];
+          row.eachCell((cell, colNumber) => {
+            rowValues.push(cell.value?.toString() || '');
+          });
 
-        // Convert to formatted string
-        jsonData.forEach((row: any) => {
-          if (row.length > 0) {
-            result += row.join('\t') + '\n';
+          if (rowValues.length > 0) {
+            result += rowValues.join('\t') + '\n';
           }
         });
 

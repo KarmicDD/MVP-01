@@ -35,6 +35,7 @@ import DashboardLayout from '../components/Dashboard/DashboardLayout';
 import OverviewSection from '../components/Dashboard/Overview/OverviewSection';
 import MatchesSection from '../components/Dashboard/Matches/MatchesSection';
 import AnalyticsSection from '../components/Dashboard/Analytics/AnalyticsSection';
+import DocumentsSection from '../components/Dashboard/Documents/DocumentsSection';
 
 const Dashboard: React.FC = () => {
     // State - keeping your existing state
@@ -575,7 +576,23 @@ const Dashboard: React.FC = () => {
                     </motion.div>
                 )}
 
-                {!['overview', 'matches', 'analytics'].includes(activeTab) && (
+                {activeTab === 'documents' && (
+                    <motion.div
+                        key="documents"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        <DocumentsSection
+                            userProfile={userProfile}
+                            selectedMatchId={selectedMatchId}
+                            matches={matches}
+                        />
+                    </motion.div>
+                )}
+
+                {!['overview', 'matches', 'analytics', 'documents'].includes(activeTab) && (
                     <motion.div
                         key="coming-soon"
                         initial={{ opacity: 0 }}

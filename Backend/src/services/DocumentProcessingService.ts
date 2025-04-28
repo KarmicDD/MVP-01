@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 import axios from 'axios';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { PDFExtract, PDFExtractOptions } from 'pdf.js-extract';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
@@ -108,13 +108,34 @@ export class DocumentProcessingService {
     async extractExcelData(filePath: string): Promise<string> {
         try {
             // Read the Excel file
-            const workbook = XLSX.readFile(filePath);
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.readFile(filePath);
             const result: Record<string, any[]> = {};
 
             // Extract data from each sheet
-            workbook.SheetNames.forEach(sheetName => {
-                const worksheet = workbook.Sheets[sheetName];
-                const data = XLSX.utils.sheet_to_json(worksheet);
+            workbook.eachSheet((worksheet, sheetId) => {
+                const sheetName = worksheet.name;
+                const data: any[] = [];
+
+                // Get header row
+                const headerRow = worksheet.getRow(1);
+                const headers: string[] = [];
+                headerRow.eachCell((cell, colNumber) => {
+                    headers[colNumber - 1] = cell.value?.toString() || `Column${colNumber}`;
+                });
+
+                // Process each row
+                worksheet.eachRow((row, rowNumber) => {
+                    if (rowNumber > 1) { // Skip header row
+                        const rowData: Record<string, any> = {};
+                        row.eachCell((cell, colNumber) => {
+                            const header = headers[colNumber - 1];
+                            rowData[header] = cell.value;
+                        });
+                        data.push(rowData);
+                    }
+                });
+
                 result[sheetName] = data;
             });
 
@@ -132,13 +153,36 @@ export class DocumentProcessingService {
      */
     async extractCsvData(filePath: string): Promise<string> {
         try {
-            // Read the CSV file
-            const content = await readFileAsync(filePath, 'utf8');
+            // Read the CSV file using ExcelJS
+            const workbook = new ExcelJS.Workbook();
+            await workbook.csv.readFile(filePath);
 
-            // Parse CSV to JSON using XLSX
-            const workbook = XLSX.read(content, { type: 'string' });
-            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const data = XLSX.utils.sheet_to_json(worksheet);
+            // Get the first worksheet (CSV files have only one sheet)
+            const worksheet = workbook.getWorksheet(1);
+            if (!worksheet) {
+                throw new Error('No worksheet found in CSV file');
+            }
+
+            const data: any[] = [];
+
+            // Get header row
+            const headerRow = worksheet.getRow(1);
+            const headers: string[] = [];
+            headerRow.eachCell((cell, colNumber) => {
+                headers[colNumber - 1] = cell.value?.toString() || `Column${colNumber}`;
+            });
+
+            // Process each row
+            worksheet.eachRow((row, rowNumber) => {
+                if (rowNumber > 1) { // Skip header row
+                    const rowData: Record<string, any> = {};
+                    row.eachCell((cell, colNumber) => {
+                        const header = headers[colNumber - 1];
+                        rowData[header] = cell.value;
+                    });
+                    data.push(rowData);
+                }
+            });
 
             return JSON.stringify(data, null, 2);
         } catch (error) {

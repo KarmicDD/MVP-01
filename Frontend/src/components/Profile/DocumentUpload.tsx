@@ -552,14 +552,15 @@ const DocumentUpload: React.FC = () => {
             <AnimatePresence>
               {uploadModalOpen && (
                 <motion.div
-                  className="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                  className="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={() => setUploadModalOpen(false)}
+                  style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
                 >
                   <motion.div
-                    className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+                    className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden relative"
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
@@ -701,27 +702,25 @@ const DocumentUpload: React.FC = () => {
 
                       <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <div className="flex items-center">
-                          <div className="relative inline-block w-10 mr-2 align-middle select-none">
-                            <input
-                              type="checkbox"
-                              id="isPublic"
-                              checked={isPublic}
-                              onChange={(e) => setIsPublic(e.target.checked)}
-                              className="absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer focus:outline-none transition-transform duration-200 ease-in"
-                              style={{
-                                transform: isPublic ? 'translateX(100%)' : 'translateX(0)',
-                                borderColor: isPublic ? '#4f46e5' : '#d1d5db'
-                              }}
-                            />
-                            <label
-                              htmlFor="isPublic"
-                              className="block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"
-                              style={{ backgroundColor: isPublic ? '#818cf8' : '#d1d5db' }}
-                            ></label>
+                          <div className="relative inline-block w-12 mr-3 align-middle select-none">
+                            <label htmlFor="isPublic" className="cursor-pointer">
+                              <input
+                                type="checkbox"
+                                id="isPublic"
+                                checked={isPublic}
+                                onChange={(e) => setIsPublic(e.target.checked)}
+                                className="sr-only"
+                              />
+                              <div className="w-12 h-6 bg-gray-200 rounded-full shadow-inner"></div>
+                              <div
+                                className={`absolute block w-6 h-6 rounded-full shadow inset-y-0 left-0 transition-transform duration-300 ease-in-out ${isPublic ? 'bg-indigo-600 transform translate-x-full' : 'bg-white'
+                                  }`}
+                              ></div>
+                            </label>
                           </div>
                           <div>
                             <label htmlFor="isPublic" className="text-sm font-medium text-gray-700 cursor-pointer">
-                              Make this document visible to others
+                              Make this document public
                             </label>
                             <p className="text-xs text-gray-500 mt-1">
                               {isPublic
@@ -769,14 +768,15 @@ const DocumentUpload: React.FC = () => {
             <AnimatePresence>
               {editModalOpen && selectedDocument && (
                 <motion.div
-                  className="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                  className="fixed inset-0 bg-black bg-opacity-80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={() => setEditModalOpen(false)}
+                  style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
                 >
                   <motion.div
-                    className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+                    className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden relative"
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
@@ -891,27 +891,25 @@ const DocumentUpload: React.FC = () => {
 
                       <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <div className="flex items-center">
-                          <div className="relative inline-block w-10 mr-2 align-middle select-none">
-                            <input
-                              type="checkbox"
-                              id="editIsPublic"
-                              checked={isPublic}
-                              onChange={(e) => setIsPublic(e.target.checked)}
-                              className="absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer focus:outline-none transition-transform duration-200 ease-in"
-                              style={{
-                                transform: isPublic ? 'translateX(100%)' : 'translateX(0)',
-                                borderColor: isPublic ? '#4f46e5' : '#d1d5db'
-                              }}
-                            />
-                            <label
-                              htmlFor="editIsPublic"
-                              className="block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"
-                              style={{ backgroundColor: isPublic ? '#818cf8' : '#d1d5db' }}
-                            ></label>
+                          <div className="relative inline-block w-12 mr-3 align-middle select-none">
+                            <label htmlFor="editIsPublic" className="cursor-pointer">
+                              <input
+                                type="checkbox"
+                                id="editIsPublic"
+                                checked={isPublic}
+                                onChange={(e) => setIsPublic(e.target.checked)}
+                                className="sr-only"
+                              />
+                              <div className="w-12 h-6 bg-gray-200 rounded-full shadow-inner"></div>
+                              <div
+                                className={`absolute block w-6 h-6 rounded-full shadow inset-y-0 left-0 transition-transform duration-300 ease-in-out ${isPublic ? 'bg-indigo-600 transform translate-x-full' : 'bg-white'
+                                  }`}
+                              ></div>
+                            </label>
                           </div>
                           <div>
                             <label htmlFor="editIsPublic" className="text-sm font-medium text-gray-700 cursor-pointer">
-                              Make this document visible to others
+                              Make this document public
                             </label>
                             <p className="text-xs text-gray-500 mt-1">
                               {isPublic
