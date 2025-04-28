@@ -36,6 +36,7 @@ interface ProfileContentProps {
   handleAddInvestment: () => void;
   handleRemoveInvestment: (index: number) => void;
   handleSave: () => void;
+  isViewOnly?: boolean;
 }
 
 const ProfileContent: React.FC<ProfileContentProps> = ({
@@ -58,7 +59,8 @@ const ProfileContent: React.FC<ProfileContentProps> = ({
   handleInvestmentChange,
   handleAddInvestment,
   handleRemoveInvestment,
-  // handleSave // Passed from parent but not used in this component
+  // handleSave, // Passed from parent but not used in this component
+  isViewOnly = false
 }) => {
   return (
     <motion.div
@@ -157,13 +159,25 @@ const ProfileContent: React.FC<ProfileContentProps> = ({
           )}
 
           {/* Documents Tab */}
-          {activeTab === 'documents' && (
+          {activeTab === 'documents' && !isViewOnly && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
             >
               <DocumentUpload />
+            </motion.div>
+          )}
+
+          {activeTab === 'documents' && isViewOnly && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="p-4 text-center text-gray-600">
+                <p>Only public documents are visible. Private documents are only available to the profile owner.</p>
+              </div>
             </motion.div>
           )}
         </div>

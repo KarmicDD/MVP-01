@@ -431,15 +431,15 @@ const ProfilePage: React.FC = () => {
                     <>
                         {/* Profile Header */}
                         <ProfileHeader
-                            formData={formData}
+                            profileData={formData}
                             userType={userType}
                             isEditing={isEditing}
                             saving={saving}
                             avatarUrl={extendedData.avatarUrl || ''}
                             onAvatarChange={handleAvatarChange}
-                            onEdit={() => setIsEditing(true)}
+                            onEditToggle={() => setIsEditing(true)}
                             onSave={handleSave}
-                            onCancel={handleCancel}
+                            onCancelEdit={handleCancel}
                         />
 
                         {/* Profile Content */}

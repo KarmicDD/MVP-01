@@ -29,8 +29,8 @@ const DashboardSidebar: React.FC<SidebarProps> = ({
 
   const role = userProfile?.role || 'startup';
 
-  // Define primary color based on role
-  const primaryColor = role === 'startup' ? colours.primaryBlue : '#10B981';
+  // Define primary color based on role - use the updated colors
+  const primaryColor = role === 'startup' ? colours.startup.primary : colours.investor.primary;
 
   // Navigation items
   const navItems = [
@@ -45,7 +45,7 @@ const DashboardSidebar: React.FC<SidebarProps> = ({
   return (
     <div className="h-full flex flex-col bg-white">
       <div className="p-4 flex items-center justify-between border-b border-gray-100">
-        <Logo Title="KarmicDD" />
+        <Logo role={role} />
         <button
           onClick={onClose}
           className="lg:hidden p-2 rounded-full hover:bg-gray-100 transition-colors"
@@ -100,26 +100,37 @@ const DashboardSidebar: React.FC<SidebarProps> = ({
         </motion.button>
       </div>
 
-      {/* User profile section */}
+      {/* User profile section - more comforting for investor */}
       <div className="p-4 border-t border-gray-100">
-        <div className="flex items-center p-3 rounded-lg"
+        <div className="flex items-center p-4 rounded-lg shadow-sm"
           style={{
-            background: `${role === 'startup' ? colours.indigo50 : '#ECFDF5'}`,
-            borderLeft: `3px solid ${primaryColor}`
+            background: role === 'startup'
+              ? colours.indigo50
+              : 'linear-gradient(135deg, rgba(240, 255, 244, 0.9), rgba(236, 253, 245, 0.9))',
+            borderLeft: `3px solid ${primaryColor}`,
+            boxShadow: role === 'investor' ? '0 2px 10px rgba(56, 161, 105, 0.07)' : 'none'
           }}
         >
-          <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden"
-            style={{ background: `linear-gradient(135deg, ${primaryColor}, ${role === 'startup' ? colours.indigo600 : '#059669'})` }}
+          <div className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden shadow-md"
+            style={{
+              background: role === 'startup'
+                ? colours.startup.gradient
+                : colours.investor.gradient
+            }}
           >
             {userProfile?.avatar ? (
               <img src={userProfile.avatar} alt={userProfile?.name || 'User'} className="w-full h-full object-cover" />
             ) : (
-              <FiUser size={20} className="text-white" />
+              <FiUser size={22} className="text-white" />
             )}
           </div>
           <div className="ml-3">
-            <p className="font-medium" style={{ color: primaryColor }}>{userProfile?.name || userProfile?.companyName || 'User'}</p>
-            <p className="text-xs text-gray-500 capitalize">{role}</p>
+            <p className="font-medium text-base" style={{ color: primaryColor }}>
+              {userProfile?.name || userProfile?.companyName || 'User'}
+            </p>
+            <p className="text-xs text-gray-500 capitalize">
+              {role === 'investor' ? 'Investment Professional' : 'Startup Founder'}
+            </p>
           </div>
         </div>
       </div>

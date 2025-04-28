@@ -31,7 +31,7 @@ interface RenderMatchCardsProps {
 }
 
 // Improved ReadMore component with smooth animations
-const ReadMore = ({ text }: { text: string }) => {
+const ReadMore = ({ text, role }: { text: string; role?: string }) => {
     const [expanded, setExpanded] = useState(false);
     const maxLength = 150;
 
@@ -70,7 +70,10 @@ const ReadMore = ({ text }: { text: string }) => {
                     e.stopPropagation();
                     setExpanded(!expanded);
                 }}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium mt-2 flex items-center"
+                className={`text-sm font-medium mt-2 flex items-center ${role === 'investor'
+                    ? 'text-green-600 hover:text-green-800'
+                    : 'text-blue-600 hover:text-blue-800'
+                    }`}
             >
                 {expanded ? 'Read less' : 'Read more'}
                 <motion.span
@@ -264,8 +267,18 @@ const renderMatchCards = ({
                 </p>
                 <motion.button
                     className="px-5 py-3 rounded-lg flex items-center text-white font-medium shadow-sm"
-                    style={{ backgroundColor: colours.primaryBlue }}
-                    whileHover={{ scale: 1.03, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
+                    style={{
+                        background: userProfile?.role === 'investor'
+                            ? colours.investor.gradient
+                            : colours.startup.gradient
+                    }}
+                    whileHover={{
+                        scale: 1.03,
+                        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                        background: userProfile?.role === 'investor'
+                            ? colours.investor.hoverGradient
+                            : colours.startup.hoverGradient
+                    }}
                     whileTap={{ scale: 0.97 }}
                 >
                     <FiRefreshCw className="mr-2" />
@@ -305,12 +318,24 @@ const renderMatchCards = ({
                 return (
                     <motion.div
                         key={matchId}
-                        className={`bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 ${isSelected
-                            ? 'border-2 border-blue-500 ring-2 ring-blue-200'
+                        className={`bg-white rounded-xl overflow-hidden transition-all duration-300 ${isSelected
+                            ? userProfile?.role === 'investor'
+                                ? 'border-2 border-green-500 ring-2 ring-green-200'
+                                : 'border-2 border-blue-500 ring-2 ring-blue-200'
                             : 'border border-gray-100'}`}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        whileHover={{ y: -3, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
+                        whileHover={{
+                            y: -3,
+                            boxShadow: userProfile?.role === 'investor'
+                                ? '0 20px 25px -5px rgba(56, 161, 105, 0.1), 0 10px 10px -5px rgba(56, 161, 105, 0.06)'
+                                : '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                        }}
+                        style={{
+                            boxShadow: userProfile?.role === 'investor'
+                                ? '0 4px 20px rgba(56, 161, 105, 0.08), 0 2px 8px rgba(56, 161, 105, 0.04)'
+                                : '0 4px 20px rgba(0, 0, 0, 0.08)'
+                        }}
                         transition={{ duration: 0.3 }}
                         onClick={() => onCardClick(matchId)}
                     >
@@ -326,7 +351,10 @@ const renderMatchCards = ({
                                                 {match.companyName}
                                             </h3>
                                             {match.matchScore >= 70 && (
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${userProfile?.role === 'investor'
+                                                    ? 'bg-green-50 text-green-700'
+                                                    : 'bg-blue-50 text-blue-700'
+                                                    }`}>
                                                     <FiCheckCircle className="mr-1" size={12} />
                                                     High Match
                                                 </span>
@@ -379,7 +407,10 @@ const renderMatchCards = ({
                                         {displayIndustries.slice(0, 3).map(industry => (
                                             <span
                                                 key={industry}
-                                                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700"
+                                                className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${userProfile?.role === 'investor'
+                                                    ? 'bg-green-50 text-green-700'
+                                                    : 'bg-blue-50 text-blue-700'
+                                                    }`}
                                             >
                                                 {industry}
                                             </span>
@@ -397,7 +428,7 @@ const renderMatchCards = ({
                                     <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">
                                         {match.pitch ? 'Company Pitch' : 'Investment Focus'}
                                     </h4>
-                                    <ReadMore text={summary} />
+                                    <ReadMore text={summary} role={userProfile?.role} />
                                 </div>
 
                                 {/* Investment stages */}
@@ -410,7 +441,10 @@ const renderMatchCards = ({
                                             {displayStages.map(stage => (
                                                 <span
                                                     key={stage}
-                                                    className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700"
+                                                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${userProfile?.role === 'investor'
+                                                        ? 'bg-emerald-50 text-emerald-700'
+                                                        : 'bg-indigo-50 text-indigo-700'
+                                                        }`}
                                                 >
                                                     {stage}
                                                 </span>
@@ -422,8 +456,19 @@ const renderMatchCards = ({
                                 {/* Action buttons */}
                                 <div className="flex flex-wrap gap-3 mt-6">
                                     <motion.button
-                                        className="px-4 py-2.5 rounded-lg flex items-center justify-center text-white font-medium shadow-md bg-gradient-to-r from-indigo-600 to-indigo-700"
-                                        whileHover={{ scale: 1.03, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
+                                        className="px-4 py-2.5 rounded-lg flex items-center justify-center text-white font-medium shadow-md"
+                                        style={{
+                                            background: userProfile?.role === 'investor'
+                                                ? colours.investor.gradient
+                                                : colours.startup.gradient
+                                        }}
+                                        whileHover={{
+                                            scale: 1.03,
+                                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                                            background: userProfile?.role === 'investor'
+                                                ? colours.investor.hoverGradient
+                                                : colours.startup.hoverGradient
+                                        }}
                                         whileTap={{ scale: 0.97 }}
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -434,13 +479,35 @@ const renderMatchCards = ({
                                     </motion.button>
 
                                     <motion.button
-                                        className="px-4 py-2.5 rounded-lg border border-indigo-200 flex items-center justify-center text-indigo-700 font-medium bg-indigo-50 hover:bg-indigo-100 transition-colors"
-                                        whileHover={{ scale: 1.03 }}
+                                        className="px-4 py-2.5 rounded-lg border flex items-center justify-center font-medium transition-colors"
+                                        style={{
+                                            borderColor: userProfile?.role === 'investor'
+                                                ? 'rgba(167, 243, 208, 0.5)'
+                                                : 'rgba(191, 219, 254, 0.5)',
+                                            color: userProfile?.role === 'investor'
+                                                ? colours.investor.primary
+                                                : colours.startup.primary,
+                                            backgroundColor: userProfile?.role === 'investor'
+                                                ? 'rgba(240, 253, 244, 0.5)'
+                                                : 'rgba(239, 246, 255, 0.5)'
+                                        }}
+                                        whileHover={{
+                                            scale: 1.03,
+                                            backgroundColor: userProfile?.role === 'investor'
+                                                ? 'rgba(240, 253, 244, 0.8)'
+                                                : 'rgba(239, 246, 255, 0.8)'
+                                        }}
                                         whileTap={{ scale: 0.97 }}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            // View full profile
-                                            window.open(`/profile/${matchId}`, '_blank');
+                                            // View full profile using company name if available, otherwise use ID
+                                            if (match.companyName && match.companyName.trim()) {
+                                                window.open(`/${encodeURIComponent(match.companyName)}`, '_blank');
+                                            } else {
+                                                // Fallback to ID if no company name is available
+                                                const id = match.id || match._id || matchId;
+                                                window.open(`/profile/${id}`, '_blank');
+                                            }
                                         }}
                                     >
                                         View Profile <FiExternalLink className="ml-2" size={16} />
@@ -448,15 +515,31 @@ const renderMatchCards = ({
                                 </div>
                             </div>
 
-                            {/* Match score section */}
-                            <div className="md:col-span-4 bg-gray-50 p-6 border-t md:border-t-0 md:border-l border-gray-100 flex flex-col items-center">
-                                <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Compatibility Score</h4>
+                            {/* Match score section - more comforting for investor */}
+                            <div className="md:col-span-4 p-6 border-t md:border-t-0 md:border-l border-gray-100 flex flex-col items-center"
+                                style={{
+                                    background: userProfile?.role === 'investor'
+                                        ? 'linear-gradient(135deg, rgba(240, 255, 244, 0.7), rgba(236, 253, 245, 0.7))'
+                                        : 'rgba(249, 250, 251, 0.7)'
+                                }}
+                            >
+                                <h4 className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-4">
+                                    {userProfile?.role === 'investor' ? 'Match Strength' : 'Compatibility Score'}
+                                </h4>
 
                                 <MatchScoreIndicator score={match.matchScore} categories={match.matchCategories} />
 
                                 {/* Key alignment areas */}
-                                <div className="w-full mt-6 pt-4 border-t border-gray-200">
-                                    <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Key Alignment Areas</h5>
+                                <div className="w-full mt-6 pt-4 border-t border-gray-200"
+                                    style={{
+                                        borderColor: userProfile?.role === 'investor'
+                                            ? 'rgba(154, 230, 180, 0.4)'
+                                            : 'rgba(229, 231, 235, 1)'
+                                    }}
+                                >
+                                    <h5 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
+                                        {userProfile?.role === 'investor' ? 'Why This Startup Fits Your Portfolio' : 'Key Alignment Areas'}
+                                    </h5>
 
                                     <div className="space-y-2">
                                         {userProfile?.role === 'startup' ? (

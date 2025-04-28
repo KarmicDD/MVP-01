@@ -9,27 +9,29 @@ import { profileService } from '../../services/api';
 import { toast } from 'react-hot-toast';
 
 interface ProfileHeaderProps {
-  formData: any;
   userType: 'startup' | 'investor' | null;
+  profileData: any;
   isEditing: boolean;
-  saving: boolean;
-  avatarUrl: string;
-  onAvatarChange: (file: File | null) => void;
-  onEdit: () => void;
-  onSave: () => void;
-  onCancel: () => void;
+  onEditToggle?: () => void;
+  onCancelEdit?: () => void;
+  isViewOnly?: boolean;
+  saving?: boolean;
+  avatarUrl?: string;
+  onAvatarChange?: (file: File | null) => void;
+  onSave?: () => void;
 }
 
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({
-  formData,
+  profileData,
   userType,
   isEditing,
-  saving,
-  avatarUrl,
-  onAvatarChange,
-  onEdit,
-  onSave,
-  onCancel
+  saving = false,
+  avatarUrl = '',
+  onAvatarChange = () => { },
+  onEditToggle = () => { },
+  onSave = () => { },
+  onCancelEdit = () => { },
+  isViewOnly = false
 }) => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareableLink, setShareableLink] = useState('');
@@ -239,14 +241,14 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
               transition={{ delay: 0.2, duration: 0.4 }}
             >
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">
-                {formData?.companyName || (userType === 'startup' ? 'Your Startup' : 'Your Firm')}
+                {profileData?.companyName || (userType === 'startup' ? 'Your Startup' : 'Your Firm')}
               </h2>
               <p className="text-gray-500 flex items-center justify-center sm:justify-start text-sm sm:text-base">
                 <FiMapPin className="mr-1" />
-                {formData?.location || 'Location not specified'}
+                {profileData?.location || 'Location not specified'}
               </p>
               <p className="text-xs sm:text-sm text-gray-400 mt-1">
-                {!formData?.companyName && 'Click Edit Profile to add your company information'}
+                {!profileData?.companyName && !isViewOnly && 'Click Edit Profile to add your company information'}
               </p>
 
               {/* Role badge */}
@@ -263,34 +265,34 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                   {userType === 'startup' ? 'Startup' : 'Investor'}
                 </motion.span>
 
-                {formData.industry && (
+                {profileData.industry && (
                   <motion.span
                     className="inline-flex items-center px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-medium shadow-sm bg-gray-100 text-gray-800"
                     whileHover={{ y: -2, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                     transition={{ type: 'spring', stiffness: 400 }}
                   >
-                    {formData.industry}
+                    {profileData.industry}
                   </motion.span>
                 )}
 
-                {formData.fundingStage && userType === 'startup' && (
+                {profileData.fundingStage && userType === 'startup' && (
                   <motion.span
                     className="inline-flex items-center px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-medium shadow-sm bg-purple-100 text-purple-800"
                     whileHover={{ y: -2, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                     transition={{ type: 'spring', stiffness: 400 }}
                   >
-                    {formData.fundingStage}
+                    {profileData.fundingStage}
                   </motion.span>
                 )}
 
-                {formData.employeeCount && (
+                {profileData.employeeCount && (
                   <motion.span
                     className="inline-flex items-center px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-medium shadow-sm bg-amber-100 text-amber-800"
                     whileHover={{ y: -2, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                     transition={{ type: 'spring', stiffness: 400 }}
                   >
                     <FiUsers className="mr-1" />
-                    {formData.employeeCount}
+                    {profileData.employeeCount}
                   </motion.span>
                 )}
               </div>
@@ -298,10 +300,26 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           </div>
 
           <div className="mt-4 sm:mt-0">
-            {isEditing ? (
+            {isViewOnly ? (
               <div className="flex space-x-2 sm:space-x-3">
                 <motion.button
-                  onClick={onCancel}
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="inline-flex items-center px-4 sm:px-6 py-2 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl shadow-md text-xs sm:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors"
+                  whileHover={{ scale: 1.05, backgroundColor: '#F9FAFB', boxShadow: '0 6px 10px -1px rgba(0, 0, 0, 0.08)' }}
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                >
+                  <FiShare2 className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                  <span>Share Profile</span>
+                </motion.button>
+              </div>
+            ) : isEditing ? (
+              <div className="flex space-x-2 sm:space-x-3">
+                <motion.button
+                  onClick={onCancelEdit}
                   className="inline-flex items-center px-3 sm:px-5 py-1.5 sm:py-2.5 border border-gray-300 rounded-lg sm:rounded-xl shadow-sm text-xs sm:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors"
                   whileHover={{ scale: 1.03, backgroundColor: '#F9FAFB', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}
                   whileTap={{ scale: 0.97 }}
@@ -339,7 +357,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
             ) : (
               <div className="flex space-x-2 sm:space-x-3">
                 <motion.button
-                  onClick={onEdit}
+                  onClick={onEditToggle}
                   className={`inline-flex items-center px-4 sm:px-6 py-2 sm:py-3 border border-transparent rounded-lg sm:rounded-xl shadow-lg sm:shadow-xl text-xs sm:text-sm font-medium text-white ${userType === 'startup' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-600 hover:bg-emerald-700'} focus:outline-none transition-colors`}
                   whileHover={{ scale: 1.05, boxShadow: '0 10px 20px -3px rgba(0, 0, 0, 0.15), 0 4px 8px -2px rgba(0, 0, 0, 0.1)' }}
                   whileTap={{ scale: 0.97 }}

@@ -4,12 +4,42 @@ import { colours } from "../../utils/colours";
 import { useNavigate } from 'react-router-dom';
 
 interface LogoProps {
-    Title: string;
+    Title?: string;
     onClick?: () => void;
+    role?: string;
 }
 
-export const Logo: React.FC<LogoProps> = ({ Title = "KarmicDD", onClick }) => {
+export const Logo: React.FC<LogoProps> = ({ Title, onClick, role = 'default' }) => {
     const navigate = useNavigate();
+
+    // Define role-specific properties using the new color system
+    const logoTitle = Title || (
+        role === 'investor'
+            ? colours.investor.logoText
+            : role === 'startup'
+                ? colours.startup.logoText
+                : 'KarmicDD'
+    );
+
+    // Define colors based on role
+    const primaryColor = role === 'investor'
+        ? colours.investor.primary
+        : role === 'startup'
+            ? colours.startup.primary
+            : colours.primaryBlue;
+
+    const secondaryColor = role === 'investor'
+        ? colours.investor.secondary
+        : role === 'startup'
+            ? colours.startup.secondary
+            : colours.indigo600;
+
+    // Define tagline based on role
+    const tagline = role === 'investor'
+        ? colours.investor.tagline
+        : role === 'startup'
+            ? colours.startup.tagline
+            : 'Connect startups and investors seamlessly';
 
     const handleLogoClick = () => {
         if (onClick) {
@@ -18,6 +48,7 @@ export const Logo: React.FC<LogoProps> = ({ Title = "KarmicDD", onClick }) => {
             navigate('/');
         }
     };
+
     return (
         <motion.div
             className="flex flex-col items-center justify-center mb-8 pt-4 cursor-pointer"
@@ -33,12 +64,12 @@ export const Logo: React.FC<LogoProps> = ({ Title = "KarmicDD", onClick }) => {
                     transition: { duration: 0.5 }
                 }}
             >
-                <h1 className="text-3xl font-bold" style={{ color: colours.primaryBlue }}>
-                    {Title}
+                <h1 className="text-3xl font-bold" style={{ color: primaryColor }}>
+                    {logoTitle}
                 </h1>
                 <motion.div
                     className="h-1 mt-1 rounded-full"
-                    style={{ background: `linear-gradient(to right, ${colours.indigo600}, ${colours.primaryBlue})` }}
+                    style={{ background: `linear-gradient(to right, ${secondaryColor}, ${primaryColor})` }}
                     initial={{ width: 0 }}
                     animate={{ width: "100%" }}
                     transition={{ delay: 0.5, duration: 0.4 }}
@@ -50,7 +81,7 @@ export const Logo: React.FC<LogoProps> = ({ Title = "KarmicDD", onClick }) => {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.7 }}
             >
-                Connect startups and investors seamlessly
+                {tagline}
             </motion.p>
         </motion.div>
     );

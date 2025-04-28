@@ -44,7 +44,8 @@ const SortControls: React.FC<SortControlsProps> = ({
             <select
               value={sortBy}
               onChange={(e) => handleSortChange(e.target.value)}
-              className="px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 ${userProfile?.role === 'investor' ? 'focus:ring-green-500' : 'focus:ring-blue-500'
+                }`}
             >
               <option value="matchScore">Match Score</option>
               <option value="companyName">Name</option>
@@ -63,14 +64,24 @@ const SortControls: React.FC<SortControlsProps> = ({
             </select>
             <button
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className={`p-1.5 rounded-md ${sortOrder === 'desc' ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200'
+              className={`p-1.5 rounded-md ${sortOrder === 'desc'
+                ? userProfile?.role === 'investor'
+                  ? 'bg-green-50 border border-green-200'
+                  : 'bg-blue-50 border border-blue-200'
+                : 'bg-gray-50 border border-gray-200'
                 } hover:bg-gray-100`}
               title={sortOrder === 'asc' ? "Sort Ascending (A to Z, Low to High)" : "Sort Descending (Z to A, High to Low)"}
             >
               {sortOrder === 'asc' ? (
-                <FiArrowUp className={`text-${sortOrder === 'asc' ? 'blue' : 'gray'}-600`} />
+                <FiArrowUp className={`${sortOrder === 'asc'
+                    ? userProfile?.role === 'investor' ? 'text-green-600' : 'text-blue-600'
+                    : 'text-gray-600'
+                  }`} />
               ) : (
-                <FiArrowDown className={`text-${sortOrder === 'desc' ? 'blue' : 'gray'}-600`} />
+                <FiArrowDown className={`${sortOrder === 'desc'
+                    ? userProfile?.role === 'investor' ? 'text-green-600' : 'text-blue-600'
+                    : 'text-gray-600'
+                  }`} />
               )}
             </button>
           </div>

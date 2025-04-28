@@ -10,20 +10,20 @@ interface MatchFiltersProps {
 const MatchFilters: React.FC<MatchFiltersProps> = ({ role }) => {
   // Primary color based on role
   const primaryColor = role === 'startup' ? colours.primaryBlue : '#10B981';
-  
+
   // Mock filter options
-  const industries = role === 'startup' 
-    ? ['Venture Capital', 'Angel Investment', 'Private Equity', 'Corporate VC', 'Accelerator', 'Impact Investing'] 
+  const industries = role === 'startup'
+    ? ['Venture Capital', 'Angel Investment', 'Private Equity', 'Corporate VC', 'Accelerator', 'Impact Investing']
     : ['Fintech', 'HealthTech', 'EdTech', 'CleanTech', 'AI/ML', 'SaaS', 'E-commerce', 'Cybersecurity'];
-  
+
   const stages = role === 'startup'
     ? ['Pre-seed', 'Seed', 'Series A', 'Series B', 'Series C', 'Series D+', 'Growth', 'Late Stage']
     : ['Idea Stage', 'MVP', 'Pre-revenue', 'Early Revenue', 'Growth', 'Scaling', 'Profitable'];
-  
+
   const locations = ['San Francisco, CA', 'New York, NY', 'Boston, MA', 'Austin, TX', 'Chicago, IL', 'Seattle, WA', 'Los Angeles, CA', 'Remote'];
-  
+
   const compatibilityRanges = ['90%+', '80-89%', '70-79%', '60-69%', 'Below 60%'];
-  
+
   // Animation variants
   const itemVariants = {
     hidden: { opacity: 0, y: 10 },
@@ -57,7 +57,7 @@ const MatchFilters: React.FC<MatchFiltersProps> = ({ role }) => {
           ))}
         </div>
       </div>
-      
+
       {/* Stage filter */}
       <div>
         <h3 className="text-sm font-medium text-gray-700 mb-2">Stage</h3>
@@ -76,7 +76,7 @@ const MatchFilters: React.FC<MatchFiltersProps> = ({ role }) => {
           ))}
         </div>
       </div>
-      
+
       {/* Location filter */}
       <div>
         <h3 className="text-sm font-medium text-gray-700 mb-2">Location</h3>
@@ -95,7 +95,7 @@ const MatchFilters: React.FC<MatchFiltersProps> = ({ role }) => {
           ))}
         </div>
       </div>
-      
+
       {/* Compatibility filter */}
       <div>
         <h3 className="text-sm font-medium text-gray-700 mb-2">Compatibility</h3>
@@ -113,7 +113,7 @@ const MatchFilters: React.FC<MatchFiltersProps> = ({ role }) => {
             </div>
           ))}
         </div>
-        
+
         {/* Additional filters */}
         <div className="mt-6">
           <h3 className="text-sm font-medium text-gray-700 mb-2">Additional Filters</h3>
@@ -141,7 +141,7 @@ const MatchFilters: React.FC<MatchFiltersProps> = ({ role }) => {
           </div>
         </div>
       </div>
-      
+
       {/* Filter actions */}
       <div className="col-span-1 md:col-span-2 lg:col-span-4 flex items-center justify-between pt-4 border-t border-gray-200 mt-4">
         <div className="flex items-center">
@@ -161,15 +161,15 @@ const MatchFilters: React.FC<MatchFiltersProps> = ({ role }) => {
             </span>
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-3">
           <button className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 font-medium">
             Clear All
           </button>
-          <button 
+          <button
             className="px-4 py-2 rounded-lg text-white text-sm font-medium shadow-sm transition-all hover:shadow-md"
-            style={{ 
-              background: role === 'startup' 
+            style={{
+              background: role === 'startup'
                 ? colours.primaryGradient
                 : 'linear-gradient(135deg, #10B981, #059669)'
             }}

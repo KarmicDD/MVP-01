@@ -386,6 +386,17 @@ export const profileService = {
         return `${api.defaults.baseURL}/profile/documents/${documentId}/download`;
     },
 
+    // Get public documents for a specific user
+    getPublicDocuments: async (userId: string) => {
+        try {
+            const response = await api.get(`/profile/documents/public/${userId}`);
+            return response.data.documents || [];
+        } catch (error) {
+            console.error('Error fetching public documents:', error);
+            return [];
+        }
+    },
+
     // Financial Due Diligence methods
     uploadFinancialDocuments: async (files: File[]) => {
         try {
@@ -533,6 +544,159 @@ export const profileService = {
         } catch (error) {
             console.error(`Error creating default ${entityType} profile:`, error);
             return null;
+        }
+    },
+
+    // Get matches for a specific entity type (startup or investor)
+    getMatches: async (entityType: 'startup' | 'investor') => {
+        try {
+            const response = await api.get(`/matching/${entityType}`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching ${entityType} matches:`, error);
+            return { matches: [] };
+        }
+    },
+
+    // Get profile by username (company name)
+    getProfileByUsername: async (username: string) => {
+        try {
+            console.log(`Searching for profile with username: "${username}"`);
+
+            // Decode the username in case it's URL-encoded
+            const decodedUsername = decodeURIComponent(username);
+            console.log(`Decoded username: "${decodedUsername}"`);
+
+            // Try multiple approaches to find the profile
+            let matchingProfile = null;
+            let userType: 'startup' | 'investor' = 'startup';
+
+            // Approach 1: Try to search for startups with the company name
+            try {
+                console.log('Searching startups with company name...');
+                const startupResponse = await api.get('/search/startups', {
+                    params: {
+                        keywords: decodedUsername,
+                        limit: 10
+                    }
+                });
+
+                console.log('Startup search response:', startupResponse.data);
+
+                if (startupResponse.data && startupResponse.data.startups && startupResponse.data.startups.length > 0) {
+                    // Find the best match by comparing company names
+                    const possibleMatches = startupResponse.data.startups;
+
+                    // First try exact match (case-insensitive)
+                    matchingProfile = possibleMatches.find(
+                        profile => profile.companyName &&
+                            profile.companyName.toLowerCase() === decodedUsername.toLowerCase()
+                    );
+
+                    // If no exact match, try partial match
+                    if (!matchingProfile) {
+                        console.log('No exact match found in startups, trying partial match...');
+                        matchingProfile = possibleMatches.find(
+                            profile => profile.companyName &&
+                                (profile.companyName.toLowerCase().includes(decodedUsername.toLowerCase()) ||
+                                    decodedUsername.toLowerCase().includes(profile.companyName.toLowerCase()))
+                        );
+                    }
+
+                    if (matchingProfile) {
+                        userType = 'startup';
+                    }
+                }
+            } catch (error) {
+                console.error('Error searching startups:', error);
+                // Continue to other approaches if this fails
+            }
+
+            // Approach 2: If no startup match, try to search for investors
+            if (!matchingProfile) {
+                try {
+                    console.log('Searching investors with company name...');
+                    const investorResponse = await api.get('/search/investors', {
+                        params: {
+                            keywords: decodedUsername,
+                            limit: 10
+                        }
+                    });
+
+                    console.log('Investor search response:', investorResponse.data);
+
+                    if (investorResponse.data && investorResponse.data.investors && investorResponse.data.investors.length > 0) {
+                        // Find the best match by comparing company names
+                        const possibleMatches = investorResponse.data.investors;
+
+                        // First try exact match (case-insensitive)
+                        matchingProfile = possibleMatches.find(
+                            profile => profile.companyName &&
+                                profile.companyName.toLowerCase() === decodedUsername.toLowerCase()
+                        );
+
+                        // If no exact match, try partial match
+                        if (!matchingProfile) {
+                            console.log('No exact match found in investors, trying partial match...');
+                            matchingProfile = possibleMatches.find(
+                                profile => profile.companyName &&
+                                    (profile.companyName.toLowerCase().includes(decodedUsername.toLowerCase()) ||
+                                        decodedUsername.toLowerCase().includes(profile.companyName.toLowerCase()))
+                            );
+                        }
+
+                        if (matchingProfile) {
+                            userType = 'investor';
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error searching investors:', error);
+                }
+            }
+
+            // Approach 3: Try to check if the username is a userId
+            if (!matchingProfile) {
+                try {
+                    console.log('Checking if username is a userId...');
+
+                    // Try to get the profile directly using the username as a userId
+                    // This is a fallback approach
+                    const profileResponse = await api.get(`/profile/public/${username}`);
+
+                    if (profileResponse.data && profileResponse.data.profile) {
+                        matchingProfile = profileResponse.data.profile;
+                        userType = profileResponse.data.userType || 'startup';
+                    }
+                } catch (error) {
+                    console.error('Error fetching profile by userId:', error);
+                }
+            }
+
+            // If we found a matching profile
+            if (matchingProfile) {
+                console.log('Found matching profile:', matchingProfile);
+                console.log(`Determined user type: ${userType}`);
+
+                // Get extended profile data
+                let extendedProfile = {
+                    socialLinks: [],
+                    teamMembers: userType === 'startup' ? [] : undefined,
+                    investmentHistory: userType === 'investor' ? [] : undefined
+                };
+
+                return {
+                    profile: matchingProfile,
+                    extendedProfile,
+                    userType
+                };
+            }
+
+            // If we get here, we couldn't find a matching profile
+            console.error(`No matching profile found for username: ${username}`);
+            throw new Error('Profile not found');
+        } catch (error) {
+            console.error('Error fetching profile by username:', error);
+            throw error;
         }
     }
 };

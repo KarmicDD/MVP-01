@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { FiSearch, FiFilter, FiChevronDown, FiX, FiRefreshCw } from 'react-icons/fi';
 import { FilterOptions } from '../../../services/searchServices';
+import { colours } from '../../../utils/colours';
 
 interface SearchFiltersProps {
   searchQuery: string;
@@ -22,6 +23,12 @@ interface SearchFiltersProps {
   isFilterOpen: boolean;
   setIsFilterOpen: (isOpen: boolean) => void;
   itemVariants: any;
+  userProfile?: {
+    role: string;
+    name?: string;
+    avatar?: string;
+    companyName?: string;
+  } | null;
 }
 
 const SearchFilters: React.FC<SearchFiltersProps> = (props) => {
@@ -39,8 +46,15 @@ const SearchFilters: React.FC<SearchFiltersProps> = (props) => {
     fetchMatches,
     isFilterOpen,
     setIsFilterOpen,
-    itemVariants
+    itemVariants,
+    userProfile
   } = props;
+
+  // Get user role and set colors accordingly
+  const role = userProfile?.role || 'startup';
+  const primaryColor = role === 'investor' ? colours.investor.primary : colours.startup.primary;
+  const primaryLight = role === 'investor' ? colours.investor.light : colours.startup.light;
+  const primaryBorder = role === 'investor' ? 'border-green-200' : 'border-blue-200';
   return (
     <motion.div
       className="mb-8 search-filter-container"
@@ -53,7 +67,8 @@ const SearchFilters: React.FC<SearchFiltersProps> = (props) => {
             <input
               type="text"
               placeholder="Search matches..."
-              className="w-full pl-12 pr-12 py-3.5 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              className={`w-full pl-12 pr-12 py-3.5 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 transition-all ${role === 'investor' ? 'focus:ring-green-500 focus:border-green-500' : 'focus:ring-blue-500 focus:border-blue-500'
+                }`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -77,7 +92,9 @@ const SearchFilters: React.FC<SearchFiltersProps> = (props) => {
             <button
               type="button"
               className={`px-4 py-3 rounded-lg flex items-center gap-2 transition-all ${isFilterOpen
-                ? 'bg-blue-50 text-blue-600 border border-blue-200'
+                ? role === 'investor'
+                  ? 'bg-green-50 text-green-600 border border-green-200'
+                  : 'bg-blue-50 text-blue-600 border border-blue-200'
                 : 'bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100'
                 }`}
               onClick={() => setIsFilterOpen(!isFilterOpen)}
@@ -89,7 +106,8 @@ const SearchFilters: React.FC<SearchFiltersProps> = (props) => {
 
             <button
               type="button"
-              className="px-4 py-3 rounded-lg bg-blue-600 text-white flex items-center gap-2 hover:bg-blue-700 transition-all"
+              className={`px-4 py-3 rounded-lg text-white flex items-center gap-2 transition-all ${role === 'investor' ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'
+                }`}
               onClick={() => fetchMatches(1)}
             >
               <FiRefreshCw className="text-lg" />
@@ -112,7 +130,8 @@ const SearchFilters: React.FC<SearchFiltersProps> = (props) => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
                 <select
-                  className="w-full p-3 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full p-3 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 ${role === 'investor' ? 'focus:ring-green-500 focus:border-green-500' : 'focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                   value={industry}
                   onChange={(e) => handleFilterChange('industry', e.target.value)}
                 >
@@ -129,7 +148,8 @@ const SearchFilters: React.FC<SearchFiltersProps> = (props) => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Funding Stage</label>
                 <select
-                  className="w-full p-3 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full p-3 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 ${role === 'investor' ? 'focus:ring-green-500 focus:border-green-500' : 'focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                   value={stage}
                   onChange={(e) => handleFilterChange('fundingStage', e.target.value)}
                 >
@@ -146,7 +166,8 @@ const SearchFilters: React.FC<SearchFiltersProps> = (props) => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                 <select
-                  className="w-full p-3 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full p-3 rounded-lg bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 ${role === 'investor' ? 'focus:ring-green-500 focus:border-green-500' : 'focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                   value={location}
                   onChange={(e) => handleFilterChange('location', e.target.value)}
                 >
@@ -170,7 +191,8 @@ const SearchFilters: React.FC<SearchFiltersProps> = (props) => {
               </button>
               <button
                 type="button"
-                className="ml-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                className={`ml-3 px-4 py-2 text-white rounded-lg text-sm ${role === 'investor' ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
                 onClick={() => {
                   fetchMatches(1);
                   setIsFilterOpen(false);

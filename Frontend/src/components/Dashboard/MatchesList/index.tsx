@@ -4,6 +4,7 @@ import { Match } from '../../../types/Dashboard.types';
 import renderMatchCards from '../MatchesPage/MatchCards/renderMarchCards';
 import Pagination from '../MatchesPage/Pagination';
 import { FiArrowUp, FiArrowDown } from 'react-icons/fi';
+import { colours } from '../../../utils/colours';
 interface PaginationProps {
   page: number;
   pages: number;
@@ -61,17 +62,36 @@ const MatchesList: React.FC<MatchesListProps> = ({
 
   return (
     <motion.div className="mb-8" variants={itemVariants}>
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-        {/* Sort controls */}
-        <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-wrap items-center justify-between">
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden"
+        style={{
+          boxShadow: userRole === 'investor'
+            ? '0 4px 20px rgba(56, 161, 105, 0.08), 0 2px 8px rgba(56, 161, 105, 0.04)'
+            : '0 4px 20px rgba(0, 0, 0, 0.08)'
+        }}
+      >
+        {/* Sort controls - more comforting for investor */}
+        <div className="p-5 border-b border-gray-200 flex flex-wrap items-center justify-between"
+          style={{
+            background: userRole === 'investor'
+              ? 'linear-gradient(135deg, rgba(240, 255, 244, 0.7), rgba(236, 253, 245, 0.7))'
+              : 'rgba(249, 250, 251, 0.7)',
+            borderColor: userRole === 'investor' ? 'rgba(154, 230, 180, 0.4)' : 'rgba(229, 231, 235, 1)'
+          }}
+        >
           <h3 className="text-lg font-semibold text-gray-800">
-            {matches.length > 0 ? `${pagination.total} Matches Found` : 'No Matches Found'}
+            {matches.length > 0 ? (
+              userRole === 'investor'
+                ? `${pagination.total} Promising Startups Found`
+                : `${pagination.total} Matches Found`
+            ) : 'No Matches Found'}
           </h3>
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-500">Sort by:</span>
             <button
               className={`text-sm flex items-center space-x-1 px-3 py-1.5 rounded-md ${sortBy === 'matchScore'
-                ? 'bg-blue-50 text-blue-700'
+                ? userRole === 'investor'
+                  ? 'bg-green-50 text-green-700'
+                  : 'bg-blue-50 text-blue-700'
                 : 'text-gray-600 hover:bg-gray-100'
                 }`}
               onClick={() => handleSort('matchScore')}
@@ -83,7 +103,9 @@ const MatchesList: React.FC<MatchesListProps> = ({
             </button>
             <button
               className={`text-sm flex items-center space-x-1 px-3 py-1.5 rounded-md ${sortBy === 'companyName'
-                ? 'bg-blue-50 text-blue-700'
+                ? userRole === 'investor'
+                  ? 'bg-green-50 text-green-700'
+                  : 'bg-blue-50 text-blue-700'
                 : 'text-gray-600 hover:bg-gray-100'
                 }`}
               onClick={() => handleSort('companyName')}
@@ -95,7 +117,9 @@ const MatchesList: React.FC<MatchesListProps> = ({
             </button>
             <button
               className={`text-sm flex items-center space-x-1 px-3 py-1.5 rounded-md ${sortBy === 'dateJoined'
-                ? 'bg-blue-50 text-blue-700'
+                ? userRole === 'investor'
+                  ? 'bg-green-50 text-green-700'
+                  : 'bg-blue-50 text-blue-700'
                 : 'text-gray-600 hover:bg-gray-100'
                 }`}
               onClick={() => handleSort('dateJoined')}

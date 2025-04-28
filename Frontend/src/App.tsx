@@ -13,7 +13,7 @@ import QuestionnairePage from './pages/QuestionnairePage';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ProfilePage from './pages/ProfilePage';
-import SharedProfilePage from './pages/SharedProfilePage';
+import ViewProfilePage from './pages/ViewProfilePage';
 import { TutorialProvider } from './context/TutorialContext';
 import TutorialManager from './components/Tutorial/TutorialManager';
 import { allTutorials } from './data/tutorials';
@@ -168,15 +168,16 @@ function App() {
             />
 
 
-            {/* // Add this to your routes */}
+            {/* Profile Routes */}
             <Route path="/profile" element={
               <ProtectedRoute>
                 <ProfilePage />
               </ProtectedRoute>
             } />
 
-            {/* Shared Profile Route - Public */}
-            <Route path="/shared-profile/:shareToken" element={<SharedProfilePage />} />
+            {/* Unified Profile Viewing Routes */}
+            <Route path="/shared-profile/:identifier" element={<ViewProfilePage />} />
+            <Route path="/:identifier" element={<ViewProfilePage />} />
 
             {/* Protected Routes */}
             <Route

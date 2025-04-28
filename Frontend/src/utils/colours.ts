@@ -32,6 +32,38 @@ export const colours = {
     warningYellow: '#eab308',
     neutralGray: '#6b7280',
 
+    // Dashboard UI gradients and soft colors
+    startupCardGradient: 'linear-gradient(135deg, rgba(239, 246, 255, 0.8), rgba(238, 242, 255, 0.8))',
+    investorCardGradient: 'linear-gradient(135deg, rgba(240, 253, 244, 0.8), rgba(236, 253, 245, 0.8))',
+    startupBgGradient: 'linear-gradient(135deg, rgba(62, 96, 233, 0.03), rgba(90, 66, 227, 0.05))',
+    investorBgGradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.03), rgba(5, 150, 105, 0.05))',
+    startupBorderColor: 'rgba(191, 219, 254, 0.5)',
+    investorBorderColor: 'rgba(167, 243, 208, 0.5)',
+
+    // Role-specific colors
+    startup: {
+        primary: '#3e60e9',
+        secondary: '#5A42E3',
+        light: '#EBF5FF',
+        gradient: 'linear-gradient(135deg, #3e60e9, #5A42E3)',
+        hoverGradient: 'linear-gradient(135deg, #3b5bd9, #5239d6)',
+        border: 'rgba(191, 219, 254, 0.5)',
+        background: 'rgba(239, 246, 255, 0.8)',
+        logoText: 'StartupMatch',
+        tagline: 'Connect with investors who share your vision'
+    },
+    investor: {
+        primary: '#38a169', // Warmer, softer green
+        secondary: '#2f855a',
+        light: '#F0FFF4',
+        gradient: 'linear-gradient(135deg, #38a169, #2f855a)',
+        hoverGradient: 'linear-gradient(135deg, #319158, #276749)',
+        border: 'rgba(154, 230, 180, 0.5)',
+        background: 'rgba(240, 255, 244, 0.9)',
+        logoText: 'InvestorMatch',
+        tagline: 'Discover promising startups for your portfolio'
+    },
+
     //logout
     red400: '#F87171',
     red500: '#EF4444',

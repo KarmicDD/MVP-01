@@ -64,6 +64,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     ? 'from-blue-50 to-indigo-50'
     : 'from-green-50 to-emerald-50';
 
+  // Define content container styles based on role - softer, warmer for investor
+  const contentBgGradient = role === 'startup'
+    ? 'linear-gradient(135deg, rgba(239, 246, 255, 0.85), rgba(238, 242, 255, 0.85))'
+    : 'linear-gradient(135deg, rgba(240, 255, 244, 0.9), rgba(236, 252, 245, 0.9))';
+
+  // Softer border for investor
+  const borderColor = role === 'startup'
+    ? 'rgba(191, 219, 254, 0.3)'
+    : 'rgba(154, 230, 180, 0.35)';
+
   return (
     <div className={`flex h-screen overflow-hidden bg-gradient-to-br ${bgGradient}`}>
       {/* Background Pattern */}
@@ -77,8 +87,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             animate={{ x: 0 }}
             exit={{ x: -280 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className={`fixed inset-y-0 left-0 w-64 bg-white/90 backdrop-blur-sm border-r border-gray-200 shadow-lg lg:relative lg:shadow-none`}
-            style={{ zIndex: 50 }}
+            className={`fixed inset-y-0 left-0 w-64 backdrop-blur-sm border-r shadow-lg lg:relative lg:shadow-none`}
+            style={{
+              zIndex: 50,
+              background: role === 'startup'
+                ? 'linear-gradient(180deg, rgba(239, 246, 255, 0.9), rgba(224, 231, 255, 0.9))'
+                : 'linear-gradient(180deg, rgba(240, 253, 244, 0.9), rgba(220, 252, 231, 0.9))',
+              borderColor: borderColor
+            }}
           >
             <DashboardSidebar
               userProfile={userProfile}
@@ -114,8 +130,27 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
         <main className={`flex-1 overflow-y-auto transition-all duration-200 ease-in-out ${sidebarOpen ? 'lg:ml-0' : 'ml-0'}`}>
           <div className="container mx-auto px-4 py-6 relative" style={{ zIndex: 1 }}>
-            {/* Content container with subtle shadow and background */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-lg shadow-sm p-6 border border-gray-100">
+            {/* Personalized greeting for investor */}
+            {role === 'investor' && userProfile?.name && (
+              <div className="mb-4 px-2">
+                <h2 className="text-xl font-medium text-gray-700">
+                  Welcome back, <span className="font-semibold" style={{ color: colours.investor.primary }}>{userProfile.name}</span>
+                </h2>
+                <p className="text-sm text-gray-500">Discover promising startups that match your investment criteria</p>
+              </div>
+            )}
+
+            {/* Content container with comforting gradient background */}
+            <div
+              className="backdrop-blur-sm rounded-xl p-6 border"
+              style={{
+                background: contentBgGradient,
+                borderColor: borderColor,
+                boxShadow: role === 'investor'
+                  ? '0 8px 30px rgba(56, 161, 105, 0.07), 0 2px 10px rgba(56, 161, 105, 0.03)'
+                  : '0 4px 20px rgba(0, 0, 0, 0.05)'
+              }}
+            >
               {children}
             </div>
           </div>

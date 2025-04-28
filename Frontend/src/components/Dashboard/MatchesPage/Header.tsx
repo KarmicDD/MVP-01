@@ -258,7 +258,7 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, handleLogout, 
                             whileHover={{ scale: 1.02 }}
                             transition={{ type: 'spring', stiffness: 400, damping: 10 }}
                         >
-                            <Logo Title={role === 'startup' ? "StartupMatch" : "InvestorMatch"} />
+                            <Logo role={role} />
                             <motion.div
                                 className={`ml-2 text-xs font-bold px-2 py-1 rounded-full ${primaryBgColor} text-white`}
                                 initial={{ opacity: 0, scale: 0.8 }}
