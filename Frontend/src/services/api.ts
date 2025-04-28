@@ -287,32 +287,35 @@ export const profileService = {
     },
 
     // Profile sharing methods
-    generateShareableLink: async () => {
+    shareProfileViaEmail: async (emailAddresses: string[], shareMethod = 'email') => {
         try {
-            const response = await api.post('/profile/share/generate-link');
-            return response.data; // Returns { shareableUrl, expiresAt }
-        } catch (error) {
-            console.error('Error generating shareable link:', error);
-            throw error;
-        }
-    },
+            // Get the current user's profile to create a direct URL
+            const userProfile = await api.get('/profile/user-type');
+            const profileResponse = userProfile.data.role === 'startup'
+                ? await api.get('/profile/startup')
+                : await api.get('/profile/investor');
 
-    shareProfileViaEmail: async (emailAddresses: string[]) => {
-        try {
-            const response = await api.post('/profile/share/email', { emailAddresses });
-            return response.data; // Returns { message, shareableUrl, recipientCount }
+            const companyName = profileResponse.data.profile?.companyName;
+
+            // Format the company name for the URL (replace spaces with underscores)
+            const formattedName = companyName
+                ? companyName.replace(/\s+/g, '_').replace(/[^\w_]/g, '')
+                : '';
+
+            // Get the base URL from the window location
+            const baseUrl = window.location.origin;
+            const directProfileUrl = `${baseUrl}/${formattedName}`;
+
+            // Send the email with the direct URL
+            const response = await api.post('/profile/share/email', {
+                emailAddresses,
+                customUrl: directProfileUrl,
+                shareMethod
+            });
+
+            return response.data; // Returns { message, recipientCount, shareMethod }
         } catch (error) {
             console.error('Error sharing profile via email:', error);
-            throw error;
-        }
-    },
-
-    getSharedProfile: async (shareToken: string) => {
-        try {
-            const response = await api.get(`/profile/shared/${shareToken}`);
-            return response.data; // Returns { profile, extendedProfile, userType }
-        } catch (error) {
-            console.error('Error fetching shared profile:', error);
             throw error;
         }
     },
@@ -563,8 +566,8 @@ export const profileService = {
         try {
             console.log(`Searching for profile with username: "${username}"`);
 
-            // Decode the username in case it's URL-encoded
-            const decodedUsername = decodeURIComponent(username);
+            // Decode the username in case it's URL-encoded and replace underscores with spaces
+            const decodedUsername = decodeURIComponent(username).replace(/_/g, ' ');
             console.log(`Decoded username: "${decodedUsername}"`);
 
             // Try multiple approaches to find the profile

@@ -175,8 +175,7 @@ function App() {
               </ProtectedRoute>
             } />
 
-            {/* Unified Profile Viewing Routes */}
-            <Route path="/shared-profile/:identifier" element={<ViewProfilePage />} />
+            {/* Profile Viewing Route */}
             <Route path="/:identifier" element={<ViewProfilePage />} />
 
             {/* Protected Routes */}

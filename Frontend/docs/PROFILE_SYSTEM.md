@@ -6,41 +6,27 @@ The KarmicDD profile system allows users to view and share profiles in a user-fr
 
 ## URL Structure
 
-The profile system uses a unified approach with two main URL formats:
+The profile system uses a clean, user-friendly URL format:
 
-1. **Company Name-based URLs**: `/:identifier`
-   - Example: `/Cred%20Advisors%20Pvt%20Ltd`
-   - This is the primary way to access profiles
-   - The identifier is the company name (URL-encoded)
-   - Used for both public viewing and sharing with others
-
-2. **Share Token-based URLs**: `/shared-profile/:identifier`
-   - Example: `/shared-profile/f374fd3b023363b66bd168da0707c9ede9166a960a2bc2859712bf8b7697a7d6`
-   - Used for temporary sharing of profiles
-   - The identifier is a secure token that expires after a set period
-
-Both URL formats are handled by the same `ViewProfilePage` component, which determines the appropriate data fetching method based on the URL path.
+**Company Name-based URLs**: `/:identifier`
+- Example: `/Cred_Advisors_Pvt_Ltd`
+- This is the only way to access profiles
+- The identifier is the company name with spaces replaced by underscores
+- Special characters are removed for cleaner URLs
+- Used for both public viewing and sharing with others
 
 ## Profile Fetching Process
 
-### Company Name-based Profile Fetching
+### Profile Fetching by Company Name
 
-When a user visits a URL like `/Cred%20Advisors%20Pvt%20Ltd`, the system:
+When a user visits a URL like `/Cred_Advisors_Pvt_Ltd`, the system:
 
-1. Decodes the URL-encoded company name
+1. Converts underscores back to spaces in the company name
 2. Searches for startups with that company name using the search API
 3. If no startup is found, searches for investors with that company name
 4. If still no match, tries to fetch the profile directly using the identifier as a userId
-5. If found, displays the profile with appropriate visibility settings
+5. If found, displays the profile with appropriate visibility settings based on authentication
 6. If not found, shows a helpful error message with navigation options
-
-### Share Token-based Profile Fetching
-
-When a user visits a URL like `/shared-profile/f374fd3b...`, the system:
-
-1. Uses the share token to fetch the profile directly
-2. If the token is valid and not expired, displays the profile
-3. If the token is invalid or expired, shows an error message
 
 ## Authentication and Visibility
 
@@ -89,14 +75,13 @@ Documents in the system have two visibility states:
 
 ## Best Practices
 
-1. **URL Sharing**: Share the company name-based URL for permanent links (e.g., `/Cred%20Advisors%20Pvt%20Ltd`)
-2. **Temporary Sharing**: Use the share token URL for temporary access (e.g., `/shared-profile/token`)
+1. **URL Sharing**: Share the clean company name-based URL for all links (e.g., `/Cred_Advisors_Pvt_Ltd`)
+2. **Profile Access Control**: The same URL works for all users, with content visibility controlled by authentication
 3. **Document Visibility**: Mark documents as public only if they contain information that can be shared with all users
 4. **Profile Completeness**: Fill out all profile fields to improve searchability and matching
 
 ## Troubleshooting
 
 - If a profile cannot be found by company name, try using the search function in the dashboard
-- If a share token link is not working, it may have expired - request a new share link
 - If documents are not visible, check if they are marked as public
 - If you cannot access your own documents, ensure you are logged in and viewing your own profile

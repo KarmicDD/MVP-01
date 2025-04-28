@@ -328,7 +328,7 @@ export const shareProfileViaEmail = async (req: Request, res: Response): Promise
             return;
         }
 
-        const { emailAddresses } = req.body;
+        const { emailAddresses, customUrl, shareMethod = 'email' } = req.body;
 
         if (!emailAddresses || !Array.isArray(emailAddresses) || emailAddresses.length === 0) {
             res.status(400).json({ message: 'Email addresses are required' });
@@ -345,55 +345,84 @@ export const shareProfileViaEmail = async (req: Request, res: Response): Promise
             return;
         }
 
-        // Generate a shareable link
-        const shareToken = crypto.randomBytes(32).toString('hex');
-        const expirationDate = new Date();
-        expirationDate.setDate(expirationDate.getDate() + 30);
-
-        await prisma.profileShare.create({
-            data: {
-                user_id: req.user.userId,
-                share_token: shareToken,
-                expires_at: expirationDate
-            }
-        });
-
-        const shareableUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/shared-profile/${shareToken}`;
-
-        // Get profile data based on user role
-        let profileData: any = {};
+        // Get company name based on user role
         let companyName = '';
 
         if (user.role === 'startup') {
             const startupProfile = await StartupProfileModel.findOne({ userId: req.user.userId });
             if (startupProfile) {
-                profileData = startupProfile;
                 companyName = startupProfile.companyName || 'their startup';
             }
         } else if (user.role === 'investor') {
             const investorProfile = await InvestorProfileModel.findOne({ userId: req.user.userId });
             if (investorProfile) {
-                profileData = investorProfile;
                 companyName = investorProfile.companyName || 'their investment firm';
             }
         }
 
-        // Get extended profile data
-        const extendedProfile = await ExtendedProfileModel.findOne({ userId: req.user.userId });
+        // Use the custom URL if provided, otherwise generate a shareable link
+        let profileUrl = customUrl;
+
+        if (!profileUrl) {
+            // Generate a shareable link (for backward compatibility)
+            const shareToken = crypto.randomBytes(32).toString('hex');
+            const expirationDate = new Date();
+            expirationDate.setDate(expirationDate.getDate() + 30);
+
+            // Create a new share token with the share method
+            const shareData: any = {
+                user_id: req.user.userId,
+                share_token: shareToken,
+                expires_at: expirationDate
+            };
+
+            // Add share_method if the schema has been updated
+            if (shareMethod) {
+                try {
+                    shareData.share_method = shareMethod;
+                } catch (err) {
+                    console.warn('Could not add share_method to profile share:', err);
+                }
+            }
+
+            await prisma.profileShare.create({
+                data: shareData
+            });
+
+            profileUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/shared-profile/${shareToken}`;
+        } else {
+            // Track analytics for direct URL sharing if the table exists
+            try {
+                // @ts-ignore - This will be available after the migration
+                await prisma.profileShareAnalytics.create({
+                    data: {
+                        user_id: req.user.userId,
+                        share_method: shareMethod,
+                        recipient_count: emailAddresses.length,
+                        shared_url: profileUrl
+                    }
+                });
+            } catch (error) {
+                // If the table doesn't exist yet, just log the error but continue
+                console.warn('Could not record share analytics:', error);
+            }
+        }
 
         // In a real implementation, we would send emails here
         // For now, we'll just log the information and return success
         emailAddresses.forEach((email: string) => {
             console.log(`[EMAIL SERVICE] Sending profile share email to ${email}`);
             console.log(`From: ${user.email} (${companyName})`);
-            console.log(`Link: ${shareableUrl}`);
+            console.log(`Link: ${profileUrl}`);
+            console.log(`Share method: ${shareMethod}`);
             console.log('---');
         });
 
         res.status(200).json({
             message: 'Profile shared successfully',
-            shareableUrl,
-            recipientCount: emailAddresses.length
+            profileUrl,
+            recipientCount: emailAddresses.length,
+            shareMethod
         });
     } catch (error) {
         console.error('Share profile via email error:', error);

@@ -1,12 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEdit2, FiSave, FiX, FiMapPin, FiUsers, FiShare2, FiLink, FiMail, FiCopy, FiCheck } from 'react-icons/fi';
+import { FiEdit2, FiSave, FiX, FiMapPin, FiUsers, FiShare2 } from 'react-icons/fi';
 import { colours } from '../../utils/colours';
 import AvatarUpload from './AvatarUpload';
-// import LoadingSpinner from '../Loading'; // Imported but not used
-import SimpleSpinner from '../SimpleSpinner';
 import { profileService } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import SocialShareModal from './SocialShareModal';
 
 interface ProfileHeaderProps {
   userType: 'startup' | 'investor' | null;
@@ -34,54 +33,28 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   isViewOnly = false
 }) => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [shareableLink, setShareableLink] = useState('');
-  const [emailInput, setEmailInput] = useState('');
-  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
-  const [isSharingViaEmail, setIsSharingViaEmail] = useState(false);
-  const [copied, setCopied] = useState(false);
 
-  // Generate shareable link
-  const handleGenerateLink = async () => {
-    try {
-      setIsGeneratingLink(true);
-      const response = await profileService.generateShareableLink();
-      setShareableLink(response.shareableUrl);
-    } catch (error) {
-      toast.error('Failed to generate shareable link');
-      console.error('Error generating link:', error);
-    } finally {
-      setIsGeneratingLink(false);
-    }
+  // Get direct profile URL (with underscores instead of spaces)
+  const getProfileUrl = () => {
+    if (!profileData?.companyName) return '';
+
+    // Replace spaces with underscores and remove special characters
+    const formattedName = profileData.companyName.replace(/\s+/g, '_').replace(/[^\w_]/g, '');
+
+    // Get the base URL from the window location
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/${formattedName}`;
   };
 
   // Share profile via email
-  const handleShareViaEmail = async () => {
-    if (!emailInput.trim()) {
-      toast.error('Please enter at least one email address');
-      return;
-    }
-
+  const handleShareViaEmail = async (emails: string[], shareMethod = 'email') => {
     try {
-      setIsSharingViaEmail(true);
-      const emails = emailInput.split(',').map(email => email.trim());
-      await profileService.shareProfileViaEmail(emails);
-      toast.success(`Profile shared with ${emails.length} recipient(s)`);
-      setEmailInput('');
-      setIsShareModalOpen(false);
+      await profileService.shareProfileViaEmail(emails, shareMethod);
+      return Promise.resolve();
     } catch (error) {
-      toast.error('Failed to share profile via email');
       console.error('Error sharing via email:', error);
-    } finally {
-      setIsSharingViaEmail(false);
+      return Promise.reject(error);
     }
-  };
-
-  // Copy link to clipboard
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(shareableLink);
-    setCopied(true);
-    toast.success('Link copied to clipboard');
-    setTimeout(() => setCopied(false), 2000);
   };
   return (
     <motion.div
@@ -389,131 +362,15 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
         </div>
       </div>
 
-      {/* Share Profile Modal */}
-      <AnimatePresence>
-        {isShareModalOpen && (
-          <>
-            {/* Modal Backdrop */}
-            <motion.div
-              className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsShareModalOpen(false)}
-            >
-              {/* Modal Content */}
-              <motion.div
-                className="bg-white rounded-xl shadow-2xl w-full max-w-xs sm:max-w-sm md:max-w-md overflow-hidden"
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                transition={{ type: 'spring', damping: 25 }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Modal Header */}
-                <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-indigo-50 to-blue-50">
-                  <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center">
-                    <FiShare2 className="mr-1.5 sm:mr-2 text-indigo-600" />
-                    Share Your Profile
-                  </h3>
-                  <button
-                    onClick={() => setIsShareModalOpen(false)}
-                    className="text-gray-500 hover:text-gray-700 focus:outline-none"
-                  >
-                    <FiX className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </button>
-                </div>
-
-                {/* Modal Body */}
-                <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-                  {/* Generate Link Section */}
-                  <div className="space-y-3 sm:space-y-4">
-                    <h4 className="text-xs sm:text-sm font-medium text-gray-700 flex items-center">
-                      <FiLink className="mr-1.5 sm:mr-2 text-indigo-500" />
-                      Shareable Link
-                    </h4>
-
-                    {shareableLink ? (
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="text"
-                          value={shareableLink}
-                          readOnly
-                          className="flex-1 p-1.5 sm:p-2 border border-gray-300 rounded-lg text-xs sm:text-sm bg-gray-50"
-                        />
-                        <motion.button
-                          onClick={handleCopyLink}
-                          className={`p-1.5 sm:p-2 rounded-lg ${copied ? 'bg-green-100 text-green-600' : 'bg-indigo-100 text-indigo-600'} hover:bg-opacity-80`}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          {copied ? <FiCheck className="h-4 w-4 sm:h-5 sm:w-5" /> : <FiCopy className="h-4 w-4 sm:h-5 sm:w-5" />}
-                        </motion.button>
-                      </div>
-                    ) : (
-                      <motion.button
-                        onClick={handleGenerateLink}
-                        className="w-full py-1.5 sm:py-2 px-3 sm:px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center justify-center space-x-2 text-xs sm:text-sm"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        disabled={isGeneratingLink}
-                      >
-                        {isGeneratingLink ? (
-                          <>
-                            <SimpleSpinner size="sm" />
-                            <span>Generating...</span>
-                          </>
-                        ) : (
-                          <>
-                            <FiLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            <span>Generate Link</span>
-                          </>
-                        )}
-                      </motion.button>
-                    )}
-                  </div>
-
-                  {/* Share via Email Section */}
-                  <div className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-gray-200">
-                    <h4 className="text-xs sm:text-sm font-medium text-gray-700 flex items-center">
-                      <FiMail className="mr-1.5 sm:mr-2 text-indigo-500" />
-                      Share via Email
-                    </h4>
-                    <div className="space-y-2 sm:space-y-3">
-                      <textarea
-                        placeholder="Enter email addresses separated by commas"
-                        value={emailInput}
-                        onChange={(e) => setEmailInput(e.target.value)}
-                        className="w-full p-2 sm:p-3 border border-gray-300 rounded-lg text-xs sm:text-sm resize-none focus:ring-indigo-500 focus:border-indigo-500"
-                        rows={3}
-                      />
-                      <motion.button
-                        onClick={handleShareViaEmail}
-                        className="w-full py-1.5 sm:py-2 px-3 sm:px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center justify-center space-x-2 text-xs sm:text-sm"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        disabled={isSharingViaEmail || !emailInput.trim()}
-                      >
-                        {isSharingViaEmail ? (
-                          <>
-                            <SimpleSpinner size="sm" />
-                            <span>Sending...</span>
-                          </>
-                        ) : (
-                          <>
-                            <FiMail className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            <span>Share</span>
-                          </>
-                        )}
-                      </motion.button>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {/* Social Share Modal */}
+      <SocialShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        profileUrl={getProfileUrl()}
+        title={`Check out ${profileData?.companyName || 'this profile'} on KarmicDD`}
+        description={`${profileData?.companyName || 'This company'} is a ${profileData?.industry || ''} ${userType === 'startup' ? 'startup' : 'investor'} on KarmicDD. View their profile to learn more.`}
+        onEmailShare={handleShareViaEmail}
+      />
     </motion.div>
   );
 };

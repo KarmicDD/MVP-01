@@ -16,10 +16,9 @@ const ViewProfilePage: React.FC = () => {
   const { identifier } = useParams<{ identifier: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Determine if this is a shared profile or username-based profile
-  const isSharedProfile = location.pathname.includes('/shared-profile/');
-  
+
+  // We only use company name-based profile URLs now
+
   // State variables
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,16 +51,10 @@ const ViewProfilePage: React.FC = () => {
 
       try {
         setLoading(true);
-        let response;
 
-        if (isSharedProfile) {
-          // Fetch profile using share token
-          response = await profileService.getSharedProfile(identifier);
-        } else {
-          // Fetch profile using username (company name)
-          response = await profileService.getProfileByUsername(identifier);
-        }
-        
+        // Fetch profile using username (company name)
+        const response = await profileService.getProfileByUsername(identifier);
+
         setProfileData(response.profile);
         setExtendedData(response.extendedProfile || {
           socialLinks: [],
@@ -84,22 +77,20 @@ const ViewProfilePage: React.FC = () => {
         setLoading(false);
       } catch (error) {
         console.error('Error fetching profile:', error);
-        
-        if (isSharedProfile) {
-          setError('This shared profile link is invalid or has expired');
-        } else {
-          setError(
-            `Profile not found. The company name "${decodeURIComponent(identifier)}" ` +
-            `could not be found in our system. Please check the spelling or try using the profile ID instead.`
-          );
-        }
-        
+
+        // Convert underscores to spaces for display in error message
+        const displayName = decodeURIComponent(identifier).replace(/_/g, ' ');
+        setError(
+          `Profile not found. The company name "${displayName}" ` +
+          `could not be found in our system. Please check the spelling.`
+        );
+
         setLoading(false);
       }
     };
 
     fetchProfile();
-  }, [identifier, isSharedProfile, isLoggedIn]);
+  }, [identifier, isLoggedIn]);
 
   // Define tabs based on user type
   const getTabs = () => {
@@ -135,7 +126,7 @@ const ViewProfilePage: React.FC = () => {
     )),
     [profileData?.industriesOfInterest]
   );
-  
+
   const stageBadges = useMemo(() =>
     profileData?.preferredStages?.map((stage: string) => (
       <span key={stage} className="px-2 py-1 bg-white rounded-md text-xs text-gray-700 border border-gray-200">
@@ -148,8 +139,8 @@ const ViewProfilePage: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner message={isSharedProfile ? "Loading shared profile" : "Loading profile"} 
-                       submessage="Retrieving profile information" />
+        <LoadingSpinner message="Loading profile"
+          submessage="Retrieving profile information" />
       </div>
     );
   }
@@ -174,13 +165,13 @@ const ViewProfilePage: React.FC = () => {
             </motion.div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Profile Not Found</h2>
             <p className="text-gray-600 mb-6">{error}</p>
-            
+
             <div className="space-y-4">
               <p className="text-sm text-gray-500">
                 The profile you're looking for might be private or may not exist.
                 Try searching for the company in the dashboard instead.
               </p>
-              
+
               <div className="flex flex-col sm:flex-row justify-center gap-3">
                 <motion.button
                   onClick={() => navigate('/')}
@@ -190,7 +181,7 @@ const ViewProfilePage: React.FC = () => {
                 >
                   Go to Home
                 </motion.button>
-                
+
                 {isLoggedIn && (
                   <motion.button
                     onClick={() => navigate('/dashboard')}
@@ -246,18 +237,18 @@ const ViewProfilePage: React.FC = () => {
                 isEditing={false}
                 saving={false}
                 extendedData={extendedData}
-                handleInputChange={() => {}}
-                handleMultiSelect={() => {}}
-                handleSocialLinkChange={() => {}}
-                handleAddSocialLink={() => {}}
-                handleRemoveSocialLink={() => {}}
-                handleTeamMemberChange={() => {}}
-                handleAddTeamMember={() => {}}
-                handleRemoveTeamMember={() => {}}
-                handleInvestmentChange={() => {}}
-                handleAddInvestment={() => {}}
-                handleRemoveInvestment={() => {}}
-                handleSave={() => {}}
+                handleInputChange={() => { }}
+                handleMultiSelect={() => { }}
+                handleSocialLinkChange={() => { }}
+                handleAddSocialLink={() => { }}
+                handleRemoveSocialLink={() => { }}
+                handleTeamMemberChange={() => { }}
+                handleAddTeamMember={() => { }}
+                handleRemoveTeamMember={() => { }}
+                handleInvestmentChange={() => { }}
+                handleAddInvestment={() => { }}
+                handleRemoveInvestment={() => { }}
+                handleSave={() => { }}
                 isViewOnly={true}
               />
 
@@ -273,7 +264,7 @@ const ViewProfilePage: React.FC = () => {
                     <FiFile className="mr-1 sm:mr-2" />
                     Public Documents
                   </h3>
-                  
+
                   {publicDocuments.length === 0 ? (
                     <div className="text-center py-8 bg-gray-50 rounded-lg">
                       <p className="text-gray-500">No public documents available</p>
@@ -389,7 +380,7 @@ const ViewProfilePage: React.FC = () => {
             {/* Profile type banner */}
             <div className="absolute top-4 right-4 bg-white bg-opacity-90 px-4 py-2 rounded-full shadow-md flex items-center">
               <span className="text-sm font-medium text-gray-700">
-                {isSharedProfile ? "Shared Profile" : "Public Profile"}
+                Public Profile
               </span>
             </div>
           </div>
