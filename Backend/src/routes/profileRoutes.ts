@@ -14,7 +14,8 @@ import {
     getUserDocuments,
     deleteDocument,
     downloadDocument,
-    updateDocumentMetadata
+    updateDocumentMetadata,
+    getDocumentById
 } from '../controllers/profileController';
 import { authenticateJWT, authorizeRole } from '../middleware/auth';
 import StartupProfileModel, { StartupProfile } from '../models/Profile/StartupProfile';
@@ -525,6 +526,11 @@ router.delete(
     '/documents/:documentId',
     authenticateJWT,
     deleteDocument
+);
+
+router.get(
+    '/documents/:documentId',
+    getDocumentById
 );
 
 router.get(

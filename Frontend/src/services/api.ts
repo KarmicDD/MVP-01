@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Use environment variable or fallback to localhost for development
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 // Define interfaces for auth services
 interface UserRegistrationData {
@@ -64,6 +64,12 @@ export const authService = {
         if (response.data.token) {
             localStorage.setItem('token', response.data.token);
             localStorage.setItem('user', JSON.stringify(response.data.user));
+
+            // Store userId and userRole separately for easier access
+            if (response.data.user) {
+                localStorage.setItem('userId', response.data.user.userId);
+                localStorage.setItem('userRole', response.data.user.role);
+            }
         }
         return response.data;
     },
@@ -74,6 +80,12 @@ export const authService = {
         if (response.data.token) {
             localStorage.setItem('token', response.data.token);
             localStorage.setItem('user', JSON.stringify(response.data.user));
+
+            // Store userId and userRole separately for easier access
+            if (response.data.user) {
+                localStorage.setItem('userId', response.data.user.userId);
+                localStorage.setItem('userRole', response.data.user.role);
+            }
         }
         return response.data;
     },
@@ -84,6 +96,12 @@ export const authService = {
         if (response.data.token) {
             localStorage.setItem('token', response.data.token);
             localStorage.setItem('user', JSON.stringify(response.data.user));
+
+            // Store userId and userRole separately for easier access
+            if (response.data.user) {
+                localStorage.setItem('userId', response.data.user.userId);
+                localStorage.setItem('userRole', response.data.user.role);
+            }
         }
         return response.data;
     },
@@ -92,6 +110,10 @@ export const authService = {
     logout: () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('selectedEntityId');
+        localStorage.removeItem('selectedEntityType');
     },
 
     // Get current user

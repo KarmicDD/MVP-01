@@ -46,6 +46,14 @@ const OAuthCallback: React.FC = () => {
                             const payload = JSON.parse(atob(tokenParts[1]));
                             console.log("Token payload:", payload);
 
+                            // Store userId and userRole in localStorage
+                            if (payload.userId) {
+                                localStorage.setItem('userId', payload.userId);
+                            }
+                            if (payload.role) {
+                                localStorage.setItem('userRole', payload.role);
+                            }
+
                             // If role is pending, show role selection
                             if (payload.role === 'pending') {
                                 setNeedsRole(true);
@@ -61,6 +69,15 @@ const OAuthCallback: React.FC = () => {
 
                         if (response.data) {
                             localStorage.setItem('user', JSON.stringify(response.data));
+
+                            // Store userId and userRole separately
+                            if (response.data.userId) {
+                                localStorage.setItem('userId', response.data.userId);
+                            }
+                            if (response.data.role) {
+                                localStorage.setItem('userRole', response.data.role);
+                            }
+
                             navigate('/dashboard');
                         } else {
                             throw new Error('No profile data returned');

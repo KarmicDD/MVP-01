@@ -5,6 +5,7 @@ import { useEntityDocuments } from '../../../hooks/useEntityDocuments';
 import DocumentList from './DocumentList';
 import { UserProfile } from '../../../types/Dashboard.types';
 import { toast } from 'react-hot-toast';
+import api from '../../../services/api';
 
 interface DocumentsSectionProps {
   userProfile: UserProfile | null;
@@ -38,20 +39,17 @@ const DocumentsSection: React.FC<DocumentsSectionProps> = ({
   // Handle document view analytics
   const handleViewAnalytics = async (documentId: string) => {
     try {
+      // Store selected entity information in localStorage for the document viewer page
+      localStorage.setItem('selectedEntityId', selectedMatchId || '');
+      localStorage.setItem('selectedEntityType', entityType);
+
       // Call API to record document view
-      await fetch('/api/analytics/document-view', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          documentId,
-          viewerId: userProfile?.userId,
-          viewerType: userProfile?.role,
-          entityId: selectedMatchId,
-          entityType
-        }),
+      await api.post('/analytics/document-view', {
+        documentId,
+        viewerId: userProfile?.userId,
+        viewerType: userProfile?.role,
+        entityId: selectedMatchId,
+        entityType
       });
     } catch (error) {
       console.error('Failed to record document view:', error);
@@ -61,20 +59,17 @@ const DocumentsSection: React.FC<DocumentsSectionProps> = ({
   // Handle document download analytics
   const handleDownloadAnalytics = async (documentId: string) => {
     try {
+      // Store selected entity information in localStorage for the document viewer page
+      localStorage.setItem('selectedEntityId', selectedMatchId || '');
+      localStorage.setItem('selectedEntityType', entityType);
+
       // Call API to record document download
-      await fetch('/api/analytics/document-download', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          documentId,
-          downloaderId: userProfile?.userId,
-          downloaderType: userProfile?.role,
-          entityId: selectedMatchId,
-          entityType
-        }),
+      await api.post('/analytics/document-download', {
+        documentId,
+        downloaderId: userProfile?.userId,
+        downloaderType: userProfile?.role,
+        entityId: selectedMatchId,
+        entityType
       });
     } catch (error) {
       console.error('Failed to record document download:', error);

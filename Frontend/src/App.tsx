@@ -14,6 +14,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ProfilePage from './pages/ProfilePage';
 import ViewProfilePage from './pages/ViewProfilePage';
+import DocumentViewerPage from './pages/DocumentViewerPage';
 import { TutorialProvider } from './context/TutorialContext';
 import TutorialManager from './components/Tutorial/TutorialManager';
 import { allTutorials } from './data/tutorials';
@@ -174,6 +175,9 @@ function App() {
                 <ProfilePage />
               </ProtectedRoute>
             } />
+
+            {/* Document Viewer Route */}
+            <Route path="/document/:documentId" element={<DocumentViewerPage />} />
 
             {/* Profile Viewing Route */}
             <Route path="/:identifier" element={<ViewProfilePage />} />

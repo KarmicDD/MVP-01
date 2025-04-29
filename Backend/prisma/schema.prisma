@@ -17,8 +17,8 @@ model User {
   role                  String
   created_at            DateTime                @default(now())
   updated_at            DateTime                @updatedAt
-  profileShares         ProfileShare[]
   profileShareAnalytics ProfileShareAnalytics[]
+  profileShares         ProfileShare[]
   documentViews         DocumentView[]
   documentDownloads     DocumentDownload[]
 
@@ -32,7 +32,7 @@ model ProfileShare {
   expires_at   DateTime
   created_at   DateTime @default(now())
   view_count   Int      @default(0)
-  share_method String?  @default("email")
+  share_method String?  @default("email") @db.VarChar(50)
   user         User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 
   @@map("profile_shares")
@@ -41,11 +41,11 @@ model ProfileShare {
 model ProfileShareAnalytics {
   id              Int      @id @default(autoincrement())
   user_id         String
-  share_method    String
+  share_method    String   @db.VarChar(50)
   recipient_count Int      @default(1)
   shared_url      String
-  created_at      DateTime @default(now())
-  user            User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  created_at      DateTime @default(now()) @db.Timestamp(6)
+  user            User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([user_id])
   @@map("profile_share_analytics")
@@ -55,9 +55,9 @@ model DocumentView {
   id          Int      @id @default(autoincrement())
   document_id String
   viewer_id   String
-  viewer_type String // 'startup' or 'investor'
+  viewer_type String
   entity_id   String
-  entity_type String // 'startup' or 'investor'
+  entity_type String
   viewed_at   DateTime @default(now())
   user        User     @relation(fields: [viewer_id], references: [user_id], onDelete: Cascade)
 
@@ -71,9 +71,9 @@ model DocumentDownload {
   id              Int      @id @default(autoincrement())
   document_id     String
   downloader_id   String
-  downloader_type String // 'startup' or 'investor'
+  downloader_type String
   entity_id       String
-  entity_type     String // 'startup' or 'investor'
+  entity_type     String
   downloaded_at   DateTime @default(now())
   user            User     @relation(fields: [downloader_id], references: [user_id], onDelete: Cascade)
 

@@ -449,8 +449,10 @@ export const getSharedProfile = async (req: Request, res: Response): Promise<voi
         }
 
         // Find the share token in the database
-        const profileShare = await prisma.profileShare.findUnique({
-            where: { share_token: shareToken }
+        const profileShare = await prisma.profileShare.findFirst({
+            where: {
+                share_token: shareToken
+            }
         });
 
         if (!profileShare) {
@@ -459,7 +461,7 @@ export const getSharedProfile = async (req: Request, res: Response): Promise<voi
         }
 
         // Check if the token has expired
-        if (new Date() > profileShare.expires_at) {
+        if (profileShare.expires_at && new Date() > profileShare.expires_at) {
             res.status(410).json({ message: 'Shared profile link has expired' });
             return;
         }
@@ -499,7 +501,7 @@ export const getSharedProfile = async (req: Request, res: Response): Promise<voi
 
         // Update the view count for this profile share
         await prisma.profileShare.update({
-            where: { share_token: shareToken },
+            where: { id: profileShare.id },
             data: {
                 view_count: { increment: 1 }
             }
@@ -753,13 +755,72 @@ export const downloadDocument = async (req: Request, res: Response): Promise<voi
 
         // Set appropriate headers
         res.setHeader('Content-Type', document.fileType);
-        res.setHeader('Content-Disposition', `attachment; filename="${document.originalName}"`);
+
+        // For PDF files viewed in the document viewer, don't set as attachment
+        // This allows the browser to display the PDF inline
+        const isInlineRequest = req.query.inline === 'true' ||
+            (document.fileType.includes('pdf') && !req.query.download);
+
+        if (isInlineRequest) {
+            // For inline viewing (especially PDFs)
+            res.setHeader('Content-Disposition', `inline; filename="${document.originalName}"`);
+        } else {
+            // For downloads
+            res.setHeader('Content-Disposition', `attachment; filename="${document.originalName}"`);
+        }
 
         // Stream the file
         const fileStream = fs.createReadStream(absolutePath);
+        fileStream.on('error', (err) => {
+            console.error('Error streaming file:', err);
+            // Only send error if headers haven't been sent yet
+            if (!res.headersSent) {
+                res.status(500).json({ message: 'Error streaming file', error: err.message });
+            }
+        });
+
         fileStream.pipe(res);
     } catch (error) {
         console.error('Download document error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// Get document by ID
+export const getDocumentById = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { documentId } = req.params;
+
+        // Find the document
+        const document = await DocumentModel.findById(documentId);
+
+        if (!document) {
+            res.status(404).json({ message: 'Document not found' });
+            return;
+        }
+
+        // Check if the document is public or belongs to the user
+        if (!document.isPublic && (!req.user || document.userId !== req.user.userId)) {
+            res.status(403).json({ message: 'Unauthorized to access this document' });
+            return;
+        }
+
+        res.status(200).json({
+            id: document._id,
+            userId: document.userId,
+            fileName: document.fileName,
+            originalName: document.originalName,
+            fileType: document.fileType,
+            fileSize: document.fileSize,
+            description: document.description,
+            documentType: document.documentType,
+            timePeriod: document.timePeriod || '',
+            isPublic: document.isPublic,
+            createdAt: document.createdAt,
+            updatedAt: document.updatedAt
+        });
+    } catch (error) {
+        console.error('Get document by ID error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };

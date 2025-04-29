@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { FiFileText, FiDownload, FiEye, FiInfo, FiArrowUp, FiArrowDown, FiCalendar, FiType, FiAlignLeft } from 'react-icons/fi';
 import { Document } from '../../../hooks/useEntityDocuments';
+import { useNavigate } from 'react-router-dom';
 
 interface DocumentListProps {
   documents: Document[];
@@ -20,6 +21,8 @@ const DocumentList: React.FC<DocumentListProps> = ({
   onViewAnalytics,
   onDownloadAnalytics
 }) => {
+  const navigate = useNavigate();
+
   // State for sorting
   const [sortField, setSortField] = useState<'name' | 'date'>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -61,7 +64,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
       onDownloadAnalytics(document.id);
     }
     // Implement document download logic
-    window.open(`/api/profile/documents/${document.id}/download`, '_blank');
+    window.open(`http://localhost:5000/profile/documents/${document.id}/download`, '_blank');
   };
 
   // Function to handle document view/preview
@@ -70,14 +73,11 @@ const DocumentList: React.FC<DocumentListProps> = ({
     if (onViewAnalytics) {
       onViewAnalytics(document.id);
     }
-    // Open document preview modal
-    setPreviewDocument(document);
-    setShowPreview(true);
+    // Navigate to document viewer page with current location as state
+    navigate(`/document/${document.id}`, {
+      state: { from: window.location.pathname }
+    });
   };
-
-  // State for document preview
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
 
   // Toggle sort direction or change sort field
   const handleSort = (field: 'name' | 'date') => {
@@ -262,96 +262,7 @@ const DocumentList: React.FC<DocumentListProps> = ({
         ))}
       </div>
 
-      {/* Document Preview Modal */}
-      {showPreview && previewDocument && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-75 z-[9999] flex items-center justify-center p-4"
-          onClick={() => setShowPreview(false)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-indigo-600 to-blue-600">
-              <h3 className="text-lg font-semibold text-white truncate flex-1 mr-4">{previewDocument.originalName}</h3>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => handleDownload(previewDocument)}
-                  className="p-2 rounded-full bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-colors"
-                  title="Download Document"
-                >
-                  <FiDownload size={18} />
-                </button>
-                <button
-                  onClick={() => setShowPreview(false)}
-                  className="p-2 rounded-full bg-white bg-opacity-20 text-white hover:bg-opacity-30 transition-colors"
-                  title="Close Preview"
-                >
-                  <FiInfo size={18} />
-                </button>
-              </div>
-            </div>
 
-            <div className="flex-1 overflow-hidden bg-gray-100 p-4">
-              <div className="h-full bg-white rounded-lg shadow overflow-hidden flex flex-col">
-                <div className="p-4 bg-gray-50 border-b border-gray-200">
-                  <div className="flex flex-wrap gap-2">
-                    <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
-                      {getFormattedDocumentType(previewDocument.documentType)}
-                    </span>
-                    <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
-                      {formatFileSize(previewDocument.fileSize)}
-                    </span>
-                    {previewDocument.timePeriod && (
-                      <span className="px-2 py-1 bg-indigo-50 text-indigo-600 rounded text-xs font-medium">
-                        {previewDocument.timePeriod}
-                      </span>
-                    )}
-                    <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
-                      Uploaded: {new Date(previewDocument.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  {previewDocument.description && (
-                    <p className="text-sm text-gray-600 mt-2">{previewDocument.description}</p>
-                  )}
-                </div>
-
-                <div className="flex-1 overflow-auto p-4 flex items-center justify-center">
-                  {/* Document preview based on file type */}
-                  {previewDocument.fileType.includes('pdf') ? (
-                    <iframe
-                      src={`/api/profile/documents/${previewDocument.id}/download`}
-                      className="w-full h-full border-0"
-                      title={previewDocument.originalName}
-                    />
-                  ) : previewDocument.fileType.includes('image') ? (
-                    <img
-                      src={`/api/profile/documents/${previewDocument.id}/download`}
-                      alt={previewDocument.originalName}
-                      className="max-w-full max-h-full object-contain"
-                    />
-                  ) : (
-                    <div className="text-center p-8 bg-gray-50 rounded-lg">
-                      <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center bg-indigo-100 rounded-full">
-                        {getFileIcon(previewDocument.fileType)}
-                      </div>
-                      <h3 className="text-lg font-medium text-gray-800 mb-2">Preview not available</h3>
-                      <p className="text-gray-600 mb-4">This document type cannot be previewed directly.</p>
-                      <button
-                        onClick={() => handleDownload(previewDocument)}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center"
-                      >
-                        <FiDownload className="mr-2" />
-                        Download to view
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
