@@ -176,8 +176,12 @@ function App() {
               </ProtectedRoute>
             } />
 
-            {/* Document Viewer Route */}
-            <Route path="/document/:documentId" element={<DocumentViewerPage />} />
+            {/* Document Viewer Route - Protected */}
+            <Route path="/document/:documentId" element={
+              <ProtectedRoute>
+                <DocumentViewerPage />
+              </ProtectedRoute>
+            } />
 
             {/* Profile Viewing Route */}
             <Route path="/:identifier" element={<ViewProfilePage />} />

@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { FiFileText, FiDownload, FiEye, FiInfo, FiArrowUp, FiArrowDown, FiCalendar, FiType, FiAlignLeft } from 'react-icons/fi';
+import { FiFileText, FiEye, FiInfo, FiArrowUp, FiArrowDown, FiCalendar, FiType, FiAlignLeft } from 'react-icons/fi';
 import { Document } from '../../../hooks/useEntityDocuments';
 import { useNavigate } from 'react-router-dom';
+import { profileService } from '../../../services/api';
 
 interface DocumentListProps {
   documents: Document[];
@@ -57,26 +58,22 @@ const DocumentList: React.FC<DocumentListProps> = ({
     return <FiFileText className="text-gray-500" />;
   };
 
-  // Function to handle document download
+  // Function to handle document view & download
   const handleDownload = (document: Document) => {
-    // Track download analytics
-    if (onDownloadAnalytics) {
-      onDownloadAnalytics(document.id);
-    }
-    // Implement document download logic
-    window.open(`http://localhost:5000/profile/documents/${document.id}/download`, '_blank');
-  };
-
-  // Function to handle document view/preview
-  const handleView = (document: Document) => {
-    // Track view analytics
+    // Track both view and download analytics
     if (onViewAnalytics) {
       onViewAnalytics(document.id);
     }
-    // Navigate to document viewer page with current location as state
-    navigate(`/document/${document.id}`, {
-      state: { from: window.location.pathname }
-    });
+    if (onDownloadAnalytics) {
+      onDownloadAnalytics(document.id);
+    }
+
+    // Use profileService to get the correct download URL
+    const downloadUrl = profileService.getDocumentDownloadUrl(document.id);
+    window.open(downloadUrl, '_blank');
+
+    // Log for debugging
+    console.log(`Opening document download URL: ${downloadUrl}`);
   };
 
   // Toggle sort direction or change sort field
@@ -237,23 +234,13 @@ const DocumentList: React.FC<DocumentListProps> = ({
 
                 <div className="flex space-x-2">
                   <motion.button
-                    onClick={() => handleView(doc)}
-                    className="p-1.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    title="Preview Document"
-                  >
-                    <FiEye size={16} />
-                  </motion.button>
-
-                  <motion.button
                     onClick={() => handleDownload(doc)}
                     className="p-1.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    title="Download Document"
+                    title="View & Download Document"
                   >
-                    <FiDownload size={16} />
+                    <FiEye size={16} />
                   </motion.button>
                 </div>
               </div>

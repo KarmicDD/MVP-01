@@ -530,11 +530,13 @@ router.delete(
 
 router.get(
     '/documents/:documentId',
+    authenticateJWT,
     getDocumentById
 );
 
 router.get(
     '/documents/:documentId/download',
+    authenticateJWT,
     downloadDocument
 );
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api from '../services/api';
+import api, { profileService } from '../services/api';
 import { toast } from 'react-toastify';
 
 // Document interface
@@ -18,19 +18,19 @@ export interface Document {
 
 // Hook return type
 interface UseDocumentViewerResult {
-  document: Document | null;
+  doc: Document | null;
   loading: boolean;
   error: string | null;
   handleDownload: () => void;
 }
 
 /**
- * Custom hook for viewing documents
+ * Custom hook for viewing document details and handling downloads
  * @param documentId The ID of the document to view
  * @returns Object containing document data, loading state, error state, and download handler
  */
 export const useDocumentViewer = (documentId: string | undefined): UseDocumentViewerResult => {
-  const [document, setDocument] = useState<Document | null>(null);
+  const [doc, setDoc] = useState<Document | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,11 +43,14 @@ export const useDocumentViewer = (documentId: string | undefined): UseDocumentVi
         return;
       }
 
+      console.log('useDocumentViewer - Fetching document with ID:', documentId);
+
       try {
         setLoading(true);
         // Fetch document details
         const response = await api.get(`/profile/documents/${documentId}`);
-        setDocument(response.data);
+        console.log('useDocumentViewer - Document data received:', response.data);
+        setDoc(response.data);
 
         // Record document view analytics
         try {
@@ -69,7 +72,7 @@ export const useDocumentViewer = (documentId: string | undefined): UseDocumentVi
               });
             } catch (apiError) {
               // Check if it's a database connection error
-              const errorMessage = apiError?.response?.data?.error || '';
+              const errorMessage = (apiError as any)?.response?.data?.error || '';
               if (errorMessage.includes("Can't reach database server")) {
                 console.warn('Database connection issue - analytics will be recorded later');
                 // Could implement a queue system here to retry later
@@ -86,9 +89,24 @@ export const useDocumentViewer = (documentId: string | undefined): UseDocumentVi
           console.error('Failed to record document view:', analyticsError);
           // Don't show error to user for analytics failure
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching document:', err);
-        setError('Failed to load document. It may have been deleted or you may not have permission to view it.');
+        console.error('Error details:', {
+          status: err.response?.status,
+          message: err.response?.data?.message,
+          documentId
+        });
+
+        // Check if it's an authentication error
+        if (err.response && err.response.status === 401) {
+          setError('Authentication required. Please log in to view this document.');
+        } else if (err.response && err.response.status === 403) {
+          setError('You do not have permission to view this document.');
+        } else if (err.response && err.response.status === 404) {
+          setError('Document not found. It may have been deleted.');
+        } else {
+          setError('Failed to load document. It may have been deleted or you may not have permission to view it.');
+        }
       } finally {
         setLoading(false);
       }
@@ -97,9 +115,9 @@ export const useDocumentViewer = (documentId: string | undefined): UseDocumentVi
     fetchDocument();
   }, [documentId]);
 
-  // Handle document download
+  // Handle document view & download
   const handleDownload = async () => {
-    if (!document) {
+    if (!doc) {
       toast.error('Document not available');
       return;
     }
@@ -108,7 +126,7 @@ export const useDocumentViewer = (documentId: string | undefined): UseDocumentVi
       // Record download analytics
       try {
         // Get the entity information from localStorage or URL parameters
-        const entityId = localStorage.getItem('selectedEntityId') || document.userId;
+        const entityId = localStorage.getItem('selectedEntityId') || doc.userId;
         const entityType = localStorage.getItem('selectedEntityType') || 'startup';
 
         // Make sure we're using the actual logged-in user ID, not 'anonymous'
@@ -116,6 +134,7 @@ export const useDocumentViewer = (documentId: string | undefined): UseDocumentVi
 
         if (userId) {
           try {
+            // Record both view and download analytics
             await api.post('/analytics/document-download', {
               documentId,
               downloaderId: userId,
@@ -124,15 +143,8 @@ export const useDocumentViewer = (documentId: string | undefined): UseDocumentVi
               entityType
             });
           } catch (apiError) {
-            // Check if it's a database connection error
-            const errorMessage = apiError?.response?.data?.error || '';
-            if (errorMessage.includes("Can't reach database server")) {
-              console.warn('Database connection issue - download analytics will be recorded later');
-              // Could implement a queue system here to retry later
-            } else {
-              console.error('API error recording download:', apiError);
-              // Don't rethrow - we don't want to prevent the download
-            }
+            console.error('API error recording download:', apiError);
+            // Don't rethrow - we don't want to prevent the download
           }
         } else {
           // If no userId, log download as anonymous
@@ -143,28 +155,21 @@ export const useDocumentViewer = (documentId: string | undefined): UseDocumentVi
         // Don't show error to user for analytics failure
       }
 
-      // Create a direct download link
-      const downloadUrl = `http://localhost:5000/profile/documents/${document.id}/download?download=true`;
+      // Use the profileService to get the authenticated download URL
+      const downloadUrl = profileService.getDocumentDownloadUrl(doc.id);
+      console.log('useDocumentViewer - Opening document with URL:', downloadUrl);
 
-      // Create a temporary anchor element to trigger the download
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = document.originalName; // Set the filename
-      document.body.appendChild(a);
-      a.click();
+      // Open the document in a new tab
+      window.open(downloadUrl, '_blank');
 
-      // Clean up
-      setTimeout(() => {
-        document.body.removeChild(a);
-      }, 100);
-    } catch (err) {
-      console.error('Error downloading document:', err);
-      toast.error('Failed to download document');
+    } catch (error) {
+      console.error('Unexpected error during download:', error);
+      toast.error('An unexpected error occurred during download');
     }
   };
 
   return {
-    document,
+    doc,
     loading,
     error,
     handleDownload,

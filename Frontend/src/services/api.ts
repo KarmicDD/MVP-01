@@ -408,7 +408,13 @@ export const profileService = {
     },
 
     getDocumentDownloadUrl: (documentId: string) => {
-        return `${api.defaults.baseURL}/profile/documents/${documentId}/download`;
+        // Get the JWT token
+        const token = localStorage.getItem('token');
+
+        // Make sure we're using the correct URL with the API prefix and include the token
+        const url = `${api.defaults.baseURL}/profile/documents/${documentId}/download?token=${token}`;
+        console.log('Generated document download URL with token:', url);
+        return url;
     },
 
     // Get public documents for a specific user

@@ -17,6 +17,8 @@ export const getUserType = async (req: Request, res: Response): Promise<void> =>
             return;
         }
 
+        // Fix: Use the correct field name for the query
+        // The field in the schema is 'user_id', so we need to use that
         const user = await prisma.user.findUnique({
             where: {
                 user_id: req.user.userId,
@@ -729,6 +731,7 @@ export const deleteDocument = async (req: Request, res: Response): Promise<void>
 export const downloadDocument = async (req: Request, res: Response): Promise<void> => {
     try {
         const { documentId } = req.params;
+        const tokenFromQuery = req.query.token as string;
 
         // Find the document
         const document = await DocumentModel.findById(documentId);
@@ -738,8 +741,40 @@ export const downloadDocument = async (req: Request, res: Response): Promise<voi
             return;
         }
 
-        // Check if the document is public or belongs to the user
-        if (!document.isPublic && (!req.user || document.userId !== req.user.userId)) {
+        // Check if the document belongs to the user or is public (but still requires authentication)
+        if (!req.user) {
+            // If no user in request but token is provided in query params, try to verify it
+            if (tokenFromQuery) {
+                try {
+                    // Import and use the JWT verification from auth middleware
+                    const jwt = require('jsonwebtoken');
+                    const decoded = jwt.verify(tokenFromQuery, process.env.JWT_SECRET);
+
+                    // If document is public, allow access
+                    if (document.isPublic) {
+                        // Continue with the download (skip the next checks)
+                    }
+                    // If document is not public, check if it belongs to the user from the token
+                    else if (decoded.userId && decoded.userId === document.userId) {
+                        // Continue with the download (skip the next checks)
+                    }
+                    else {
+                        res.status(403).json({ message: 'Unauthorized to access this document' });
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Token verification error:', err);
+                    res.status(401).json({ message: 'Invalid or expired token' });
+                    return;
+                }
+            } else {
+                // No user and no token
+                res.status(401).json({ message: 'Authentication required to access documents' });
+                return;
+            }
+        }
+        // If user is authenticated through middleware but document is not public and doesn't belong to them
+        else if (!document.isPublic && document.userId !== req.user.userId) {
             res.status(403).json({ message: 'Unauthorized to access this document' });
             return;
         }
@@ -790,6 +825,7 @@ export const downloadDocument = async (req: Request, res: Response): Promise<voi
 export const getDocumentById = async (req: Request, res: Response): Promise<void> => {
     try {
         const { documentId } = req.params;
+        const tokenFromQuery = req.query.token as string;
 
         // Find the document
         const document = await DocumentModel.findById(documentId);
@@ -799,8 +835,40 @@ export const getDocumentById = async (req: Request, res: Response): Promise<void
             return;
         }
 
-        // Check if the document is public or belongs to the user
-        if (!document.isPublic && (!req.user || document.userId !== req.user.userId)) {
+        // Check if the document belongs to the user or is public (but still requires authentication)
+        if (!req.user) {
+            // If no user in request but token is provided in query params, try to verify it
+            if (tokenFromQuery) {
+                try {
+                    // Import and use the JWT verification from auth middleware
+                    const jwt = require('jsonwebtoken');
+                    const decoded = jwt.verify(tokenFromQuery, process.env.JWT_SECRET);
+
+                    // If document is public, allow access
+                    if (document.isPublic) {
+                        // Continue with the response (skip the next checks)
+                    }
+                    // If document is not public, check if it belongs to the user from the token
+                    else if (decoded.userId && decoded.userId === document.userId) {
+                        // Continue with the response (skip the next checks)
+                    }
+                    else {
+                        res.status(403).json({ message: 'Unauthorized to access this document' });
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Token verification error:', err);
+                    res.status(401).json({ message: 'Invalid or expired token' });
+                    return;
+                }
+            } else {
+                // No user and no token
+                res.status(401).json({ message: 'Authentication required to access documents' });
+                return;
+            }
+        }
+        // If user is authenticated through middleware but document is not public and doesn't belong to them
+        else if (!document.isPublic && document.userId !== req.user.userId) {
             res.status(403).json({ message: 'Unauthorized to access this document' });
             return;
         }

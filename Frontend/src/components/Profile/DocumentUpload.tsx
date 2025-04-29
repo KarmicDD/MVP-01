@@ -159,6 +159,7 @@ const DocumentUpload: React.FC = () => {
   };
 
   const handleDownload = (documentId: string) => {
+    // Open the document in a new tab for viewing or downloading
     window.open(profileService.getDocumentDownloadUrl(documentId), '_blank');
   };
 
@@ -518,9 +519,9 @@ const DocumentUpload: React.FC = () => {
                             className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg"
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            title="Download"
+                            title="View & Download"
                           >
-                            <FiDownload size={16} />
+                            <FiEye size={16} />
                           </motion.button>
                           <motion.button
                             onClick={() => handleEditClick(doc)}
