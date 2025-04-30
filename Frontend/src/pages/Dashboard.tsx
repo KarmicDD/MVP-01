@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import ComingSoon from '../components/ComingSoon/ComingSoon';
@@ -42,11 +42,14 @@ const Dashboard: React.FC = () => {
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [matches, setMatches] = useState<Match[]>([]);
     const [loading, setLoading] = useState(true);
+    const [matchesLoading, setMatchesLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [industry, setIndustry] = useState<string>('');
     const [stage, setStage] = useState<string>('');
     const [location, setLocation] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState<string>('');
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
+    const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
     const [activeTab, setActiveTab] = useState<string>('matches');
     const [analyticsTab, setAnalyticsTab] = useState<string>('belief');
 
@@ -96,7 +99,7 @@ const Dashboard: React.FC = () => {
     const navigate = useNavigate();
 
     // Keep your existing constants and functions
-    const API_URL = 'https://mvp-01.onrender.com/api';
+    const API_URL = 'http://localhost:5000/api';
     const token = localStorage.getItem('token');
 
     const handleLogout = () => {
@@ -114,7 +117,8 @@ const Dashboard: React.FC = () => {
         if (!userProfile) return;
 
         try {
-            setLoading(true);
+            // Only set matchesLoading to true, not the global loading state
+            setMatchesLoading(true);
             setError(null);
 
             // Build search options from current state
@@ -149,11 +153,11 @@ const Dashboard: React.FC = () => {
             setPagination(results.pagination);
             setCurrentPage(results.pagination.page);
 
-            setLoading(false);
+            setMatchesLoading(false);
         } catch (err) {
             console.error('Error searching matches:', err);
             // Don't set error for display, just log it
-            setLoading(false);
+            setMatchesLoading(false);
         }
     };
 
@@ -331,13 +335,35 @@ const Dashboard: React.FC = () => {
         }
     }, [userProfile]);
 
+    // Handle search query changes with debounce
+    useEffect(() => {
+        // Clear any existing timeout
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+
+        // Set a new timeout to delay the search
+        const timeout = setTimeout(() => {
+            // Only fetch if we have a user profile and the search query has changed
+            if (userProfile && searchQuery !== debouncedSearchQuery) {
+                console.log('Debounced search with query:', searchQuery);
+                setDebouncedSearchQuery(searchQuery);
+                fetchMatches(1);
+            }
+        }, 200); // 200ms delay - faster for better responsiveness
+
+        setSearchTimeout(timeout);
+
+        // Cleanup function to clear the timeout when component unmounts or searchQuery changes
+        return () => {
+            if (timeout) {
+                clearTimeout(timeout);
+            }
+        };
+    }, [searchQuery, userProfile]);
+
     const handlePageChange = (page: number) => {
         fetchMatches(page);
-    };
-
-    const handleSearchSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        fetchMatches(1); // Reset to first page when searching
     };
 
     const handleFilterChange = (name: string, value: string) => {
@@ -354,33 +380,19 @@ const Dashboard: React.FC = () => {
             // Add more cases as needed
         }
 
-        // Don't fetch immediately to avoid too many requests
-        // User can apply filters with a button click
+        // Fetch immediately to update results in real-time
+        // We'll use a minimal delay to allow the state to update
+        setTimeout(() => {
+            fetchMatches(1);
+        }, 50);
     };
 
     // const applyFilters = () => {
     //     fetchMatches(1); // Reset to page 1 when applying filters
     // };
 
-    // Filter matches based on search query and filters
-    const filteredMatches = matches.filter(match => {
-        const matchesSearchQuery = searchQuery === '' ||
-            (match.companyName && match.companyName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-            (match.email && match.email.toLowerCase().includes(searchQuery.toLowerCase()));
-
-        const matchesIndustry = industry === '' ||
-            (match.industry && match.industry === industry) ||
-            (match.industriesOfInterest && match.industriesOfInterest.includes(industry));
-
-        const matchesStage = stage === '' ||
-            (match.fundingStage && match.fundingStage === stage) ||
-            (match.preferredStages && match.preferredStages.includes(stage));
-
-        const matchesLocation = location === '' ||
-            (match.location && match.location.includes(location));
-
-        return matchesSearchQuery && matchesIndustry && matchesStage && matchesLocation;
-    });
+    // No longer filtering matches client-side as we're using the backend search
+    // This ensures the search works globally across all matches, not just the current page
 
     // Toggle bookmark
     const toggleBookmark = (matchId: string) => {
@@ -409,20 +421,11 @@ const Dashboard: React.FC = () => {
         setStage('');
         setLocation('');
         setSearchQuery('');
+        // Fetch matches after clearing filters to update results
+        fetchMatches(1);
     };
 
-    // Animation variants for framer-motion
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                duration: 0.3,
-                when: "beforeChildren",
-                staggerChildren: 0.1
-            }
-        }
-    };
+    // Animation variants for framer-motion are defined inline where needed
 
     const itemVariants = {
         hidden: { y: 20, opacity: 0 },
@@ -506,7 +509,6 @@ const Dashboard: React.FC = () => {
                                 location={location}
                                 setLocation={setLocation}
                                 filterOptions={filterOptions}
-                                handleSearchSubmit={handleSearchSubmit}
                                 handleFilterChange={handleFilterChange}
                                 handleClearFilters={clearFilters}
                                 fetchMatches={fetchMatches}
@@ -516,8 +518,8 @@ const Dashboard: React.FC = () => {
                             />
 
                             <MatchesList
-                                matches={filteredMatches}
-                                loading={loading}
+                                matches={matches}
+                                loading={matchesLoading}
                                 error={error}
                                 sortBy={sortBy}
                                 sortOrder={sortOrder}

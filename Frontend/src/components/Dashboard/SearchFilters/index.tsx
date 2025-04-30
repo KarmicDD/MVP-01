@@ -16,7 +16,6 @@ interface SearchFiltersProps {
   location: string;
   setLocation?: (location: string) => void;
   filterOptions: FilterOptions;
-  handleSearchSubmit: (e: React.FormEvent) => void;
   handleFilterChange: (name: string, value: string) => void;
   handleClearFilters: () => void;
   fetchMatches: (page: number) => void;
@@ -40,7 +39,6 @@ const SearchFilters: React.FC<SearchFiltersProps> = (props) => {
     stage,
     location,
     filterOptions,
-    handleSearchSubmit,
     handleFilterChange,
     handleClearFilters,
     fetchMatches,
@@ -62,7 +60,7 @@ const SearchFilters: React.FC<SearchFiltersProps> = (props) => {
     >
       <div className="bg-white rounded-xl shadow-lg p-6">
         <div className="flex flex-col md:flex-row gap-4">
-          <form onSubmit={handleSearchSubmit} className="relative flex-1">
+          <div className="relative flex-1">
             <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg" />
             <input
               type="text"
@@ -78,15 +76,15 @@ const SearchFilters: React.FC<SearchFiltersProps> = (props) => {
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 onClick={() => {
                   setSearchQuery('');
-                  // Optionally fetch without the search term
+                  // Immediately fetch without the search term to get all results
+                  console.log('Search cleared, fetching all matches');
                   fetchMatches(1);
                 }}
               >
                 <FiX />
               </button>
             )}
-            <button type="submit" className="hidden">Search</button>
-          </form>
+          </div>
 
           <div className="flex gap-2">
             <button

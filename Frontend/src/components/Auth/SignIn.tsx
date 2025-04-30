@@ -93,7 +93,7 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, selectedRole }) => {
         }
 
         // Redirect to OAuth endpoint with role parameter
-        const redirectUrl = `https://mvp-01.onrender.com/api/auth/${provider}` +
+        const redirectUrl = `http://localhost:5000/api/auth/${provider}` +
             (selectedRole ? `?role=${selectedRole}` : '');
         window.location.href = redirectUrl;
     };

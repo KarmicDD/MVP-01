@@ -22,7 +22,7 @@ const ProfileById: React.FC = () => {
 
                 // Try to get the profile directly using the userId
                 try {
-                    const profileResponse = await fetch(`https://mvp-01.onrender.com/api/profile/public/${userId}`);
+                    const profileResponse = await fetch(`http://localhost:5000/api/profile/public/${userId}`);
 
                     if (profileResponse.ok) {
                         const data = await profileResponse.json();
@@ -39,7 +39,7 @@ const ProfileById: React.FC = () => {
                 // If direct fetch fails, try searching
                 try {
                     // Try to search for startups with the userId
-                    const startupResponse = await fetch(`https://mvp-01.onrender.com/api/search/startups?userId=${userId}`);
+                    const startupResponse = await fetch(`http://localhost:5000/api/search/startups?userId=${userId}`);
 
                     if (startupResponse.ok) {
                         const data = await startupResponse.json();
@@ -58,7 +58,7 @@ const ProfileById: React.FC = () => {
 
                 try {
                     // Try to search for investors with the userId
-                    const investorResponse = await fetch(`https://mvp-01.onrender.com/api/search/investors?userId=${userId}`);
+                    const investorResponse = await fetch(`http://localhost:5000/api/search/investors?userId=${userId}`);
 
                     if (investorResponse.ok) {
                         const data = await investorResponse.json();

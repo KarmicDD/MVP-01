@@ -15,7 +15,7 @@ info:
 servers:
   - url: http://localhost:5000/api
     description: Development server
-  - url: https://mvp-01.onrender.com/api
+  - url: http://localhost:5000/api
     description: Production server
 
 tags:

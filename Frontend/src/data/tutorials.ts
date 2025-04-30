@@ -4,50 +4,49 @@ import { Tutorial } from '../context/TutorialContext';
 export const dashboardTutorial: Tutorial = {
   id: 'dashboard-tutorial',
   title: 'Dashboard Tutorial',
-  description: 'Learn how to use the KarmicDD dashboard',
+  description: 'Learn how to use the StartupMatch dashboard',
   steps: [
     {
       id: 'welcome',
-      title: 'Welcome to KarmicDD',
-      content: 'This quick tour will help you get familiar with the dashboard and its features. Let\'s get started!',
-      image: '/images/tutorials/dashboard-overview.png',
-      video: 'https://youtu.be/example1',  // Replace with actual YouTube video when available
-      link: {
-        url: 'https://karmicdd.com/help/dashboard',
-        text: 'Dashboard documentation'
-      }
+      title: 'Welcome to StartupMatch',
+      content: 'Welcome to your personalized dashboard! This quick tour will help you navigate the interface and discover all the features available to you.',
+      image: '/images/tutorials/dashboard-overview.png'
+    },
+    {
+      id: 'overview',
+      title: 'Overview Tab',
+      content: 'The Overview tab provides a summary of your profile, recent activity, and key metrics at a glance. This is your central hub for important notifications and updates.',
+      image: '/images/tutorials/overview-tab.png'
     },
     {
       id: 'matches',
       title: 'Matches Tab',
-      content: 'The Matches tab shows you potential startup-investor matches based on your profile. Click on any match card to see detailed compatibility information.',
+      content: 'The Matches tab shows potential startup-investor connections based on your profile. Click on any match card to view detailed compatibility information and contact options.',
       image: '/images/tutorials/matches-tab.png'
     },
     {
       id: 'analytics',
       title: 'Analytics Tab',
-      content: 'The Analytics tab provides in-depth analysis of your profile and matches, including belief system alignment and financial due diligence.',
-      image: '/images/tutorials/analytics-tab.png',
-      link: {
-        url: 'https://karmicdd.com/help/analytics',
-        text: 'Learn more about analytics'
-      }
+      content: 'The Analytics tab offers in-depth analysis including belief system alignment, financial metrics, and compatibility scores. These insights help you make informed decisions.',
+      image: '/images/tutorials/analytics-tab.png'
+    },
+    {
+      id: 'documents',
+      title: 'Documents Tab',
+      content: 'The Documents tab allows you to view, download, and manage all documents shared between you and your matches. All documents are securely stored and easily accessible with a single click.',
+      image: '/images/tutorials/documents-tab.png'
     },
     {
       id: 'profile',
       title: 'Your Profile',
-      content: 'Keep your profile updated to improve match quality. You can edit your profile information, upload documents, and manage your settings.',
+      content: 'Keep your profile updated to improve match quality. Access your profile settings from the user menu in the top-right corner of the dashboard.',
       image: '/images/tutorials/profile-section.png'
     },
     {
       id: 'conclusion',
       title: 'You\'re All Set!',
-      content: 'You\'re now ready to use KarmicDD to find your perfect startup-investor match. If you need help at any time, click the help button in the bottom right corner.',
-      image: '/images/tutorials/conclusion.png',
-      link: {
-        url: 'https://karmicdd.com/help',
-        text: 'Visit help center'
-      }
+      content: 'You\'re now ready to use StartupMatch to find your perfect startup-investor match. If you need help at any time, click the question mark icon in the top navigation bar or the Help & Support button in the sidebar.',
+      image: '/images/tutorials/conclusion.png'
     }
   ]
 };
@@ -61,41 +60,38 @@ export const financialDueDiligenceTutorial: Tutorial = {
     {
       id: 'welcome',
       title: 'Financial Due Diligence',
-      content: 'This tool provides comprehensive financial analysis and audit reports compliant with Indian company standards.',
-      image: '/images/tutorials/financial-dd-overview.png',
-      video: 'https://youtu.be/example2',  // Replace with actual YouTube video when available
+      content: 'Our AI-powered financial due diligence tool provides comprehensive analysis of financial documents with insights tailored for both startups and investors.',
+      image: '/images/tutorials/financial-dd-overview.png'
     },
     {
       id: 'document-upload',
       title: 'Document Upload',
-      content: 'Upload your financial documents here. We support various formats including PDF, Excel, and CSV files.',
-      image: '/images/tutorials/document-upload.png',
-      link: {
-        url: 'https://karmicdd.com/help/supported-documents',
-        text: 'View supported document types'
-      }
+      content: 'Upload financial documents through the Documents tab. We support PDF, Excel, Word, and CSV formats. All uploads are securely stored and processed.',
+      image: '/images/tutorials/document-upload.png'
     },
     {
-      id: 'report-types',
-      title: 'Report Types',
-      content: 'Choose between Financial Analysis or Audit Report based on your needs. Financial Analysis focuses on growth metrics, while Audit Reports focus on compliance.',
-      image: '/images/tutorials/report-types.png'
+      id: 'analysis-process',
+      title: 'Analysis Process',
+      content: 'Once uploaded, our AI analyzes your documents and generates a detailed report. This typically takes 1-2 minutes depending on document size and complexity.',
+      image: '/images/tutorials/analysis-process.png'
     },
     {
       id: 'metrics',
       title: 'Financial Metrics',
-      content: 'Review key financial metrics with color-coded indicators showing the health of each metric.',
-      image: '/images/tutorials/financial-metrics.png',
-      link: {
-        url: 'https://karmicdd.com/help/financial-metrics',
-        text: 'Learn about financial metrics'
-      }
+      content: 'Reports include key metrics like revenue growth, profit margins, burn rate, and runway. Each metric is color-coded to indicate performance relative to industry benchmarks.',
+      image: '/images/tutorials/financial-metrics.png'
     },
     {
-      id: 'export',
-      title: 'Export & Share',
-      content: 'You can export reports as PDF or share them directly with your matches via email.',
-      image: '/images/tutorials/export-share.png'
+      id: 'insights',
+      title: 'AI Insights',
+      content: 'Each report includes AI-generated insights highlighting strengths, potential concerns, and recommendations based on the financial data.',
+      image: '/images/tutorials/financial-insights.png'
+    },
+    {
+      id: 'download-share',
+      title: 'Download & Share',
+      content: 'Reports can be downloaded as PDFs or shared directly with your matches. You control who has access to your financial information.',
+      image: '/images/tutorials/download-share.png'
     }
   ]
 };
@@ -109,26 +105,38 @@ export const beliefSystemTutorial: Tutorial = {
     {
       id: 'welcome',
       title: 'Belief System Analysis',
-      content: 'This tool analyzes the alignment between startup and investor belief systems to predict long-term compatibility.',
+      content: 'Our unique Belief System Analysis tool evaluates the alignment between startup and investor values, mission, and working styles to predict long-term partnership success.',
       image: '/images/tutorials/belief-system-overview.png'
     },
     {
       id: 'questionnaire',
       title: 'Questionnaire',
-      content: 'Complete the belief system questionnaire to generate your analysis. The more questions you answer, the more accurate the results.',
+      content: 'Complete the belief system questionnaire in your profile settings. The questionnaire covers topics like business ethics, growth philosophy, and decision-making styles.',
       image: '/images/tutorials/questionnaire.png'
+    },
+    {
+      id: 'compatibility',
+      title: 'Compatibility Dashboard',
+      content: 'View your compatibility with matches in the Analytics tab. The dashboard shows overall alignment and breaks down compatibility across different dimensions.',
+      image: '/images/tutorials/compatibility-dashboard.png'
     },
     {
       id: 'alignment',
       title: 'Alignment Score',
-      content: 'The alignment score shows how well your values match with potential partners. Higher scores indicate better long-term compatibility.',
+      content: 'The alignment score (0-100) indicates how well your values match with potential partners. Scores above 75 suggest excellent compatibility for long-term partnerships.',
       image: '/images/tutorials/alignment-score.png'
     },
     {
       id: 'insights',
       title: 'AI Insights',
-      content: 'Review AI-generated insights about your compatibility and potential areas of friction.',
+      content: 'Review AI-generated insights about your compatibility, highlighting areas of strong alignment and potential friction points to discuss during negotiations.',
       image: '/images/tutorials/ai-insights.png'
+    },
+    {
+      id: 'recommendations',
+      title: 'Recommendations',
+      content: 'Based on your belief system profile, the system provides personalized recommendations for improving communication and building stronger partnerships.',
+      image: '/images/tutorials/recommendations.png'
     }
   ]
 };

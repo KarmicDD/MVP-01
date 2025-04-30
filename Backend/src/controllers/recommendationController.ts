@@ -6,7 +6,7 @@ import ApiUsageModel from '../models/ApiUsageModel/ApiUsage';
 import RecommendationModel from '../models/RecommendationModel';
 
 // Maximum API requests per day
-const MAX_DAILY_REQUESTS = 15;
+const MAX_DAILY_REQUESTS = 100;
 
 /**
  * Check if user has reached their daily API usage limit

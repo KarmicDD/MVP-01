@@ -133,12 +133,15 @@ const MatchesList: React.FC<MatchesListProps> = ({
         </div>
 
         {/* Match cards */}
-        <div className="p-6">
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="loader">Loading...</div>
+        <div className="p-6 relative">
+          {/* Show loading overlay when loading */}
+          {loading && (
+            <div className="absolute inset-0 bg-white bg-opacity-70 flex items-center justify-center z-10">
+              <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
             </div>
-          ) : error ? (
+          )}
+
+          {error ? (
             <div className="text-center py-8 text-red-500">{error}</div>
           ) : matches.length === 0 ? (
             <div className="text-center py-12">

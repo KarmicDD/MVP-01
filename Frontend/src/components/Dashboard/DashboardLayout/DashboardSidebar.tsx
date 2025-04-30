@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { FiX, FiHome, FiUsers, FiBarChart2, FiFileText, FiSettings, FiMessageSquare, FiHelpCircle, FiUser } from 'react-icons/fi';
 import { colours } from '../../../utils/colours';
 import { Logo } from '../../Auth/Logo';
+import TutorialButton from '../../Tutorial/TutorialButton';
 
 interface SidebarProps {
   userProfile?: {
@@ -89,15 +90,16 @@ const DashboardSidebar: React.FC<SidebarProps> = ({
 
       {/* Help section */}
       <div className="p-4 border-t border-gray-100">
-        <motion.button
-          onClick={() => setActiveTab('help')}
-          className="flex items-center px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-all w-full text-left"
-          whileHover={{ x: 4 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          <FiHelpCircle size={20} className="mr-3" />
-          <span className="font-medium">Help & Support</span>
-        </motion.button>
+        <div className="flex flex-col space-y-2">
+          <TutorialButton
+            tutorialId="dashboard-tutorial"
+            className="flex items-center px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-50 transition-all w-full text-left"
+            buttonText="Help & Support"
+            iconSize={20}
+            showIcon={true}
+            tooltip="Show Dashboard Tutorial"
+          />
+        </div>
       </div>
 
       {/* User profile section - more comforting for investor */}

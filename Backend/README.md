@@ -44,7 +44,29 @@ This is the backend service for KarmicDD, built with Node.js, TypeScript, Prisma
 
 1.  Create a `.env` file in the root directory (see `.env.example` for the required variables).
 
+## Database Architecture
+
+The application uses a hybrid database approach:
+
+- **PostgreSQL** (via Prisma): Handles user authentication, relationships, and analytics data
+- **MongoDB**: Stores document data, rich profiles, and content
+
+This architecture optimizes for both data consistency (PostgreSQL) and flexibility (MongoDB).
+
+### Document Storage
+
+Documents uploaded by users are stored and managed through MongoDB. The actual files are saved to the filesystem, while metadata is stored in MongoDB using the `Document` model. This includes:
+
+- File information (name, type, size)
+- User associations
+- Document categorization
+- Access permissions
+
+The PostgreSQL database only tracks document analytics (views and downloads) but does not store the actual documents or their metadata.
+
 ## Database Setup (Prisma)
+
+### For New Developers
 
 1.  Ensure PostgreSQL is running.
 
@@ -54,26 +76,69 @@ This is the backend service for KarmicDD, built with Node.js, TypeScript, Prisma
     DATABASE_URL="postgresql://user:password@host:port/database?schema=public"
     ```
 
-3.  Generate Prisma Client:
+3.  Initialize your database with the current schema:
+
+    ```
+    npx prisma db push
+    ```
+
+    This command will create all tables defined in the Prisma schema in your database without requiring migration history.
+
+4.  Generate Prisma Client:
 
     ```
     npx prisma generate
     ```
 
-4.  Create and apply migrations:
+    This creates the TypeScript client that provides type-safe access to your database.
+
+5.  Start the server:
 
     ```
-    npx prisma migrate dev --name init
-    npx prisma migrate deploy
+    npm run dev
     ```
 
-    (Replace `init` with a descriptive name for your initial migration.)
+### Handling Schema Changes
 
-Alternatively, for rapid prototyping in development (use with caution):
+For this project, we use `npx prisma db push` as the primary method for schema changes:
+
+1.  Update the `schema.prisma` file with your changes.
+
+2.  Apply the changes to your database:
+
+    ```
+    npx prisma db push
+    ```
+
+3.  Regenerate the Prisma Client to reflect the schema changes:
+
+    ```
+    npx prisma generate
+    ```
+
+4.  Restart your server to use the updated client.
+
+### Working with Existing Databases
+
+If you need to update your Prisma schema to match an existing database:
 
 ```
-npx prisma db push
+npx prisma db pull
 ```
+
+This command introspects your database and updates your `schema.prisma` file to match the actual database schema. This is useful when:
+
+- The database schema has been modified outside of Prisma
+- You're connecting to an existing database for the first time
+- You need to verify your schema matches the actual database
+
+After pulling the schema, always run `npx prisma generate` to update your client.
+
+### Important Note on Migrations
+
+Currently, this project uses `db push` instead of formal migrations due to the hybrid database approach and ongoing development. Formal migrations (`npx prisma migrate dev`) are not currently supported in this project setup without additional configuration.
+
+If you need to track schema changes, please document them in comments or in a separate changelog file.
 
 ## OAuth Configuration
 

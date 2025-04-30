@@ -14,7 +14,7 @@
 
 This documentation describes the REST API endpoints for the KarmicDD platform. The API enables interaction with profiles, questionnaires, matching algorithms, and search functionality to connect startups with potential investors.
 
-**Base URL**: `https://mvp-01.onrender.com/api`
+**Base URL**: `http://localhost:5000/api`
 
 ## Authentication
 

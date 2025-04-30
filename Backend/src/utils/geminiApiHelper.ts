@@ -20,15 +20,23 @@ const createModel = (modelName: string, config: any = {}) => {
   });
 };
 
-// Default models
-const defaultModel = createModel("gemini-2.5-flash-preview-04-17");
-const financialModel = createModel("gemini-2.5-flash-preview-04-17");
+// Default models with maximum output tokens
+const defaultModel = createModel("gemini-2.5-flash-preview-04-17", {
+  generationConfig: {
+    maxOutputTokens: 32768, // Maximum allowed value
+  }
+});
+const financialModel = createModel("gemini-2.5-flash-preview-04-17", {
+  generationConfig: {
+    maxOutputTokens: 32768, // Maximum allowed value
+  }
+});
 const beliefSystemModel = createModel("gemini-2.5-flash-preview-04-17", {
   generationConfig: {
     temperature: 0.7,
     topP: 0.95,
     topK: 40,
-    maxOutputTokens: 8192,
+    maxOutputTokens: 32768, // Maximum allowed value
   }
 });
 
@@ -45,41 +53,41 @@ export async function executeWithRetry<T>(
   initialDelay: number = 1000
 ): Promise<T> {
   let lastError: Error | null = null;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       // Attempt the API call
       return await apiCallFn();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      
+
       // Check if we've reached the maximum number of retries
       if (attempt === maxRetries) {
         console.error(`All ${maxRetries} retry attempts failed for Gemini API call:`, lastError);
         throw lastError;
       }
-      
+
       // Network-related errors should be retried
-      const isNetworkError = 
-        lastError.message.includes('fetch failed') || 
+      const isNetworkError =
+        lastError.message.includes('fetch failed') ||
         lastError.message.includes('network') ||
         lastError.message.includes('connection') ||
         lastError.message.includes('timeout');
-      
+
       if (!isNetworkError) {
         console.error('Non-network error occurred, not retrying:', lastError);
         throw lastError;
       }
-      
+
       // Calculate delay with exponential backoff
       const delay = initialDelay * Math.pow(2, attempt);
       console.log(`Gemini API call failed (attempt ${attempt + 1}/${maxRetries + 1}). Retrying in ${delay}ms...`);
-      
+
       // Wait before the next retry
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  
+
   // This should never be reached due to the throw in the loop, but TypeScript needs it
   throw lastError || new Error('Unknown error occurred during API call retries');
 }

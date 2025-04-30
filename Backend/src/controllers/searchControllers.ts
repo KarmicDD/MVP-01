@@ -77,7 +77,8 @@ export const searchStartups = async (req: Request, res: Response): Promise<void>
             limit = 10,
             sortBy = 'createdAt',
             sortOrder = 'desc',
-            matchScore = 0
+            matchScore = 0,
+            keywords
         } = req.query;
 
         // Convert page and limit to numbers
@@ -105,6 +106,19 @@ export const searchStartups = async (req: Request, res: Response): Promise<void>
         if (location) {
             // Case insensitive partial match for location
             query.location = { $regex: new RegExp(location as string, 'i') };
+        }
+
+        // Handle global search with keywords
+        if (keywords) {
+            // Create a text search across multiple fields
+            const searchRegex = new RegExp(keywords as string, 'i');
+            query.$or = [
+                { companyName: searchRegex },
+                { description: searchRegex },
+                { industry: searchRegex },
+                { email: searchRegex },
+                { location: searchRegex }
+            ];
         }
 
         // Prepare for form submission filtering
@@ -216,7 +230,8 @@ export const searchInvestors = async (req: Request, res: Response): Promise<void
             limit = 10,
             sortBy = 'createdAt',
             sortOrder = 'desc',
-            matchScore = 0
+            matchScore = 0,
+            keywords
         } = req.query;
 
         // Convert page and limit to numbers
@@ -246,6 +261,19 @@ export const searchInvestors = async (req: Request, res: Response): Promise<void
             // Match investors who have the specified investment criteria
             const criteriaList = Array.isArray(investmentCriterion) ? investmentCriterion : [investmentCriterion];
             query.investmentCriteria = { $in: criteriaList };
+        }
+
+        // Handle global search with keywords
+        if (keywords) {
+            // Create a text search across multiple fields
+            const searchRegex = new RegExp(keywords as string, 'i');
+            query.$or = [
+                { companyName: searchRegex },
+                { description: searchRegex },
+                { industriesOfInterest: searchRegex },
+                { email: searchRegex },
+                { investmentCriteria: searchRegex }
+            ];
         }
 
         // Prepare for form submission filtering

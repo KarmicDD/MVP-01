@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiMenu, FiBell, FiUser, FiSettings, FiLogOut, FiSearch, FiChevronDown, FiPlus, FiFileText, FiMessageSquare, FiHelpCircle } from 'react-icons/fi';
+import { FiMenu, FiBell, FiUser, FiSettings, FiLogOut, FiSearch, FiChevronDown, FiPlus, FiFileText, FiMessageSquare } from 'react-icons/fi';
 import { colours } from '../../../utils/colours';
 import DropdownPortal from './DropdownPortal';
+import TutorialIcon from '../../Tutorial/TutorialIcon';
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -87,18 +88,16 @@ const DashboardHeader: React.FC<HeaderProps> = ({ toggleSidebar, userProfile, on
                 <FiMessageSquare size={18} />
               </motion.button>
 
-              <motion.button
+              <TutorialIcon
+                tutorialId="dashboard-tutorial"
                 className="p-2 rounded-lg transition-colors"
+                iconSize={18}
+                color={primaryColor}
+                tooltip="Show Dashboard Tutorial"
                 style={{
                   background: `${primaryColor}10`,
-                  color: primaryColor
                 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                title="Help"
-              >
-                <FiHelpCircle size={18} />
-              </motion.button>
+              />
             </div>
           </div>
         </div>

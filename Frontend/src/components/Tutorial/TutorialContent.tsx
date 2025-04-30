@@ -56,47 +56,59 @@ const TutorialContent: React.FC<TutorialContentProps> = ({ step }) => {
 
   return (
     <div className="p-6">
-      {/* Image (if provided) */}
-      {step.image && (
-        <div className="mb-4 rounded-lg overflow-hidden shadow-md">
-          <img
-            src={step.image}
-            alt={`${step.title} illustration`}
-            className="w-full h-auto object-cover"
-            onError={(e) => {
-              // Fallback if image fails to load
-              e.currentTarget.style.display = 'none';
-            }}
-          />
+      <div className="flex flex-col md:flex-row gap-6">
+        <div className={`${step.image ? 'md:w-1/2' : 'w-full'}`}>
+          {/* Content */}
+          <div className="text-gray-700 mb-4">
+            {typeof step.content === 'string' ? (
+              <p className="text-base leading-relaxed">{step.content}</p>
+            ) : (
+              step.content
+            )}
+          </div>
+
+          {/* External link (if provided) */}
+          {step.link && (
+            <div className="mt-4">
+              <a
+                href={step.link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-medium"
+              >
+                {step.link.text || 'Learn more'}
+                <FiExternalLink className="ml-2" />
+              </a>
+            </div>
+          )}
+
+          {/* Video (if provided) */}
+          {!step.image && renderVideo()}
         </div>
-      )}
 
-      {/* Video (if provided) */}
-      {renderVideo()}
+        {/* Image (if provided) */}
+        {step.image && (
+          <div className="md:w-1/2">
+            <div className="rounded-lg overflow-hidden shadow-md border border-gray-100">
+              <img
+                src={step.image}
+                alt={`${step.title} illustration`}
+                className="w-full h-auto object-cover"
+                onError={(e) => {
+                  // Fallback if image fails to load
+                  e.currentTarget.style.display = 'none';
+                  // Show a message
+                  e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center', 'h-48', 'bg-gray-100');
+                  e.currentTarget.parentElement!.innerHTML = '<p class="text-gray-500">Image not available</p>';
+                }}
+              />
+            </div>
 
-      {/* Content */}
-      <div className="text-gray-700">
-        {typeof step.content === 'string' ? (
-          <p className="text-base leading-relaxed">{step.content}</p>
-        ) : (
-          step.content
+            {/* Video below image if both are provided */}
+            {step.video && renderVideo()}
+          </div>
         )}
       </div>
-
-      {/* External link (if provided) */}
-      {step.link && (
-        <div className="mt-4">
-          <a
-            href={step.link.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-indigo-600 hover:text-indigo-800 flex items-center text-sm font-medium"
-          >
-            {step.link.text || 'Learn more'}
-            <FiExternalLink className="ml-1" />
-          </a>
-        </div>
-      )}
     </div>
   );
 };

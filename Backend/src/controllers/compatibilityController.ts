@@ -20,10 +20,13 @@ if (!apiKey) {
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
+    generationConfig: {
+        maxOutputTokens: 32768, // Maximum allowed value
+    }
 });
 
 // Maximum API requests per day
-const MAX_DAILY_REQUESTS = 15;
+const MAX_DAILY_REQUESTS = 100;
 
 interface CompatibilityScore {
     overallScore: number;
@@ -56,6 +59,10 @@ async function checkRateLimit(userId: string): Promise<RateLimitResult> {
         usageRecord = await ApiUsageModel.create({
             userId,
             compatibilityRequestCount: 0,
+            beliefSystemRequestCount: 0,
+            financialAnalysisRequestCount: 0,
+            recommendationRequestCount: 0,
+            date: new Date(),
             lastReset: new Date()
         });
     }

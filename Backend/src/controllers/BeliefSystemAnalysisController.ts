@@ -25,12 +25,12 @@ const model = genAI.getGenerativeModel({
         temperature: 0.7,
         topP: 0.95,
         topK: 40,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 32768, // Maximum allowed value
     }
 });
 
 // Maximum API requests per day
-const MAX_DAILY_REQUESTS = 3;
+const MAX_DAILY_REQUESTS = 100;
 // Analysis expiration in days
 const ANALYSIS_EXPIRATION_DAYS = 5;
 
@@ -114,6 +114,10 @@ async function checkRateLimit(userId: string): Promise<RateLimitResult> {
         usageRecord = await ApiUsageModel.create({
             userId,
             compatibilityRequestCount: 0,
+            beliefSystemRequestCount: 0,
+            financialAnalysisRequestCount: 0,
+            recommendationRequestCount: 0,
+            date: new Date(),
             lastReset: new Date()
         });
     }
@@ -125,27 +129,27 @@ async function checkRateLimit(userId: string): Promise<RateLimitResult> {
         now.getMonth() !== lastReset.getMonth() ||
         now.getFullYear() !== lastReset.getFullYear()) {
         // Reset counter for new day
-        usageRecord.compatibilityRequestCount = 0;
+        usageRecord.beliefSystemRequestCount = 0;
         usageRecord.lastReset = now;
         await usageRecord.save();
     }
 
     // Check if user has reached limit
-    if (usageRecord.compatibilityRequestCount >= MAX_DAILY_REQUESTS) {
+    if (usageRecord.beliefSystemRequestCount >= MAX_DAILY_REQUESTS) {
         return {
             underLimit: false,
-            usageCount: usageRecord.compatibilityRequestCount,
+            usageCount: usageRecord.beliefSystemRequestCount,
             maxRequests: MAX_DAILY_REQUESTS
         }; // Limit reached
     }
 
     // Update counter and save
-    usageRecord.compatibilityRequestCount += 1;
+    usageRecord.beliefSystemRequestCount += 1;
     await usageRecord.save();
 
     return {
         underLimit: true,
-        usageCount: usageRecord.compatibilityRequestCount,
+        usageCount: usageRecord.beliefSystemRequestCount,
         maxRequests: MAX_DAILY_REQUESTS
     }; // Under limit
 }

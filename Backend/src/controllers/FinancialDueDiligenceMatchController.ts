@@ -18,7 +18,7 @@ if (!apiKey) {
 }
 
 // Maximum API requests per day
-const MAX_DAILY_REQUESTS = 15;
+const MAX_DAILY_REQUESTS = 100;
 
 interface RateLimitResult {
     underLimit: boolean;
@@ -39,6 +39,10 @@ async function checkRateLimit(userId: string): Promise<RateLimitResult> {
         usageRecord = await ApiUsageModel.create({
             userId,
             compatibilityRequestCount: 0,
+            beliefSystemRequestCount: 0,
+            financialAnalysisRequestCount: 0,
+            recommendationRequestCount: 0,
+            date: new Date(),
             lastReset: new Date()
         });
     }
@@ -50,29 +54,29 @@ async function checkRateLimit(userId: string): Promise<RateLimitResult> {
         now.getMonth() !== lastReset.getMonth() ||
         now.getFullYear() !== lastReset.getFullYear()) {
         // Reset counter for new day
-        usageRecord.compatibilityRequestCount = 0;
+        usageRecord.financialAnalysisRequestCount = 0;
         usageRecord.lastReset = now;
         await usageRecord.save();
     }
 
     // Check if under limit
-    const underLimit = usageRecord.compatibilityRequestCount < MAX_DAILY_REQUESTS;
+    const underLimit = usageRecord.financialAnalysisRequestCount < MAX_DAILY_REQUESTS;
 
     if (!underLimit) {
         return {
             underLimit: false,
-            usageCount: usageRecord.compatibilityRequestCount,
+            usageCount: usageRecord.financialAnalysisRequestCount,
             maxRequests: MAX_DAILY_REQUESTS
         };
     }
 
     // If under limit, increment the counter
-    usageRecord.compatibilityRequestCount += 1;
+    usageRecord.financialAnalysisRequestCount += 1;
     await usageRecord.save();
 
     return {
         underLimit: true,
-        usageCount: usageRecord.compatibilityRequestCount,
+        usageCount: usageRecord.financialAnalysisRequestCount,
         maxRequests: MAX_DAILY_REQUESTS
     };
 }
