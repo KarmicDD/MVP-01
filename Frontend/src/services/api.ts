@@ -844,4 +844,62 @@ export const profileService = {
     }
 };
 
+// Dashboard services
+export const dashboardService = {
+    // Get all dashboard data in a single request
+    getAllDashboardData: async () => {
+        try {
+            const response = await api.get('/dashboard/all');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+            throw error;
+        }
+    },
+
+    // Get dashboard statistics
+    getDashboardStats: async () => {
+        try {
+            const response = await api.get('/dashboard/stats');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching dashboard stats:', error);
+            throw error;
+        }
+    },
+
+    // Get recent matches
+    getRecentMatches: async (limit = 5) => {
+        try {
+            const response = await api.get(`/dashboard/matches?limit=${limit}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching recent matches:', error);
+            throw error;
+        }
+    },
+
+    // Get recent activity
+    getRecentActivity: async (limit = 5) => {
+        try {
+            const response = await api.get(`/dashboard/activity?limit=${limit}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching recent activity:', error);
+            throw error;
+        }
+    },
+
+    // Get upcoming tasks
+    getUpcomingTasks: async () => {
+        try {
+            const response = await api.get('/dashboard/tasks');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching upcoming tasks:', error);
+            throw error;
+        }
+    }
+};
+
 export default api;

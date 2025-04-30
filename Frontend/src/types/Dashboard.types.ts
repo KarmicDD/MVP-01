@@ -6,6 +6,55 @@ export interface UserProfile {
     companyName?: string;
 }
 
+// Dashboard data types
+export interface DashboardStats {
+    documentCount: number;
+    profileViews: number;
+    documentViews: number;
+    documentDownloads: number;
+    compatibilityScore: number;
+    matchRate: number;
+}
+
+export interface RecentMatch {
+    id: string;
+    entityId: string;
+    name: string;
+    description: string;
+    compatibilityScore: number;
+    location: string;
+    industry: string;
+    isNew: boolean;
+    logo?: string;
+}
+
+export interface Activity {
+    id: string;
+    type: 'profile_view' | 'document_download' | 'document_upload' | 'analysis_complete' | 'match' | 'message';
+    title: string;
+    entity: string;
+    time: string;
+    formattedTime: string;
+    icon: string;
+    color: string;
+}
+
+export interface Task {
+    id: string;
+    title: string;
+    dueDate: string;
+    formattedDueDate: string;
+    priority: 'high' | 'medium' | 'low';
+    completed: boolean;
+}
+
+export interface DashboardData {
+    stats: DashboardStats;
+    recentMatches: RecentMatch[];
+    activities: Activity[];
+    tasks: Task[];
+}
+
 export interface Match {
     _id?: string;
     id?: string;
