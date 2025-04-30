@@ -1,8 +1,78 @@
 // src/services/api.ts
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 // Use environment variable or fallback to production URL
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'https://mvp-01.onrender.com/api';
+
+// Helper function to extract meaningful error messages from API responses
+export const extractErrorMessage = (error: unknown): string => {
+    if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError;
+
+        // Check if we have a response from the server
+        if (axiosError.response) {
+            const { data, status } = axiosError.response;
+
+            // Handle different response formats
+            if (data) {
+                // If data contains a message property
+                if (typeof data === 'object' && 'message' in data) {
+                    return data.message as string;
+                }
+
+                // If data contains errors array (validation errors)
+                if (typeof data === 'object' && 'errors' in data && Array.isArray(data.errors) && data.errors.length > 0) {
+                    return data.errors[0].msg || data.errors[0].message || 'Validation error';
+                }
+
+                // If data is a string
+                if (typeof data === 'string') {
+                    return data;
+                }
+            }
+
+            // If we couldn't extract a message, provide status-based messages
+            switch (status) {
+                case 400:
+                    return 'Invalid request. Please check your information and try again.';
+                case 401:
+                    return 'Authentication failed. Please check your credentials.';
+                case 403:
+                    return 'You don\'t have permission to access this resource.';
+                case 404:
+                    return 'The requested resource was not found.';
+                case 409:
+                    return 'This email is already registered. Please use a different email or sign in.';
+                case 429:
+                    return 'Too many requests. Please try again later.';
+                case 500:
+                    return 'Server error. Please try again later.';
+                default:
+                    return `Request failed with status code ${status}`;
+            }
+        }
+
+        // Network errors
+        if (axiosError.code === 'ECONNABORTED') {
+            return 'Request timed out. Please check your internet connection and try again.';
+        }
+
+        if (axiosError.message && axiosError.message.includes('Network Error')) {
+            return 'Network error. Please check your internet connection and try again.';
+        }
+
+        // Fallback for other axios errors
+        return axiosError.message || 'An error occurred with your request';
+    }
+
+    // For non-axios errors
+    if (error instanceof Error) {
+        return error.message;
+    }
+
+    // Fallback for unknown errors
+    return 'An unexpected error occurred';
+};
 
 // Define interfaces for auth services
 interface UserRegistrationData {
@@ -43,15 +113,36 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     (error) => {
+        // Log the error for debugging
+        console.error('API Error:', error);
+
         // Handle 401 errors (unauthorized)
         if (error.response && error.response.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            // Redirect to login page if not already there
+            // Only clear auth data and redirect if not on the auth page
+            // This prevents clearing during login/signup attempts
             if (!window.location.pathname.includes('/auth')) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('userRole');
+
+                // Redirect to login page
                 window.location.href = '/auth';
             }
         }
+
+        // Enhance error object with extracted message for easier handling
+        if (error.response && error.response.data) {
+            // If the server returned a message, use it
+            if (typeof error.response.data === 'object' && error.response.data.message) {
+                error.userMessage = error.response.data.message;
+            }
+            // If there are validation errors
+            else if (typeof error.response.data === 'object' && error.response.data.errors && Array.isArray(error.response.data.errors)) {
+                error.userMessage = error.response.data.errors[0].msg || 'Validation error';
+            }
+        }
+
         return Promise.reject(error);
     }
 );
@@ -60,34 +151,44 @@ api.interceptors.response.use(
 export const authService = {
     // Register
     register: async (userData: UserRegistrationData) => {
-        const response = await api.post('/auth/register', userData);
-        if (response.data.token) {
-            localStorage.setItem('token', response.data.token);
-            localStorage.setItem('user', JSON.stringify(response.data.user));
+        try {
+            const response = await api.post('/auth/register', userData);
+            if (response.data.token) {
+                localStorage.setItem('token', response.data.token);
+                localStorage.setItem('user', JSON.stringify(response.data.user));
 
-            // Store userId and userRole separately for easier access
-            if (response.data.user) {
-                localStorage.setItem('userId', response.data.user.userId);
-                localStorage.setItem('userRole', response.data.user.role);
+                // Store userId and userRole separately for easier access
+                if (response.data.user) {
+                    localStorage.setItem('userId', response.data.user.userId);
+                    localStorage.setItem('userRole', response.data.user.role);
+                }
             }
+            return response.data;
+        } catch (error) {
+            // Extract and throw a more user-friendly error message
+            throw new Error(extractErrorMessage(error));
         }
-        return response.data;
     },
 
     // Login
     login: async (credentials: UserCredentials) => {
-        const response = await api.post('/auth/login', credentials);
-        if (response.data.token) {
-            localStorage.setItem('token', response.data.token);
-            localStorage.setItem('user', JSON.stringify(response.data.user));
+        try {
+            const response = await api.post('/auth/login', credentials);
+            if (response.data.token) {
+                localStorage.setItem('token', response.data.token);
+                localStorage.setItem('user', JSON.stringify(response.data.user));
 
-            // Store userId and userRole separately for easier access
-            if (response.data.user) {
-                localStorage.setItem('userId', response.data.user.userId);
-                localStorage.setItem('userRole', response.data.user.role);
+                // Store userId and userRole separately for easier access
+                if (response.data.user) {
+                    localStorage.setItem('userId', response.data.user.userId);
+                    localStorage.setItem('userRole', response.data.user.role);
+                }
             }
+            return response.data;
+        } catch (error) {
+            // Extract and throw a more user-friendly error message
+            throw new Error(extractErrorMessage(error));
         }
-        return response.data;
     },
 
     // Update OAuth user role

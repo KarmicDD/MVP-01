@@ -6,6 +6,7 @@ import { FaLinkedin } from "react-icons/fa";
 import { colours } from '../../utils/colours';
 import { authService } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
+import AuthErrorDisplay from './AuthErrorDisplay';
 
 interface SignUpProps {
     setActiveView: (view: 'signIn') => void;
@@ -135,20 +136,13 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
 
     return (
         <div className="p-6">
-            <AnimatePresence>
-                {error && (
-                    <motion.div
-                        className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-md text-red-800 flex items-center"
-                        initial={{ opacity: 0, height: 0, y: -10 }}
-                        animate={{ opacity: 1, height: 'auto', y: 0 }}
-                        exit={{ opacity: 0, height: 0, y: -10 }}
-                        transition={{ duration: 0.3 }}
-                    >
-                        <FaTimes className="mr-3 text-red-500 flex-shrink-0" />
-                        <p>{error}</p>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {error && (
+                <AuthErrorDisplay
+                    error={error}
+                    type="signup"
+                    onDismiss={() => setError('')}
+                />
+            )}
 
             <motion.form
                 className="space-y-5"

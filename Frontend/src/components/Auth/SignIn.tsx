@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { FaEye, FaEyeSlash, FaLock, FaEnvelope } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 import { FaLinkedin } from "react-icons/fa";
 import { colours } from '../../utils/colours';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/api';
+import AuthErrorDisplay from './AuthErrorDisplay';
 
 interface SignInProps {
     setActiveView: (view: 'signIn' | 'createAccount' | 'chooseRole') => void;
@@ -99,20 +100,13 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, selectedRole }) => {
 
     return (
         <div className="p-8">
-            <AnimatePresence>
-                {error && (
-                    <motion.div
-                        className="mb-6 p-4 bg-red-50 border border-red-100 rounded-lg text-red-600 flex items-center"
-                        initial={{ opacity: 0, y: -10, height: 0 }}
-                        animate={{ opacity: 1, y: 0, height: 'auto' }}
-                        exit={{ opacity: 0, y: -10, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                    >
-                        <FaLock className="mr-2 flex-shrink-0" />
-                        <span>{error}</span>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {error && (
+                <AuthErrorDisplay
+                    error={error}
+                    type="signin"
+                    onDismiss={() => setError('')}
+                />
+            )}
 
             <motion.form
                 className="space-y-5"

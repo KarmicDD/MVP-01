@@ -30,10 +30,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ onLogout }) => {
                     className="text-gray-600 hover:text-gray-900 text-sm flex items-center"
                     onClick={onLogout}
                 >
-                    <LogOut size={16} className="mr-1" onClick={(e) => {
-                        e.preventDefault();
-                        onLogout();
-                    }} />
+                    <LogOut size={16} className="mr-1" />
                     Exit
                 </button>
             </div>
