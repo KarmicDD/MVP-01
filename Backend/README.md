@@ -83,14 +83,14 @@ npx prisma db push
     *   Navigate to "APIs & Services" -> "Credentials".
     *   Configure the OAuth consent screen.  Set the "Application type" to 'External'.
     *   Create an OAuth 2.0 Client ID of type "Web application".
-    *   Set the Authorized JavaScript origins (e.g., `http://localhost:5173`, `https://yourdomain.com`).
-    *   Set the Authorized redirect URIs (e.g., `http://localhost:5000/api/auth/google/callback`, `https://api.yourdomain.com/api/auth/google/callback`).
+    *   Set the Authorized JavaScript origins (e.g., `http://localhost:5173`, `https://karmicdd.netlify.app`).
+    *   Set the Authorized redirect URIs (e.g., `http://localhost:5000/api/auth/google/callback`, `https://mvp-01.onrender.com/api/auth/google/callback`).
     *   Obtain the `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 
 2.  **LinkedIn OAuth:**
     *   Go to [LinkedIn Developer Portal](https://developer.linkedin.com/).
     *   Create a new application.
-    *   Set the Authorized redirect URLs (e.g., `http://localhost:5000/api/auth/linkedin/callback`, `https://api.yourdomain.com/api/auth/linkedin/callback`).
+    *   Set the Authorized redirect URLs (e.g., `http://localhost:5000/api/auth/linkedin/callback`, `https://mvp-01.onrender.com/api/auth/linkedin/callback`).
     *   Obtain the `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET`.
 
 3.  Set the OAuth environment variables in your `.env` file:
@@ -125,7 +125,8 @@ npx prisma db push
 The API documentation is available through Swagger UI at `/api-docs` when the server is running:
 
 ```
-http://localhost:5000/api-docs
+http://localhost:5000/api-docs  # Local development
+https://mvp-01.onrender.com/api-docs  # Production
 ```
 
 The documentation provides a comprehensive overview of all available endpoints, request/response schemas, and data models. You can also test the API directly from the Swagger UI interface.
@@ -161,8 +162,8 @@ The following environment variables are required:
 
 *   `PORT`: The port the server will listen on (e.g., `5000`).
 *   `NODE_ENV`: Set to `development` or `production`.
-*   `API_URL`: The base URL of your API (e.g., `http://localhost:5000` or `https://api.yourdomain.com`).
-*   `FRONTEND_URL`: The base URL of your frontend application (e.g., `http://localhost:5173` or `https://yourdomain.com`).
+*   `API_URL`: The base URL of your API (e.g., `http://localhost:5000` or `https://mvp-01.onrender.com`).
+*   `FRONTEND_URL`: The base URL of your frontend application (e.g., `http://localhost:5173` or `https://karmicdd.netlify.app`).
 *   `JWT_SECRET`: A secret key used to sign JWT tokens.  Generate a long, random string.
 *   `JWT_EXPIRES_IN`: How long JWT tokens are valid for (e.g., `7d`, `1h`).
 *   `DATABASE_URL`: The connection string for your PostgreSQL database.

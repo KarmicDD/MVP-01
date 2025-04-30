@@ -96,7 +96,8 @@ const startServer = async () => {
 
         // Start server
         app.listen(PORT, () => {
-            console.log(`Server running on http://localhost:${PORT}`);
+            console.log(`Server running on port ${PORT}`);
+            console.log(`API available at: https://mvp-01.onrender.com`);
         });
 
     } catch (err) {

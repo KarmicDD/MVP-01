@@ -115,7 +115,7 @@ To start using KarmicDD:
    npm install
    npm run dev
    ```
-4. Access the application at `http://localhost:5173`
+4. Access the application at `https://karmicdd.netlify.app` (production) or `http://localhost:5173` (local development)
 
 ## Our Approach to AI and Due Diligence
 

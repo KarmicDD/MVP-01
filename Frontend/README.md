@@ -97,7 +97,10 @@ yarn install
 
 3. Update the .env file with your configuration:
 ```
-VITE_API_BASE_URL=http://localhost:8000/api
+# For local development
+VITE_API_BASE_URL=http://localhost:5000/api
+# For production
+# VITE_API_BASE_URL=https://mvp-01.onrender.com/api
 VITE_GEMINI_API_KEY=your-gemini-api-key
 VITE_OAUTH_GOOGLE_CLIENT_ID=your-google-client-id
 ```
