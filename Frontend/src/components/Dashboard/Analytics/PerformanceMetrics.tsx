@@ -73,7 +73,7 @@ const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ role }) => {
         callbacks: {
           labelPointStyle: function () {
             return {
-              pointStyle: 'circle',
+              pointStyle: 'circle' as const,
               rotation: 0
             };
           }

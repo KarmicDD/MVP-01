@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { FiBarChart2, FiPieChart, FiTrendingUp, FiUsers, FiFileText, FiFilter } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiBarChart2, FiTrendingUp, FiUsers, FiFilter } from 'react-icons/fi';
 import { colours } from '../../../utils/colours';
 import PerformanceMetrics from './PerformanceMetrics';
 import BeliefSystemAnalytics from './BeliefSystemAnalytics';
@@ -20,9 +20,6 @@ const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ userProfile, select
 
   // Primary color based on role
   const primaryColor = role === 'startup' ? colours.primaryBlue : '#10B981';
-  const primaryLight = role === 'startup' ? '#EBF5FF' : '#ECFDF5';
-  const primaryText = role === 'startup' ? 'text-blue-600' : 'text-green-600';
-  const primaryBg = role === 'startup' ? 'bg-blue-50' : 'bg-green-50';
 
   // Define gradient backgrounds based on role
   const cardGradient = role === 'startup'
@@ -162,7 +159,7 @@ const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ userProfile, select
           >
             <BeliefSystemAnalytics
               userProfile={userProfile as any}
-              selectedMatchId={selectedMatchId}
+              selectedMatchId={selectedMatchId || null}
             />
           </motion.div>
         )}
@@ -177,7 +174,7 @@ const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({ userProfile, select
           >
             <FinancialAnalytics
               userProfile={userProfile as any}
-              selectedMatchId={selectedMatchId}
+              selectedMatchId={selectedMatchId || null}
             />
           </motion.div>
         )}

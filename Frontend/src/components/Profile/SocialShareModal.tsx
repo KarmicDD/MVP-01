@@ -221,7 +221,7 @@ const SocialShareModal: React.FC<SocialShareModalProps> = ({
 
                           <FacebookShareButton
                             url={profileUrl}
-                            quote={title}
+                            hashtag="#KarmicDD"
                             onClick={() => trackSocialShare('facebook')}
                           >
                             <motion.div

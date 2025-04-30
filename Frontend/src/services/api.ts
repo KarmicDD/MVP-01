@@ -729,6 +729,17 @@ export const profileService = {
             console.error('Error fetching profile by username:', error);
             throw error;
         }
+    },
+
+    // Get profile using a share token
+    getSharedProfile: async (shareToken: string) => {
+        try {
+            const response = await api.get(`/profile/shared/${shareToken}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching shared profile:', error);
+            throw error;
+        }
     }
 };
 

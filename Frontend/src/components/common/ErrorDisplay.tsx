@@ -19,7 +19,7 @@ const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onRetry, onDismiss }
   const [showDetails, setShowDetails] = useState(false);
 
   const hasValidationDetails = error.validationDetails && Object.keys(error.validationDetails).length > 0;
-  
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
@@ -89,7 +89,7 @@ const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onRetry, onDismiss }
                   </div>
                 )}
 
-                {hasValidationDetails && (
+                {hasValidationDetails && error.validationDetails && (
                   <div className="bg-white p-3 rounded border border-red-200 overflow-auto max-h-60">
                     <h4 className="text-sm font-medium text-red-800 mb-2">Validation Errors:</h4>
                     <ul className="text-xs space-y-2">
