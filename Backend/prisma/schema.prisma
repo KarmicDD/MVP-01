@@ -17,10 +17,11 @@ model User {
   role                  String
   created_at            DateTime                @default(now())
   updated_at            DateTime                @updatedAt
+  documentDownloads     DocumentDownload[]
+  documentViews         DocumentView[]
+  documents             documents[]
   profileShareAnalytics ProfileShareAnalytics[]
   profileShares         ProfileShare[]
-  documentViews         DocumentView[]
-  documentDownloads     DocumentDownload[]
 
   @@map("users")
 }
@@ -81,4 +82,24 @@ model DocumentDownload {
   @@index([downloader_id])
   @@index([entity_id])
   @@map("document_downloads")
+}
+
+model documents {
+  id            String   @id
+  user_id       String
+  file_name     String
+  original_name String
+  file_type     String
+  file_size     Int
+  file_path     String
+  description   String?
+  document_type String
+  time_period   String?
+  is_public     Boolean  @default(false)
+  created_at    DateTime @default(now())
+  updated_at    DateTime
+  users         User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([document_type])
+  @@index([user_id])
 }
