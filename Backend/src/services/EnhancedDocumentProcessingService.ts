@@ -23,9 +23,6 @@ if (!apiKey) {
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({
   model: "gemini-2.5-flash-preview-04-17",
-  generationConfig: {
-    maxOutputTokens: 32768, // Maximum allowed value
-  }
 });
 
 // Promisify fs functions
@@ -470,6 +467,62 @@ export class EnhancedDocumentProcessingService {
   }
 
   /**
+   * Validates and fixes compliance items status values to ensure they match the allowed enum values
+   * @param data The parsed data from Gemini API
+   */
+  validateAndFixComplianceItems(data: any): void {
+    // Valid status values according to the Mongoose schema
+    const validStatusValues = ['compliant', 'partial', 'non-compliant'];
+
+    // Check if complianceItems exists and is an array
+    if (data && data.complianceItems && Array.isArray(data.complianceItems)) {
+      console.log('Validating compliance items...');
+
+      // Loop through each compliance item
+      data.complianceItems.forEach((item: any, index: number) => {
+        if (item && item.status) {
+          // Check if the status is not a valid value
+          if (!validStatusValues.includes(item.status)) {
+            console.log(`Invalid compliance status "${item.status}" found at index ${index}. Fixing to "partial".`);
+
+            // Map invalid status values to a valid one (using 'partial' as default)
+            item.status = 'partial';
+          }
+        }
+      });
+    }
+
+    // Also check taxCompliance sections if they exist
+    if (data && data.taxCompliance) {
+      const taxSections = ['gst', 'incomeTax', 'tds'];
+
+      taxSections.forEach(section => {
+        if (data.taxCompliance[section] && data.taxCompliance[section].status) {
+          if (!validStatusValues.includes(data.taxCompliance[section].status)) {
+            console.log(`Invalid tax compliance status "${data.taxCompliance[section].status}" in ${section}. Fixing to "partial".`);
+            data.taxCompliance[section].status = 'partial';
+          }
+        }
+      });
+    }
+
+    // Check legal and regulatory compliance areas if they exist
+    if (data && data.legalAndRegulatoryCompliance &&
+      data.legalAndRegulatoryCompliance.complianceAreas &&
+      Array.isArray(data.legalAndRegulatoryCompliance.complianceAreas)) {
+
+      data.legalAndRegulatoryCompliance.complianceAreas.forEach((area: any, index: number) => {
+        if (area && area.status) {
+          if (!validStatusValues.includes(area.status)) {
+            console.log(`Invalid legal compliance status "${area.status}" found at index ${index}. Fixing to "partial".`);
+            area.status = 'partial';
+          }
+        }
+      });
+    }
+  }
+
+  /**
    * Extract financial data from documents using Gemini AI
    * @param documentContent Combined document content
    * @param companyName Name of the company
@@ -713,7 +766,7 @@ export class EnhancedDocumentProcessingService {
                   "complianceItems": [
                     {
                       "requirement": "Compliance requirement",
-                      "status": "compliant" or "partial" or "non-compliant",
+                      "status": "compliant" or "partial" or "non-compliant", // IMPORTANT: Only these three values are allowed - do NOT use "unknown" or any other value
                       "details": "Details about compliance status",
                       "severity": "high" or "medium" or "low",
                       "recommendation": "Recommendation to address compliance issue",
@@ -919,7 +972,7 @@ export class EnhancedDocumentProcessingService {
                   },
                   "taxCompliance": {
                     "gst": {
-                      "status": "compliant" or "partial" or "non-compliant",
+                      "status": "compliant" or "partial" or "non-compliant", // IMPORTANT: Only these three values are allowed - do NOT use "unknown" or any other value
                       "details": "Details about GST compliance",
                       "filingHistory": [
                         {"period": "Period", "status": "filed" or "pending" or "overdue", "dueDate": "Due date"}
@@ -927,7 +980,7 @@ export class EnhancedDocumentProcessingService {
                       "recommendations": ["Recommendation 1", "Recommendation 2"]
                     },
                     "incomeTax": {
-                      "status": "compliant" or "partial" or "non-compliant",
+                      "status": "compliant" or "partial" or "non-compliant", // IMPORTANT: Only these three values are allowed - do NOT use "unknown" or any other value
                       "details": "Details about income tax compliance",
                       "filingHistory": [
                         {"period": "Period", "status": "filed" or "pending" or "overdue", "dueDate": "Due date"}
@@ -935,7 +988,7 @@ export class EnhancedDocumentProcessingService {
                       "recommendations": ["Recommendation 1", "Recommendation 2"]
                     },
                     "tds": {
-                      "status": "compliant" or "partial" or "non-compliant",
+                      "status": "compliant" or "partial" or "non-compliant", // IMPORTANT: Only these three values are allowed - do NOT use "unknown" or any other value
                       "details": "Details about TDS compliance",
                       "filingHistory": [
                         {"period": "Period", "status": "filed" or "pending" or "overdue", "dueDate": "Due date"}
@@ -1110,7 +1163,7 @@ export class EnhancedDocumentProcessingService {
                     "complianceAreas": [
                       {
                         "area": "Area name (e.g., Companies Act, GST, Income Tax)",
-                        "status": "compliant" or "partial" or "non-compliant",
+                        "status": "compliant" or "partial" or "non-compliant", // IMPORTANT: Only these three values are allowed - do NOT use "unknown" or any other value
                         "description": "Description of compliance status",
                         "risks": ["Risk 1", "Risk 2"],
                         "recommendations": ["Recommendation 1", "Recommendation 2"],
@@ -1144,6 +1197,7 @@ export class EnhancedDocumentProcessingService {
                 - Set "reportCalculated" to false if you cannot extract sufficient financial information from the documents
                 - Even if reportCalculated is false, still provide as much analysis as possible with the available data
                 - NEVER leave the report empty - always provide some analysis even if limited
+                - *** IMPORTANT: For ALL compliance status fields, ONLY use "compliant", "partial", or "non-compliant" values - NEVER use "unknown" or any other values ***
                 - Include a formal audit opinion section that follows professional auditing standards
                 - Provide a professional, detailed executive summary with key findings and recommended actions
                 - Focus on key financial indicators, trends, and growth metrics with color-coded status indicators
@@ -1223,6 +1277,9 @@ export class EnhancedDocumentProcessingService {
           console.log('Raw response:', text);
           throw new Error('Failed to parse financial data from Gemini response');
         }
+
+        // Validate and fix compliance items status values
+        this.validateAndFixComplianceItems(parsedData);
 
         return parsedData;
       } catch (error) {

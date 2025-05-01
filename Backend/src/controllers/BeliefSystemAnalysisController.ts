@@ -25,7 +25,7 @@ const model = genAI.getGenerativeModel({
         temperature: 0.7,
         topP: 0.95,
         topK: 40,
-        maxOutputTokens: 32768, // Maximum allowed value
+        maxOutputTokens: 8192, // Maximum allowed value
     }
 });
 

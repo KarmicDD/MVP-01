@@ -23,12 +23,18 @@ const createModel = (modelName: string, config: any = {}) => {
 // Default models with maximum output tokens
 const defaultModel = createModel("gemini-2.5-flash-preview-04-17", {
   generationConfig: {
-    maxOutputTokens: 32768, // Maximum allowed value
+    maxOutputTokens: 8192, // Maximum allowed value
+    temperature: 0.2, // Lower temperature for more deterministic outputs
+    topP: 0.95,
+    topK: 40,
   }
 });
 const financialModel = createModel("gemini-2.5-flash-preview-04-17", {
   generationConfig: {
-    maxOutputTokens: 32768, // Maximum allowed value
+    maxOutputTokens: 8192, // Maximum allowed value
+    temperature: 0.1, // Very low temperature for more consistent financial data
+    topP: 0.95,
+    topK: 40,
   }
 });
 const beliefSystemModel = createModel("gemini-2.5-flash-preview-04-17", {
@@ -36,7 +42,7 @@ const beliefSystemModel = createModel("gemini-2.5-flash-preview-04-17", {
     temperature: 0.7,
     topP: 0.95,
     topK: 40,
-    maxOutputTokens: 32768, // Maximum allowed value
+    maxOutputTokens: 8192, // Maximum allowed value
   }
 });
 

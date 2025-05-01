@@ -16,7 +16,7 @@ const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash", // Using gemini-2.0-flash as specified
     generationConfig: {
-        maxOutputTokens: 32768, // Maximum allowed value
+        maxOutputTokens: 8192, // Maximum allowed value
     }
 });
 

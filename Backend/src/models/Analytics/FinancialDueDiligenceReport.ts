@@ -13,13 +13,13 @@ export interface IFinancialMetric {
 
 export interface IRiskFactor {
   category: string;
-  level: 'high' | 'medium' | 'low';
+  level: 'high' | 'medium' | 'low' | 'N/A';
   severity?: 'high' | 'medium' | 'low'; // Added for backward compatibility
   description: string;
   impact: string;
   mitigation?: string; // Added for backward compatibility
   mitigationStrategy?: string;
-  timeHorizon?: 'short_term' | 'medium_term' | 'long_term';
+  timeHorizon?: 'short_term' | 'medium_term' | 'long_term' | 'N/A';
 }
 
 export interface IComplianceItem {
@@ -37,7 +37,7 @@ export interface IFinancialRatio {
   value: number | string; // Allow for both numbers and strings like "N/A"
   industry_average?: number | string; // Allow for both numbers and strings like "N/A"
   description: string;
-  status: 'good' | 'warning' | 'critical';
+  status: 'good' | 'warning' | 'critical' | 'moderate' | 'low';
   trend?: string; // Accept any string value for trend
   historicalData?: {
     period: string;
@@ -82,7 +82,7 @@ export interface IFinancialDueDiligenceReport extends Document {
       name: string;
       description: string;
       trend: string; // Accept any string value for trend
-      impact: 'positive' | 'negative' | 'neutral';
+      impact: 'positive' | 'negative' | 'neutral' | 'warning';
       data?: {
         period: string;
         value: number;
@@ -259,13 +259,13 @@ const FinancialMetricSchema = new Schema({
 
 const RiskFactorSchema = new Schema({
   category: { type: String, required: true },
-  level: { type: String, enum: ['high', 'medium', 'low'], required: true },
+  level: { type: String, enum: ['high', 'medium', 'low', 'N/A'], required: true },
   severity: { type: String, enum: ['high', 'medium', 'low'] }, // Added for backward compatibility
   description: { type: String, required: true },
   impact: { type: String, required: true },
   mitigation: { type: String }, // Added for backward compatibility
   mitigationStrategy: { type: String },
-  timeHorizon: { type: String, enum: ['short_term', 'medium_term', 'long_term'] }
+  timeHorizon: { type: String, enum: ['short_term', 'medium_term', 'long_term', 'N/A'] }
 });
 
 const ComplianceItemSchema = new Schema({
@@ -283,7 +283,7 @@ const FinancialRatioSchema = new Schema({
   value: { type: Schema.Types.Mixed, required: false }, // Allow for both numbers and strings like "N/A"
   industry_average: { type: Schema.Types.Mixed }, // Allow for both numbers and strings like "N/A"
   description: { type: String, required: true },
-  status: { type: String, enum: ['good', 'warning', 'critical'], required: true },
+  status: { type: String, enum: ['good', 'warning', 'critical', 'moderate', 'low'], required: true },
   trend: { type: String }, // Accept any string value for trend
   historicalData: [{
     period: { type: String },
@@ -296,7 +296,7 @@ const TrendSchema = new Schema({
   name: { type: String, required: true },
   description: { type: String, required: true },
   trend: { type: String, required: true }, // Accept any string value for trend
-  impact: { type: String, enum: ['positive', 'negative', 'neutral'], required: true },
+  impact: { type: String, enum: ['positive', 'negative', 'neutral', 'warning'], required: true },
   data: [{
     period: { type: String },
     value: { type: Schema.Types.Mixed } // Allow for both numbers and strings like "N/A"
