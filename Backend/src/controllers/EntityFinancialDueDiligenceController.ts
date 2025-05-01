@@ -347,15 +347,26 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 _id: { $in: documentIds }
             });
 
-            // Prepare documents with metadata for processing
+            // Prepare documents with comprehensive metadata for processing
             const documentsWithMetadata = documents.map(doc => ({
                 filePath: doc.filePath,
                 documentType: doc.documentType,
-                originalName: doc.originalName || path.basename(doc.filePath)
+                originalName: doc.originalName || path.basename(doc.filePath),
+                description: doc.description || '',
+                timePeriod: doc.timePeriod || '',
+                fileType: doc.fileType || '',
+                fileSize: doc.fileSize || 0,
+                createdAt: doc.createdAt ? doc.createdAt.toISOString() : new Date().toISOString(),
+                updatedAt: doc.updatedAt ? doc.updatedAt.toISOString() : new Date().toISOString()
             }));
 
             // Process documents and extract content with document type metadata
-            console.log('Processing documents with metadata:', documentsWithMetadata.map(d => d.documentType));
+            console.log('Processing documents with metadata:', documentsWithMetadata.map(d => ({
+                type: d.documentType,
+                name: d.originalName,
+                timePeriod: d.timePeriod || 'Not specified',
+                description: d.description ? (d.description.length > 30 ? d.description.substring(0, 30) + '...' : d.description) : 'No description'
+            })));
             const combinedContent = await enhancedDocumentProcessingService.processMultipleDocumentsWithMetadata(documentsWithMetadata);
 
             // Check if document processing was successful
@@ -411,13 +422,24 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
 
             // Process ratio analysis data to ensure all required fields are present
             const processRatioData = (ratios: any[] = []) => {
-                return ratios.map(ratio => ({
-                    name: ratio.name || 'Unknown Ratio',
-                    value: ratio.value !== undefined ? ratio.value : null,
-                    industry_average: ratio.industry_average,
-                    description: ratio.description || 'No description available',
-                    status: ratio.status || 'warning'
-                }));
+                return ratios.map(ratio => {
+                    // Get the status value, defaulting to 'warning' if not present
+                    let status = ratio.status || 'warning';
+
+                    // If status is 'N/A' or any other non-standard value, normalize it to 'warning'
+                    if (!['good', 'warning', 'critical', 'moderate', 'low'].includes(status)) {
+                        console.log(`Normalizing non-standard ratio status "${status}" to "warning".`);
+                        status = 'warning';
+                    }
+
+                    return {
+                        name: ratio.name || 'Unknown Ratio',
+                        value: ratio.value !== undefined ? ratio.value : null,
+                        industry_average: ratio.industry_average,
+                        description: ratio.description || 'No description available',
+                        status: status
+                    };
+                });
             };
 
             // Get ratio analysis from financial data or create empty structure

@@ -23,6 +23,10 @@ if (!apiKey) {
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({
   model: "gemini-2.0-flash-thinking-exp-01-21",
+  generationConfig: {
+    maxOutputTokens: 32768, // Set to maximum allowed for Gemini 2.0 Flash
+    temperature: 0.2, // Lower temperature for more deterministic outputs
+  }
 });
 
 // Promisify fs functions
@@ -317,17 +321,36 @@ export class EnhancedDocumentProcessingService {
 
 
   /**
-   * Process multiple documents with metadata and combine their content with document type identifiers
-   * @param documents Array of document objects with filePath and documentType
-   * @returns Combined extracted content with document type identifiers
+   * Process multiple documents with comprehensive metadata and combine their content with document type identifiers
+   * @param documents Array of document objects with filePath, documentType, and additional metadata
+   * @returns Combined extracted content with document type identifiers and metadata
    */
-  async processMultipleDocumentsWithMetadata(documents: Array<{ filePath: string, documentType: string, originalName: string }>): Promise<string> {
+  async processMultipleDocumentsWithMetadata(documents: Array<{
+    filePath: string,
+    documentType: string,
+    originalName: string,
+    description?: string,
+    timePeriod?: string,
+    fileType?: string,
+    fileSize?: number,
+    createdAt?: string,
+    updatedAt?: string
+  }>): Promise<string> {
     // Create a map to store content by document type
     const contentByType: { [key: string]: string[] } = {};
 
     // Process each document and categorize by type
     const contentPromises = documents.map(async (doc) => {
-      const { filePath, documentType, originalName } = doc;
+      const {
+        filePath,
+        documentType,
+        originalName,
+        description,
+        timePeriod,
+        fileType,
+        fileSize,
+        createdAt
+      } = doc;
 
       try {
         const content = await this.processDocument(filePath); // This will handle the path conversion internally
@@ -337,12 +360,35 @@ export class EnhancedDocumentProcessingService {
           contentByType[documentType] = [];
         }
 
-        // Add content with document name
-        contentByType[documentType].push(`--- Document: ${originalName} ---\n\n${content}\n\n`);
+        // Format file size in a readable way
+        const formattedFileSize = fileSize ? `${(fileSize / 1024 / 1024).toFixed(2)} MB` : 'Unknown size';
+
+        // Format date in a readable way
+        const formattedDate = createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown date';
+
+        // Create metadata section
+        const metadataSection = `
+--- Document Metadata ---
+Filename: ${originalName}
+Type: ${documentType.replace('financial_', '').replace(/_/g, ' ')}
+Description: ${description || 'No description provided'}
+Time Period: ${timePeriod || 'Not specified'}
+File Format: ${fileType || 'Unknown format'}
+Size: ${formattedFileSize}
+Created: ${formattedDate}
+`;
+
+        // Add content with document name and metadata
+        contentByType[documentType].push(`--- Document: ${originalName} ---\n${metadataSection}\n--- Document Content ---\n\n${content}\n\n`);
 
         return {
           documentType,
           originalName,
+          description,
+          timePeriod,
+          fileType,
+          fileSize,
+          createdAt,
           content
         };
       } catch (error) {
@@ -353,12 +399,35 @@ export class EnhancedDocumentProcessingService {
           contentByType[documentType] = [];
         }
 
-        // Add error message
-        contentByType[documentType].push(`--- Document: ${originalName} ---\n\nError: Failed to process this document\n\n`);
+        // Format file size in a readable way
+        const formattedFileSize = fileSize ? `${(fileSize / 1024 / 1024).toFixed(2)} MB` : 'Unknown size';
+
+        // Format date in a readable way
+        const formattedDate = createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown date';
+
+        // Create metadata section even for failed documents
+        const metadataSection = `
+--- Document Metadata ---
+Filename: ${originalName}
+Type: ${documentType.replace('financial_', '').replace(/_/g, ' ')}
+Description: ${description || 'No description provided'}
+Time Period: ${timePeriod || 'Not specified'}
+File Format: ${fileType || 'Unknown format'}
+Size: ${formattedFileSize}
+Created: ${formattedDate}
+`;
+
+        // Add error message with metadata
+        contentByType[documentType].push(`--- Document: ${originalName} ---\n${metadataSection}\n--- Document Content ---\n\nError: Failed to process this document\n\n`);
 
         return {
           documentType,
           originalName,
+          description,
+          timePeriod,
+          fileType,
+          fileSize,
+          createdAt,
           error: true
         };
       }
@@ -523,6 +592,40 @@ export class EnhancedDocumentProcessingService {
   }
 
   /**
+   * Validates and normalizes ratio analysis status values
+   * @param data The parsed data from Gemini API
+   */
+  validateAndNormalizeRatioAnalysis(data: any): void {
+    // Check if ratioAnalysis exists
+    if (data && data.ratioAnalysis) {
+      console.log('Validating ratio analysis...');
+
+      // Categories of ratios to check
+      const ratioCategories = ['liquidityRatios', 'profitabilityRatios', 'solvencyRatios', 'efficiencyRatios'];
+
+      // Process each category
+      ratioCategories.forEach(category => {
+        if (data.ratioAnalysis[category] && Array.isArray(data.ratioAnalysis[category])) {
+          // Process each ratio in the category
+          data.ratioAnalysis[category].forEach((ratio: any, index: number) => {
+            if (ratio && ratio.status) {
+              // If status is 'N/A' or any other non-standard value, normalize it to 'warning'
+              if (!['good', 'warning', 'critical', 'moderate', 'low'].includes(ratio.status)) {
+                console.log(`Normalizing non-standard ratio status "${ratio.status}" in ${category} at index ${index} to "warning".`);
+                ratio.status = 'warning';
+              }
+            } else if (ratio) {
+              // If status is missing, set a default
+              console.log(`Missing status in ${category} at index ${index}. Setting to "warning".`);
+              ratio.status = 'warning';
+            }
+          });
+        }
+      });
+    }
+  }
+
+  /**
    * Extract financial data from documents using Gemini AI
    * @param documentContent Combined document content
    * @param companyName Name of the company
@@ -579,11 +682,28 @@ export class EnhancedDocumentProcessingService {
             ` : '';
 
       prompt = `
-                *** IMPORTANT: THIS IS BOTH A FINANCIAL DUE DILIGENCE AND FORMAL AUDITING REPORT. YOUR ANALYSIS MUST MEET PROFESSIONAL STANDARDS THAT COULD REPLACE THE WORK OF LAWYERS AND CHARTERED ACCOUNTANTS. ***
-
+                *** IMPORTANT: THIS IS BOTH A FINANCIAL DUE DILIGENCE AND FORMAL FINANCIAL AUDITING REPORT. YOUR ANALYSIS MUST MEET PROFESSIONAL STANDARDS THAT COULD REPLACE THE WORK OF LAWYERS AND CHARTERED ACCOUNTANTS. ***
+                WRITE HIGH IMPACT AND ACTIONALBE PORINTS AND FINDINGS. DO NOT USE GENERIC OR VAGUE LANGUAGE.  WRITE IN A FORMAL, PROFESSIONAL TONE APPROPRIATE FOR A FINANCIAL AUDIT REPORT.
+                THE POINTS MUST BE ACTIONABLE AND SPECIFIC TO ${companyName}. DO NOT USE GENERIC STATEMENTS OR VAGUE LANGUAGE.
+                WRITE AS MUCH AS YOU CAN. DO NOT USE SHORT OR VAGUE RESPONSES. BE DETAILED AND THOROUGH. WRITE VERY DETAILED AND THOROUGH RESPONSES.
+                GIVE MORE GRAPHS , CHARTS, AND VISUALIZATIONS. USE COLOR-CODED METRICS AND GRAPHS. MAKE IT VISUALLY APPEALING.
+                EACH SECTION SHOULD HAVE MAXIMUM DATA
                 You are a specialized financial analyst and auditor with expertise in Indian company standards and regulations. Your task is to perform a comprehensive financial due diligence analysis and formal audit for ${companyName} that would satisfy legal and regulatory requirements.
 
                 TASK: Analyze the following financial documents for ${companyName} and provide a comprehensive, professional financial due diligence and audit report that combines both financial analysis and audit findings. Your analysis should be thorough, detailed, and presented in a visually appealing format with color-coded metrics and graphical data. Include data visualizations and charts wherever possible.
+
+                IMPORTANT REPORT STYLE GUIDELINES:
+                1. Write in a formal, professional tone appropriate for a financial audit report
+                2. Be specific and precise about ${companyName}'s financial situation - avoid generic statements
+                3. Frame findings as clear, actionable insights about ${companyName} specifically (e.g., "${companyName} shows deficiencies in cash flow management" rather than "There are cash flow issues")
+                4. Use plain language that is easy to understand while maintaining professional standards
+                5. For each deficiency or issue identified, clearly state:
+                   - The specific problem at ${companyName}
+                   - The potential impact on ${companyName}'s financial health
+                   - Concrete recommendations tailored to ${companyName}'s situation
+                6. Highlight both strengths and weaknesses specific to ${companyName}'s financial position
+                7. Make all metrics, ratios, and findings directly relevant to ${companyName}'s industry and business model
+                8. Present information as if you are a third-party auditor conducting this analysis for a client interested in ${companyName}
 
                 ${startupContext}
                 ${investorContext}
@@ -593,8 +713,23 @@ export class EnhancedDocumentProcessingService {
                 The document content is organized by document type. Each document type section begins with a header in the format "=== Document Type ===" (e.g., "=== Balance Sheet ===").
                 Within each section, individual documents are marked with "--- Document: filename ---".
 
-                Pay special attention to these document type headers to correctly identify which documents are available.
+                Each document includes a metadata section with the following information:
+                - Filename: The original name of the document
+                - Type: The type of document (e.g., balance sheet, income statement)
+                - Description: A description of the document provided by the user
+                - Time Period: The time period covered by the document (e.g., Q1 2023, FY 2022)
+                - File Format: The format of the document (e.g., PDF, XLSX)
+                - Size: The size of the document in MB
+                - Created: The date the document was created or uploaded
+
+                Pay special attention to these document type headers and metadata to correctly identify which documents are available.
                 For example, if you see a "=== Balance Sheet ===" section, you should NOT report balance sheet as missing.
+
+                USE THE METADATA IN YOUR ANALYSIS:
+                - Pay special attention to the Time Period field to understand the timeframe of each document
+                - Use the Description field to gain additional context about each document
+                - Consider the File Format and Size when assessing document quality
+                - If multiple documents of the same type exist, use the Time Period to identify the most recent or relevant ones
 
                 DOCUMENT TYPE HANDLING GUIDELINES:
                 - For each document type, extract all relevant financial information with the precision of a professional auditor
@@ -605,8 +740,18 @@ export class EnhancedDocumentProcessingService {
                 - Bank Statements: Extract cash position, major transactions, and cash flow patterns; verify reconciliation with accounting records
                 - Financial Projections: Extract growth forecasts and assess reasonableness; verify assumptions and methodologies
                 - Audit Reports: Extract key findings, compliance issues, and recommendations; verify implementation of previous audit recommendations
+                - Cap Table: Analyze ownership structure, equity distribution, and valuation implications
                 - If a document appears to be in a non-standard format, make your best effort to extract relevant information using professional judgment
                 - If a document is partially readable or has quality issues, extract what you can and note the limitations with appropriate audit qualifications
+
+                DOCUMENT METADATA ANALYSIS GUIDELINES:
+                - Use the Time Period metadata to properly sequence and analyze financial data across time periods
+                - For documents covering different time periods, perform trend analysis and highlight significant changes
+                - When multiple documents of the same type exist, prioritize the most recent ones while noting historical trends
+                - Use the Description metadata to understand the context and purpose of each document
+                - If documents have different time periods, clearly indicate this in your analysis (e.g., "Based on Q1 2023 balance sheet...")
+                - For documents with quality issues (as noted in metadata or content), acknowledge these limitations in your analysis
+                - When analyzing financial projections, clearly state the time period they cover and assess their reasonableness
 
                 RESPONSE FORMAT: Return ONLY valid JSON with this exact structure:
                 {
@@ -1232,28 +1377,48 @@ export class EnhancedDocumentProcessingService {
                 - Provide a detailed internal control assessment following professional auditing standards
                 - Include a formal audit methodology section describing the approach used
 
+                ENTITY-SPECIFIC REPORTING GUIDELINES:
+                - Always refer to ${companyName} by name throughout the report
+                - For each finding, clearly state: "${companyName} exhibits [specific issue]" rather than using generic language
+                - When describing deficiencies, be precise: "${companyName}'s accounts receivable turnover ratio is significantly below industry standards at X days compared to the industry average of Y days"
+                - For recommendations, be specific: "${companyName} should implement [specific action] to address [specific issue]"
+                - When highlighting strengths, be concrete: "${companyName} demonstrates strong [specific area] as evidenced by [specific metric]"
+                - For risk factors, clearly state: "${companyName} faces [specific risk] due to [specific factor]"
+                - For compliance issues, be direct: "${companyName} is non-compliant with [specific requirement]"
+                - For financial metrics, provide context: "${companyName}'s [metric] of [value] is [comparison] to the industry average of [value]"
+                - For audit findings, be explicit: "Our audit of ${companyName} identified [specific finding]"
+                - For each recommendation, explain the expected benefit: "By implementing [recommendation], ${companyName} could improve [specific area] by approximately [estimated impact]"
+
                 TREND ANALYSIS GUIDELINES:
                 - Use any appropriate term to describe trends (increasing, decreasing, stable, improving, deteriorating, etc.)
                 - Be consistent in your terminology within each section
                 - For financial metrics, use terms like "increasing", "decreasing", "stable", "volatile", "improving", "deteriorating"
                 - For ratios, use terms like "improving", "stable", "deteriorating", "strengthening", "weakening"
-                - Always explain the significance of the trend in the context of the company's financial health
-                - Indicate whether a trend is positive or negative for the company
+                - Always explain the significance of the trend in the context of ${companyName}'s financial health
+                - Indicate whether a trend is positive or negative for ${companyName} specifically
+                - Compare ${companyName}'s trends to industry standards where possible
+                - Highlight any unusual or concerning trends specific to ${companyName}'s financial data
+                - Explain potential causes for significant trends observed in ${companyName}'s financial statements
+                - Provide forward-looking implications of current trends for ${companyName}'s future performance
 
                 DOCUMENT QUALITY ASSESSMENT:
-                - For each document, assess quality based on completeness, clarity, and standardization with professional auditor's judgment
-                - Note any inconsistencies, errors, or suspicious patterns in the financial documents that would concern a professional auditor
-                - Identify any red flags that might indicate financial misrepresentation or require further investigation
-                - Assess whether documents follow standard accounting practices and Indian accounting standards
-                - Note any unusual transactions or accounting treatments that deviate from standard practices
-                - Evaluate whether the documents provide sufficient information for a comprehensive analysis and audit
-                - Identify any gaps in documentation that would prevent a complete audit opinion
-                - Assess the reliability of the financial data based on source documents
-                - Evaluate the consistency between different financial documents
-                - Note any discrepancies between reported figures in different documents
-                - Assess whether financial statements are prepared in accordance with applicable accounting standards
-                - Evaluate the adequacy of disclosures in the financial statements
-                - Identify any limitations in the scope of the audit due to document quality issues
+                - For each of ${companyName}'s documents, assess quality based on completeness, clarity, and standardization with professional auditor's judgment
+                - Use the metadata (especially File Format, Size, and Time Period) to inform your quality assessment
+                - Note any inconsistencies, errors, or suspicious patterns in ${companyName}'s financial documents that would concern a professional auditor
+                - Identify any red flags in ${companyName}'s documentation that might indicate financial misrepresentation or require further investigation
+                - Assess whether ${companyName}'s documents follow standard accounting practices and Indian accounting standards
+                - Note any unusual transactions or accounting treatments in ${companyName}'s records that deviate from standard practices
+                - Evaluate whether ${companyName}'s documents provide sufficient information for a comprehensive analysis and audit
+                - Identify any gaps in ${companyName}'s documentation that would prevent a complete audit opinion
+                - Assess the reliability of ${companyName}'s financial data based on source documents
+                - Evaluate the consistency between different financial documents provided by ${companyName}
+                - Note any discrepancies between reported figures in different documents from ${companyName}
+                - Assess whether ${companyName}'s financial statements are prepared in accordance with applicable accounting standards
+                - Evaluate the adequacy of disclosures in ${companyName}'s financial statements
+                - Identify any limitations in the scope of the audit due to quality issues in ${companyName}'s documentation
+                - For each document quality issue, explain how it impacts the reliability of the analysis of ${companyName}'s financial position
+                - For documents with user-provided descriptions, incorporate this context into your quality assessment
+                - When documents cover different time periods, assess the completeness of the financial timeline and identify any gaps
 
                 DOCUMENT CONTENT:
                 ${documentContent}
@@ -1280,6 +1445,9 @@ export class EnhancedDocumentProcessingService {
 
         // Validate and fix compliance items status values
         this.validateAndFixComplianceItems(parsedData);
+
+        // Validate and normalize ratio analysis status values
+        this.validateAndNormalizeRatioAnalysis(parsedData);
 
         return parsedData;
       } catch (error) {

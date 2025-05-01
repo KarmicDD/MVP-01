@@ -393,13 +393,24 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
 
             // Process ratio analysis data to ensure all required fields are present
             const processRatioData = (ratios: any[] = []) => {
-                return ratios.map(ratio => ({
-                    name: ratio.name || 'Unknown Ratio',
-                    value: ratio.value !== undefined ? ratio.value : null,
-                    industry_average: ratio.industry_average,
-                    description: ratio.description || 'No description available',
-                    status: ratio.status || 'warning'
-                }));
+                return ratios.map(ratio => {
+                    // Get the status value, defaulting to 'warning' if not present
+                    let status = ratio.status || 'warning';
+
+                    // If status is 'N/A' or any other non-standard value, normalize it to 'warning'
+                    if (!['good', 'warning', 'critical', 'moderate', 'low'].includes(status)) {
+                        console.log(`Normalizing non-standard ratio status "${status}" to "warning".`);
+                        status = 'warning';
+                    }
+
+                    return {
+                        name: ratio.name || 'Unknown Ratio',
+                        value: ratio.value !== undefined ? ratio.value : null,
+                        industry_average: ratio.industry_average,
+                        description: ratio.description || 'No description available',
+                        status: status
+                    };
+                });
             };
 
             // Get ratio analysis from financial data or create empty structure

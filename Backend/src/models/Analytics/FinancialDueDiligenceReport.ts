@@ -37,7 +37,7 @@ export interface IFinancialRatio {
   value: number | string; // Allow for both numbers and strings like "N/A"
   industry_average?: number | string; // Allow for both numbers and strings like "N/A"
   description: string;
-  status: 'good' | 'warning' | 'critical' | 'moderate' | 'low';
+  status: string; // Accept any string value for status
   trend?: string; // Accept any string value for trend
   historicalData?: {
     period: string;
@@ -283,7 +283,7 @@ const FinancialRatioSchema = new Schema({
   value: { type: Schema.Types.Mixed, required: false }, // Allow for both numbers and strings like "N/A"
   industry_average: { type: Schema.Types.Mixed }, // Allow for both numbers and strings like "N/A"
   description: { type: String, required: true },
-  status: { type: String, enum: ['good', 'warning', 'critical', 'moderate', 'low'], required: true },
+  status: { type: String, required: true }, // Accept any string value for status
   trend: { type: String }, // Accept any string value for trend
   historicalData: [{
     period: { type: String },
