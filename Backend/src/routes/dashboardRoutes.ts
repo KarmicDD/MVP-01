@@ -1,11 +1,12 @@
 import express from 'express';
 import { authenticateJWT } from '../middleware/auth';
-import { 
-    getDashboardStats, 
-    getRecentMatches, 
-    getRecentActivity, 
+import {
+    getDashboardStats,
+    getRecentMatches,
+    getRecentActivity,
     getUpcomingTasks,
-    getAllDashboardData
+    getAllDashboardData,
+    getInsights
 } from '../controllers/dashboardController';
 
 const router = express.Router();
@@ -123,5 +124,25 @@ router.get('/tasks', authenticateJWT, getUpcomingTasks);
  *         description: Server error
  */
 router.get('/all', authenticateJWT, getAllDashboardData);
+
+/**
+ * @swagger
+ * /dashboard/insights:
+ *   get:
+ *     tags:
+ *       - Dashboard
+ *     summary: Get AI-generated insights
+ *     description: Get AI-generated insights for the dashboard
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: AI insights retrieved successfully
+ *       '401':
+ *         description: Unauthorized
+ *       '500':
+ *         description: Server error
+ */
+router.get('/insights', authenticateJWT, getInsights);
 
 export default router;

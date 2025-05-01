@@ -899,6 +899,86 @@ export const dashboardService = {
             console.error('Error fetching upcoming tasks:', error);
             throw error;
         }
+    },
+
+    // Get AI insights
+    getInsights: async () => {
+        try {
+            const response = await api.get('/dashboard/insights');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching AI insights:', error);
+            throw error;
+        }
+    }
+};
+
+// Task services
+export const taskService = {
+    // Get all tasks
+    getAllTasks: async () => {
+        try {
+            const response = await api.get('/tasks');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching tasks:', error);
+            throw error;
+        }
+    },
+
+    // Create a new task
+    createTask: async (taskData: any) => {
+        try {
+            const response = await api.post('/tasks', taskData);
+            return response.data;
+        } catch (error) {
+            console.error('Error creating task:', error);
+            throw error;
+        }
+    },
+
+    // Update a task
+    updateTask: async (taskId: string, taskData: any) => {
+        try {
+            const response = await api.put(`/tasks/${taskId}`, taskData);
+            return response.data;
+        } catch (error) {
+            console.error('Error updating task:', error);
+            throw error;
+        }
+    },
+
+    // Delete a task
+    deleteTask: async (taskId: string) => {
+        try {
+            const response = await api.delete(`/tasks/${taskId}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error deleting task:', error);
+            throw error;
+        }
+    },
+
+    // Generate AI tasks
+    generateAITasks: async () => {
+        try {
+            const response = await api.post('/tasks/generate');
+            return response.data;
+        } catch (error) {
+            console.error('Error generating AI tasks:', error);
+            throw error;
+        }
+    },
+
+    // Verify task completion
+    verifyTaskCompletion: async (taskId: string) => {
+        try {
+            const response = await api.post(`/tasks/${taskId}/verify`);
+            return response.data;
+        } catch (error) {
+            console.error('Error verifying task completion:', error);
+            throw error;
+        }
     }
 };
 

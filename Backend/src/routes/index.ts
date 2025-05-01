@@ -13,6 +13,7 @@ import financialDueDiligenceRoutes from './financialDueDiligenceRoutes';
 import recommendationRoutes from './recommendationRoutes';
 import analyticsRoutes from './analyticsRoutes';
 import dashboardRoutes from './dashboardRoutes';
+import taskRoutes from './taskRoutes';
 
 const router = express.Router();
 
@@ -47,5 +48,9 @@ router.use('/analytics', analyticsRoutes);
 // Dashboard routes
 console.log('Registering dashboard routes');
 router.use('/dashboard', dashboardRoutes);
+
+// Task routes
+console.log('Registering task routes');
+router.use('/tasks', taskRoutes);
 
 export default router;

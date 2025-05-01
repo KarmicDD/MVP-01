@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiTrendingUp, FiUsers, FiBarChart2, FiFileText, FiActivity, FiArrowUp, FiArrowDown, FiRefreshCw } from 'react-icons/fi';
+import {
+  FiTrendingUp, FiUsers, FiBarChart2, FiFileText, FiActivity,
+  FiArrowUp, FiArrowDown, FiRefreshCw, FiPieChart, FiCheckCircle,
+  FiAlertCircle, FiInfo, FiSearch, FiTarget
+} from 'react-icons/fi';
 import { colours } from '../../../utils/colours';
 import StatCard from './StatCard';
 import RecentMatches from './RecentMatches';
 import ActivityTimeline from './ActivityTimeline';
-import UpcomingTasks from './UpcomingTasks';
+import TaskManager from './TaskManager';
+import InsightsPanel from './InsightsPanel';
+import EngagementChart from './EngagementChart';
 import { dashboardService } from '../../../services/api';
-import { DashboardData } from '../../../types/Dashboard.types';
+import { DashboardData, Insight } from '../../../types/Dashboard.types';
 import { useNavigate } from 'react-router-dom';
 
 interface OverviewSectionProps {
@@ -26,6 +32,11 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({ userProfile }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+
+  // State for component-specific loading
+  const [insightsLoading, setInsightsLoading] = useState<boolean>(false);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
+  const [tasksLoading, setTasksLoading] = useState<boolean>(false);
 
   // Fetch dashboard data
   useEffect(() => {
@@ -60,6 +71,27 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({ userProfile }) => {
     }
   };
 
+  // Function to refresh insights only
+  const refreshInsights = async () => {
+    try {
+      setInsightsLoading(true);
+      setInsightsError(null);
+      const response = await dashboardService.getInsights();
+
+      if (dashboardData && response) {
+        setDashboardData({
+          ...dashboardData,
+          insights: response
+        });
+      }
+    } catch (err: any) {
+      console.error('Error refreshing insights:', err);
+      setInsightsError(err.response?.data?.message || 'Failed to load insights. Please try again.');
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
   // Function to navigate to matches section
   const navigateToMatches = () => {
     navigate('/dashboard', { state: { activeTab: 'matches' } });
@@ -86,19 +118,24 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({ userProfile }) => {
     }
   };
 
+  // Define primary color based on role
+  const primaryColor = role === 'startup' ? colours.startup.primary : colours.investor.primary;
+  const primaryGradient = role === 'startup' ? colours.startup.gradient : colours.investor.gradient;
+
   // Loading state
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="text-3xl mb-4"
-          style={{ color: role === 'startup' ? colours.primaryBlue : '#10B981' }}
-        >
-          <FiRefreshCw />
-        </motion.div>
-        <p className="text-gray-600">Loading dashboard data...</p>
+      <div className="flex flex-col items-center justify-center min-h-[500px] py-12">
+        <div className="relative w-16 h-16 mb-6">
+          <div className="absolute inset-0 rounded-full border-4 border-t-transparent border-b-transparent animate-spin"
+            style={{ borderColor: `${primaryColor}30`, borderTopColor: 'transparent', borderBottomColor: 'transparent' }}></div>
+          <div className="absolute inset-2 rounded-full border-4 border-t-transparent border-b-transparent animate-spin"
+            style={{ borderColor: primaryColor, borderTopColor: 'transparent', borderBottomColor: 'transparent', animationDirection: 'reverse', animationDuration: '1s' }}></div>
+        </div>
+        <h3 className="text-xl font-semibold mb-2 text-gray-800">Loading Your Dashboard</h3>
+        <p className="text-gray-500 max-w-md text-center">
+          We're gathering your latest data, insights, and personalized recommendations...
+        </p>
       </div>
     );
   }
@@ -106,29 +143,28 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({ userProfile }) => {
   // Error state
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-center">
-        <div className="text-red-500 text-3xl mb-4">
-          <FiActivity />
+      <div className="flex flex-col items-center justify-center min-h-[400px] py-12 px-4 text-center">
+        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-6">
+          <FiAlertCircle size={32} className="text-red-500" />
         </div>
-        <p className="text-gray-700 mb-4">{error}</p>
-        <button
+        <h3 className="text-xl font-semibold mb-2 text-gray-800">Unable to Load Dashboard</h3>
+        <p className="text-gray-600 max-w-md mb-6">{error}</p>
+        <motion.button
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.98 }}
           onClick={fetchDashboardData}
-          className="px-4 py-2 rounded-lg text-white font-medium shadow-sm transition-all hover:shadow-md"
+          className="px-5 py-2.5 rounded-lg text-white font-medium shadow-sm transition-all hover:shadow-md flex items-center"
           style={{
             background: role === 'startup'
-              ? colours.primaryGradient
-              : 'linear-gradient(135deg, #10B981, #059669)'
+              ? colours.startup.gradient
+              : colours.investor.gradient
           }}
         >
-          Try Again
-        </button>
+          <FiRefreshCw className="mr-2" /> Try Again
+        </motion.button>
       </div>
     );
   }
-
-  // Define primary color based on role
-  const primaryColor = role === 'startup' ? colours.startup.primary : colours.investor.primary;
-  const primaryGradient = role === 'startup' ? colours.startup.gradient : colours.investor.gradient;
 
   return (
     <motion.div
@@ -172,6 +208,7 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({ userProfile }) => {
                 boxShadow: `0 4px 14px ${primaryColor}25`
               }}
               onClick={navigateToMatches}
+              aria-label={role === 'startup' ? 'Find Investors' : 'Discover Startups'}
             >
               {role === 'startup' ? 'Find Investors' : 'Discover Startups'}
             </motion.button>
@@ -197,52 +234,116 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({ userProfile }) => {
         <StatCard
           title="Match Rate"
           value={`${dashboardData?.stats.matchRate || 0}%`}
-          change={+12} // Placeholder change value
+          change={dashboardData?.analytics?.changes?.matchRate?.percentageChange || 0}
           icon={<FiUsers />}
           color={primaryColor}
+          tooltip="Percentage of potential matches that meet your compatibility threshold"
+          loading={refreshing}
         />
         <StatCard
           title="Profile Views"
           value={`${dashboardData?.stats.profileViews || 0}`}
-          change={+28} // Placeholder change value
+          change={dashboardData?.analytics?.changes?.documentViews?.percentageChange || 0}
           icon={<FiBarChart2 />}
           color={primaryColor}
+          tooltip="Number of times your profile has been viewed by others"
+          loading={refreshing}
         />
         <StatCard
           title="Compatibility Score"
           value={`${dashboardData?.stats.compatibilityScore || 0}%`}
-          change={-3} // Placeholder change value
+          change={dashboardData?.analytics?.changes?.compatibilityScore?.percentageChange || 0}
           icon={<FiActivity />}
           color={primaryColor}
+          tooltip="Average compatibility score across all your matches"
+          loading={refreshing}
+        />
+        <StatCard
+          title="Profile Completion"
+          value={`${dashboardData?.stats.profileCompletionPercentage || 0}%`}
+          change={dashboardData?.analytics?.changes?.profileCompletion?.percentageChange || 0}
+          icon={<FiCheckCircle />}
+          color={primaryColor}
+          tooltip="Percentage of your profile that has been completed"
+          loading={refreshing}
+        />
+      </motion.div>
+
+      {/* Secondary Stats row */}
+      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard
+          title="Total Engagements"
+          value={`${dashboardData?.stats.totalEngagements || 0}`}
+          icon={<FiTarget />}
+          color={primaryColor}
+          size="small"
+          tooltip="Total number of interactions with your profile and documents"
+          loading={refreshing}
         />
         <StatCard
           title="Documents"
           value={`${dashboardData?.stats.documentCount || 0}`}
-          change={+2} // Placeholder change value
           icon={<FiFileText />}
           color={primaryColor}
+          size="small"
+          tooltip="Number of documents you've uploaded"
+          loading={refreshing}
+        />
+        <StatCard
+          title="Engagement Rate"
+          value={`${dashboardData?.stats.engagementRate || 0}`}
+          icon={<FiPieChart />}
+          color={primaryColor}
+          size="small"
+          tooltip="Measure of how actively your profile is being engaged with"
+          loading={refreshing}
         />
       </motion.div>
 
       {/* Main content grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent matches */}
-        <motion.div variants={itemVariants} className="lg:col-span-2">
+        {/* Left column - Matches, Engagement Chart, and Task Manager */}
+        <motion.div variants={itemVariants} className="lg:col-span-2 space-y-6">
+          {/* Recent matches */}
           <RecentMatches
             role={role}
             matches={dashboardData?.recentMatches || []}
           />
+
+          {/* Engagement Chart */}
+          {dashboardData?.analytics?.engagementTrends && (
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+              <h2 className="text-lg font-semibold mb-4" style={{ color: primaryColor }}>Engagement Trends</h2>
+              <EngagementChart
+                data={dashboardData.analytics.engagementTrends}
+                color={primaryColor}
+              />
+            </div>
+          )}
+
+          {/* Task Manager - Moved below Engagement Chart */}
+          <TaskManager
+            role={role}
+            tasks={dashboardData?.tasks || []}
+            onTasksUpdated={refreshData}
+          />
         </motion.div>
 
-        {/* Activity timeline and tasks */}
+        {/* Right column - Insights and Activity */}
         <motion.div variants={itemVariants} className="space-y-6">
+          {/* AI Insights */}
+          <InsightsPanel
+            insights={dashboardData?.insights || []}
+            role={role}
+            loading={insightsLoading || refreshing}
+            error={insightsError}
+            onRefresh={refreshInsights}
+          />
+
+          {/* Activity timeline */}
           <ActivityTimeline
             role={role}
             activities={dashboardData?.activities || []}
-          />
-          <UpcomingTasks
-            role={role}
-            tasks={dashboardData?.tasks || []}
           />
         </motion.div>
       </div>

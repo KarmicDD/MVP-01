@@ -14,6 +14,9 @@ export interface DashboardStats {
     documentDownloads: number;
     compatibilityScore: number;
     matchRate: number;
+    totalEngagements: number;
+    engagementRate: number;
+    profileCompletionPercentage: number;
 }
 
 export interface RecentMatch {
@@ -42,10 +45,72 @@ export interface Activity {
 export interface Task {
     id: string;
     title: string;
+    description?: string;
     dueDate: string;
     formattedDueDate: string;
     priority: 'high' | 'medium' | 'low';
+    category: 'profile' | 'document' | 'financial' | 'match' | 'other';
     completed: boolean;
+    aiVerified: boolean;
+    verificationMessage?: string;
+    lastVerifiedAt?: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface TimeSeriesDataPoint {
+    date: string;
+    count: number;
+    avgScore?: number;
+}
+
+export interface EngagementTrends {
+    documentViews: TimeSeriesDataPoint[];
+    documentDownloads: TimeSeriesDataPoint[];
+    matches: TimeSeriesDataPoint[];
+}
+
+export interface FinancialMetric {
+    name: string;
+    value: string | number;
+    status: 'good' | 'warning' | 'critical';
+    description: string;
+    trend?: string;
+    percentChange?: string;
+}
+
+export interface FinancialMetrics {
+    keyMetrics: FinancialMetric[];
+    trends: FinancialMetric[];
+}
+
+export interface Insight {
+    id: string;
+    title: string;
+    content: string;
+    type: 'positive' | 'negative' | 'neutral' | 'action';
+    icon: string;
+}
+
+export interface AnalyticsChanges {
+    matchRate?: {
+        percentageChange: number;
+    };
+    documentViews?: {
+        percentageChange: number;
+    };
+    compatibilityScore?: {
+        percentageChange: number;
+    };
+    profileCompletion?: {
+        percentageChange: number;
+    };
+}
+
+export interface DashboardAnalytics {
+    engagementTrends: EngagementTrends;
+    financialMetrics: FinancialMetrics | null;
+    changes?: AnalyticsChanges;
 }
 
 export interface DashboardData {
@@ -53,6 +118,8 @@ export interface DashboardData {
     recentMatches: RecentMatch[];
     activities: Activity[];
     tasks: Task[];
+    analytics: DashboardAnalytics;
+    insights: Insight[];
 }
 
 export interface Match {

@@ -103,16 +103,20 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ role, activities: p
 
   return (
     <div
-      className="bg-white rounded-xl shadow-sm border overflow-hidden"
-      style={{ borderColor }}
+      className="bg-white rounded-xl shadow-md border overflow-hidden"
+      style={{
+        borderColor: 'rgba(0,0,0,0.06)',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04), 0 2px 6px rgba(0, 0, 0, 0.02)'
+      }}
     >
-      <div className="p-5 border-b" style={{ borderColor }}>
+      <div className="p-5 border-b" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-800">Recent Activity</h2>
+          <h2 className="text-lg font-semibold text-gray-800" style={{ fontWeight: 600, letterSpacing: '-0.01em' }}>Recent Activity</h2>
           <motion.button
-            whileHover={{ x: 3 }}
+            whileHover={{ x: 3, color: role === 'startup' ? '#3b82f6' : '#10b981' }}
+            whileTap={{ scale: 0.98 }}
             onClick={navigateToActivity}
-            className="text-sm font-medium flex items-center"
+            className="text-sm font-medium flex items-center transition-colors duration-200"
             style={{ color: primaryColor }}
           >
             View all
@@ -131,7 +135,10 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ role, activities: p
             {/* Timeline line */}
             <div
               className="absolute top-0 left-4 bottom-0 w-0.5"
-              style={{ background: `linear-gradient(to bottom, ${primaryColor}20, ${primaryColor}05)` }}
+              style={{
+                background: `linear-gradient(to bottom, ${primaryColor}30, ${primaryColor}05)`,
+                borderRadius: '999px'
+              }}
             ></div>
 
             {/* Timeline items */}
@@ -151,17 +158,29 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ role, activities: p
                     style={{
                       backgroundColor: `${activity.color}15`,
                       color: activity.color,
-                      boxShadow: `0 0 0 3px ${activity.color}05`
+                      boxShadow: `0 0 0 3px ${activity.color}05, 0 2px 4px rgba(0,0,0,0.05)`,
+                      transition: 'all 0.2s ease'
                     }}
-                    whileHover={{ scale: 1.1 }}
+                    whileHover={{
+                      scale: 1.1,
+                      boxShadow: `0 0 0 4px ${activity.color}10, 0 3px 6px rgba(0,0,0,0.1)`
+                    }}
                   >
                     {activity.icon}
                   </motion.div>
 
-                  <div className="group-hover:bg-gray-50 p-2 rounded-lg transition-colors">
-                    <h3 className="text-sm font-medium text-gray-800">{activity.title}</h3>
+                  <div
+                    className="group-hover:bg-gray-50 p-3 rounded-lg transition-all duration-200"
+                    style={{
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                      transform: 'translateZ(0)'
+                    }}
+                  >
+                    <h3 className="text-sm font-medium text-gray-800" style={{ fontWeight: 500, letterSpacing: '-0.01em' }}>
+                      {activity.title}
+                    </h3>
                     <p className="text-xs text-gray-500 mt-0.5">{activity.entity}</p>
-                    <p className="text-xs text-gray-400 mt-1">{activity.formattedTime}</p>
+                    <p className="text-xs text-gray-400 mt-1" style={{ fontWeight: 400 }}>{activity.formattedTime}</p>
                   </div>
                 </motion.div>
               ))}

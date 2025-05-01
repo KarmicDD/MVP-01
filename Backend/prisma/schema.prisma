@@ -82,3 +82,22 @@ model DocumentDownload {
   @@index([entity_id])
   @@map("document_downloads")
 }
+
+model DailyAnalytics {
+  id                 Int      @id @default(autoincrement())
+  user_id            String
+  date               DateTime @db.Date
+  document_views     Int      @default(0)
+  document_downloads Int      @default(0)
+  profile_views      Int      @default(0)
+  profile_shares     Int      @default(0)
+  match_count        Int      @default(0)
+  avg_match_score    Float?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  @@unique([user_id, date])
+  @@index([user_id])
+  @@index([date])
+  @@map("daily_analytics")
+}
