@@ -56,7 +56,7 @@ export const Footer: React.FC = () => {
         try {
 
             // Make the API call to send welcome email
-            const response = await axios.post('http://localhost:5000/api/email/welcome', { email });
+            const response = await axios.post('https://mvp-01.onrender.com/api/email/welcome', { email });
 
             if (response.status !== 200) {
                 // const errorData = response.data;

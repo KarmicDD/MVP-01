@@ -2,7 +2,7 @@
 import axios, { AxiosError } from 'axios';
 
 // Use environment variable or fallback to local development URL
-const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'https://mvp-01.onrender.com/api';
 
 // Helper function to extract meaningful error messages from API responses
 export const extractErrorMessage = (error: unknown): string => {

@@ -99,7 +99,7 @@ const Dashboard: React.FC = () => {
     const navigate = useNavigate();
 
     // Keep your existing constants and functions
-    const API_URL = 'http://localhost:5000/api';
+    const API_URL = 'https://mvp-01.onrender.com/api';
     const token = localStorage.getItem('token');
 
     const handleLogout = () => {
