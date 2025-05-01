@@ -10,7 +10,7 @@ export const CTAsection: React.FC = () => {
     const navigate = useNavigate();
 
     const handleRedirect = () => {
-        navigate('/coming-soon', { state: { from: 'Sign Up Now' } });
+        navigate('/auth', { state: { from: 'Sign Up Now' } });
     };
 
     // Create a separate ref for animation triggering
