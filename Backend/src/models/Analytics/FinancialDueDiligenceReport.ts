@@ -3,30 +3,30 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IFinancialMetric {
   name: string;
   value: string | number;
-  status: 'good' | 'warning' | 'critical';
+  status: string; // Accept any string value for status
   description: string;
   trend?: string; // Accept any string value for trend
   percentChange?: string;
-  industryComparison?: 'above_average' | 'average' | 'below_average' | 'N/A';
+  industryComparison?: string; // Accept any string value for industry comparison
   industryValue?: string | number;
 }
 
 export interface IRiskFactor {
   category: string;
-  level: 'high' | 'medium' | 'low' | 'N/A';
-  severity?: 'high' | 'medium' | 'low'; // Added for backward compatibility
+  level: string; // Accept any string value for level
+  severity?: string; // Accept any string value for severity
   description: string;
   impact: string;
   mitigation?: string; // Added for backward compatibility
   mitigationStrategy?: string;
-  timeHorizon?: 'short_term' | 'medium_term' | 'long_term' | 'N/A';
+  timeHorizon?: string; // Accept any string value for timeHorizon
 }
 
 export interface IComplianceItem {
   requirement: string;
-  status: 'compliant' | 'partial' | 'non-compliant';
+  status: string; // Accept any string value for status
   details: string;
-  severity: 'high' | 'medium' | 'low';
+  severity: string; // Accept any string value for severity
   recommendation?: string;
   deadline?: string;
   regulatoryBody?: string;
@@ -155,31 +155,31 @@ export interface IFinancialDueDiligenceReport extends Document {
   // Tax Compliance Section
   taxCompliance: {
     gst: {
-      status: 'compliant' | 'partial' | 'non-compliant';
+      status: string; // Accept any string value for status
       details: string;
       filingHistory?: {
         period: string;
-        status: 'filed' | 'pending' | 'overdue';
+        status: string; // Accept any string value for status
         dueDate: string;
       }[];
       recommendations?: string[];
     };
     incomeTax: {
-      status: 'compliant' | 'partial' | 'non-compliant';
+      status: string; // Accept any string value for status
       details: string;
       filingHistory?: {
         period: string;
-        status: 'filed' | 'pending' | 'overdue';
+        status: string; // Accept any string value for status
         dueDate: string;
       }[];
       recommendations?: string[];
     };
     tds: {
-      status: 'compliant' | 'partial' | 'non-compliant';
+      status: string; // Accept any string value for status
       details: string;
       filingHistory?: {
         period: string;
-        status: 'filed' | 'pending' | 'overdue';
+        status: string; // Accept any string value for status
         dueDate: string;
       }[];
       recommendations?: string[];
@@ -190,7 +190,7 @@ export interface IFinancialDueDiligenceReport extends Document {
   auditFindings?: {
     findings: {
       area: string;
-      severity: 'high' | 'medium' | 'low';
+      severity: string; // Accept any string value for severity
       description: string;
       recommendation: string;
       impact?: string;
@@ -206,8 +206,8 @@ export interface IFinancialDueDiligenceReport extends Document {
   documentAnalysis?: {
     availableDocuments: {
       documentType: string;
-      quality: 'good' | 'moderate' | 'poor';
-      completeness: 'complete' | 'partial' | 'incomplete';
+      quality: string; // Accept any string value for quality
+      completeness: string; // Accept any string value for completeness
       keyInsights: string[];
       dataReliability?: string;
       recommendations?: string[];
@@ -216,7 +216,7 @@ export interface IFinancialDueDiligenceReport extends Document {
       list: string[];
       impact: string;
       recommendations: string[];
-      priorityLevel?: 'high' | 'medium' | 'low';
+      priorityLevel?: string; // Accept any string value for priorityLevel
     };
   };
 
@@ -228,7 +228,7 @@ export interface IFinancialDueDiligenceReport extends Document {
       companyValue: number | string; // Allow for both numbers and strings like "N/A"
       industryAverage: number | string; // Allow for both numbers and strings like "N/A"
       percentile?: string;
-      status: 'above_average' | 'average' | 'below_average' | 'N/A';
+      status: string; // Accept any string value for status
     }[];
     competitivePosition: string;
     strengths: string[];
@@ -238,7 +238,7 @@ export interface IFinancialDueDiligenceReport extends Document {
   // Document Sources and Metadata
   documentSources: string[];
   missingDocuments?: string[];
-  status: 'draft' | 'final';
+  status: string; // Accept any string value for status
   createdAt: Date;
   updatedAt: Date;
   expiresAt: Date;
@@ -249,30 +249,30 @@ export interface IFinancialDueDiligenceReport extends Document {
 const FinancialMetricSchema = new Schema({
   name: { type: String, required: true },
   value: { type: Schema.Types.Mixed, required: true },
-  status: { type: String, enum: ['good', 'warning', 'critical'], required: true },
+  status: { type: String, required: true }, // Accept any string value for status
   description: { type: String, required: true },
   trend: { type: String }, // Accept any string value for trend
   percentChange: { type: String },
-  industryComparison: { type: String, enum: ['above_average', 'average', 'below_average', 'N/A'] },
+  industryComparison: { type: String }, // Accept any string value for industry comparison
   industryValue: { type: Schema.Types.Mixed }
 });
 
 const RiskFactorSchema = new Schema({
   category: { type: String, required: true },
-  level: { type: String, enum: ['high', 'medium', 'low', 'N/A'], required: true },
-  severity: { type: String, enum: ['high', 'medium', 'low'] }, // Added for backward compatibility
+  level: { type: String, required: true }, // Accept any string value for level
+  severity: { type: String }, // Accept any string value for severity
   description: { type: String, required: true },
   impact: { type: String, required: true },
   mitigation: { type: String }, // Added for backward compatibility
   mitigationStrategy: { type: String },
-  timeHorizon: { type: String, enum: ['short_term', 'medium_term', 'long_term', 'N/A'] }
+  timeHorizon: { type: String } // Accept any string value for timeHorizon
 });
 
 const ComplianceItemSchema = new Schema({
   requirement: { type: String, required: true },
-  status: { type: String, enum: ['compliant', 'partial', 'non-compliant'], required: true },
+  status: { type: String, required: true }, // Accept any string value for status
   details: { type: String, required: true },
-  severity: { type: String, enum: ['high', 'medium', 'low'], required: true },
+  severity: { type: String, required: true }, // Accept any string value for severity
   recommendation: { type: String },
   deadline: { type: String },
   regulatoryBody: { type: String }
@@ -296,7 +296,7 @@ const TrendSchema = new Schema({
   name: { type: String, required: true },
   description: { type: String, required: true },
   trend: { type: String, required: true }, // Accept any string value for trend
-  impact: { type: String, enum: ['positive', 'negative', 'neutral', 'warning'], required: true },
+  impact: { type: String, required: true }, // Accept any string value for impact
   data: [{
     period: { type: String },
     value: { type: Schema.Types.Mixed } // Allow for both numbers and strings like "N/A"
@@ -310,13 +310,13 @@ const GrowthProjectionSchema = new Schema({
   projectedValue: { type: Schema.Types.Mixed, required: true }, // Allow for both numbers and strings like "N/A"
   timeframe: { type: String, required: true },
   cagr: { type: String, required: true },
-  confidence: { type: String, enum: ['high', 'medium', 'low'], required: true }
+  confidence: { type: String, required: true } // Accept any string value for confidence
 });
 
 // Define schema for audit findings
 const AuditFindingSchema = new Schema({
   area: { type: String, required: true },
-  severity: { type: String, enum: ['high', 'medium', 'low'], required: true },
+  severity: { type: String, required: true }, // Accept any string value for severity
   description: { type: String, required: true },
   recommendation: { type: String, required: true },
   impact: { type: String },
@@ -334,8 +334,8 @@ const AvailableDocumentSchema = new Schema({
 // Define schema for document analysis
 const DocumentAnalysisItemSchema = new Schema({
   documentType: { type: String, required: true },
-  quality: { type: String, enum: ['good', 'moderate', 'poor'], required: true },
-  completeness: { type: String, enum: ['complete', 'partial', 'incomplete'], required: true },
+  quality: { type: String, required: true }, // Accept any string value for quality
+  completeness: { type: String, required: true }, // Accept any string value for completeness
   keyInsights: [String],
   dataReliability: { type: String },
   recommendations: [String]
@@ -345,7 +345,7 @@ const MissingDocumentsSchema = new Schema({
   list: [String],
   impact: { type: String, required: true },
   recommendations: [String],
-  priorityLevel: { type: String, enum: ['high', 'medium', 'low'] }
+  priorityLevel: { type: String } // Accept any string value for priorityLevel
 });
 
 // Define schema for industry benchmarking
@@ -354,7 +354,7 @@ const IndustryBenchmarkingMetricSchema = new Schema({
   companyValue: { type: Schema.Types.Mixed, required: true }, // Allow for both numbers and strings like "N/A"
   industryAverage: { type: Schema.Types.Mixed, required: true }, // Allow for both numbers and strings like "N/A"
   percentile: { type: String },
-  status: { type: String, enum: ['above_average', 'average', 'below_average', 'N/A'], required: true }
+  status: { type: String, required: true } // Accept any string value for status
 });
 
 const IndustryBenchmarkingSchema = new Schema({
@@ -368,14 +368,14 @@ const IndustryBenchmarkingSchema = new Schema({
 const FinancialDueDiligenceReportSchema: Schema = new Schema({
   // Core fields
   targetEntityId: { type: String, required: true, index: true },
-  targetEntityType: { type: String, enum: ['startup', 'investor'], required: true },
+  targetEntityType: { type: String, required: true }, // Accept any string value for targetEntityType
   requestedById: { type: String, required: true, index: true },
   companyName: { type: String, required: true },
   reportDate: { type: Date, default: Date.now },
   generatedBy: { type: String, required: true },
 
   // Legacy fields for backward compatibility
-  perspective: { type: String, enum: ['startup', 'investor'] },
+  perspective: { type: String }, // Accept any string value for perspective
 
   // Document tracking
   availableDocuments: [AvailableDocumentSchema],
@@ -438,15 +438,15 @@ const FinancialDueDiligenceReportSchema: Schema = new Schema({
   // Tax Compliance Section
   taxCompliance: {
     gst: {
-      status: { type: String, enum: ['compliant', 'partial', 'non-compliant'] },
+      status: { type: String }, // Accept any string value for status
       details: String
     },
     incomeTax: {
-      status: { type: String, enum: ['compliant', 'partial', 'non-compliant'] },
+      status: { type: String }, // Accept any string value for status
       details: String
     },
     tds: {
-      status: { type: String, enum: ['compliant', 'partial', 'non-compliant'] },
+      status: { type: String }, // Accept any string value for status
       details: String
     }
   },
@@ -472,7 +472,7 @@ const FinancialDueDiligenceReportSchema: Schema = new Schema({
   // Document Sources and Metadata
   documentSources: [String],
   missingDocuments: [String],
-  status: { type: String, enum: ['draft', 'final'], default: 'final' },
+  status: { type: String, default: 'final' }, // Accept any string value for status
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   expiresAt: { type: Date, required: true },

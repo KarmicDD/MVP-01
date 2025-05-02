@@ -689,7 +689,12 @@ Created: ${formattedDate}
                 GIVE MORE GRAPHS , CHARTS, AND VISUALIZATIONS. USE COLOR-CODED METRICS AND GRAPHS. MAKE IT VISUALLY APPEALING.
                 EACH SECTION SHOULD HAVE MAXIMUM DATA
                 You are a specialized financial analyst and auditor with expertise in Indian company standards and regulations. Your task is to perform a comprehensive financial due diligence analysis and formal audit for ${companyName} that would satisfy legal and regulatory requirements.
-
+                Do not use generic or vague language. Write in a formal, professional tone appropriate for a financial audit report.
+                Focus on providing clear, actionable insights and recommendations based on the financial documents provided. Your analysis should be thorough, detailed, and presented in a visually appealing format with color-coded metrics and graphical data.
+                WRITE AS MUCH AS YOU CAN. BE VERY DETAILED AND THOROUGH. WRITE VERY DETAILED AND THOROUGH RESPONSES. EVERY SECTION SHOULD HAVE MAXIMUM DATA.
+                DO NOT USE SHORT OR VAGUE RESPONSES. WRITE AS MUCH AS YOU CAN. BE DETAILED AND THOROUGH. WRITE VERY DETAILED AND THOROUGH RESPONSES.
+                HAVE AS MUCH AS GRAPHS , CHARTS, AND VISUALIZATIONS AS POSSIBLE. USE COLOR-CODED METRICS AND GRAPHS. MAKE IT VISUALLY APPEALING.  
+                ACT LIKE YOU ARE A FINANCIAL ANALYST AND AUDITOR. AND BE PROFESSIONAL.
                 TASK: Analyze the following financial documents for ${companyName} and provide a comprehensive, professional financial due diligence and audit report that combines both financial analysis and audit findings. Your analysis should be thorough, detailed, and presented in a visually appealing format with color-coded metrics and graphical data. Include data visualizations and charts wherever possible.
 
                 IMPORTANT REPORT STYLE GUIDELINES:
@@ -752,6 +757,14 @@ Created: ${formattedDate}
                 - If documents have different time periods, clearly indicate this in your analysis (e.g., "Based on Q1 2023 balance sheet...")
                 - For documents with quality issues (as noted in metadata or content), acknowledge these limitations in your analysis
                 - When analyzing financial projections, clearly state the time period they cover and assess their reasonableness
+
+                FOLLOW THE RESPONSE FORMAT STRICTLY:
+                DO NOT DEVIATE FROM THE RESPONSE FORMAT. 
+                ALWAYS RETURN VALID JSON. WITH CORRECT FORMAT.
+                DO NOT INCLUDE ANY EXPLANATIONS OR MARKDOWN FORMATTING.
+                FOLLOW THE STRUCTURE AS IT IS.
+                DO NOT ADD OR REMOVE ANY FIELDS.
+                DO NOT CHANGE THE FIELD NAMES OR TYPES.
 
                 RESPONSE FORMAT: Return ONLY valid JSON with this exact structure:
                 {
