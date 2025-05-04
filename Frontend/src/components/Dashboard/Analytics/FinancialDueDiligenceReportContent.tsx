@@ -665,68 +665,130 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                   ) : trend.data && trend.data.length > 0 ? (
                     // Fallback to create chart from data if chartData is not available
                     <div className="h-36 mb-2">
-                      <Line
-                        data={{
-                          labels: trend.data.map(item => item.period.length > 8 ? `${item.period.substring(0, 8)}...` : item.period),
-                          datasets: [
-                            {
-                              label: trend.name,
-                              data: trend.data.map(item => typeof item.value === 'number' ? item.value : 0),
-                              borderColor: trend.impact === 'positive' ? CHART_COLORS.success :
-                                trend.impact === 'negative' ? CHART_COLORS.danger : CHART_COLORS.primary,
-                              backgroundColor: trend.impact === 'positive' ? 'rgba(16, 185, 129, 0.1)' :
-                                trend.impact === 'negative' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(90, 66, 227, 0.1)',
-                              borderWidth: 2,
-                              pointRadius: 3,
-                              pointHoverRadius: 5,
-                              tension: 0.1
-                            }
-                          ]
-                        }}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          scales: {
-                            y: {
-                              beginAtZero: true,
-                              ticks: {
-                                font: {
-                                  size: 9
+                      {trend.data.length === 1 ? (
+                        // Use Bar chart for single data point
+                        <Bar
+                          data={{
+                            labels: [trend.data[0].period],
+                            datasets: [
+                              {
+                                label: trend.name,
+                                data: [typeof trend.data[0].value === 'number' ? trend.data[0].value : 0],
+                                backgroundColor: trend.impact === 'positive' ? CHART_COLORS.success :
+                                  trend.impact === 'negative' ? CHART_COLORS.danger : CHART_COLORS.primary,
+                                borderColor: 'white',
+                                borderWidth: 1,
+                                borderRadius: 4
+                              }
+                            ]
+                          }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                              y: {
+                                beginAtZero: true,
+                                ticks: {
+                                  font: {
+                                    size: 9
+                                  }
                                 },
-                                maxTicksLimit: 5
+                                grid: {
+                                  color: '#f0f0f0'
+                                }
                               },
-                              grid: {
-                                color: '#f0f0f0'
+                              x: {
+                                ticks: {
+                                  font: {
+                                    size: 9
+                                  }
+                                },
+                                grid: {
+                                  display: false
+                                }
                               }
                             },
-                            x: {
-                              ticks: {
-                                font: {
-                                  size: 9
-                                },
-                                maxTicksLimit: 6
-                              },
-                              grid: {
+                            plugins: {
+                              legend: {
                                 display: false
+                              },
+                              tooltip: {
+                                titleFont: {
+                                  size: 10
+                                },
+                                bodyFont: {
+                                  size: 10
+                                },
+                                padding: 6
                               }
                             }
-                          },
-                          plugins: {
-                            legend: {
-                              display: false
+                          }}
+                        />
+                      ) : (
+                        // Use Line chart for multiple data points
+                        <Line
+                          data={{
+                            labels: trend.data.map(item => item.period.length > 8 ? `${item.period.substring(0, 8)}...` : item.period),
+                            datasets: [
+                              {
+                                label: trend.name,
+                                data: trend.data.map(item => typeof item.value === 'number' ? item.value : 0),
+                                borderColor: trend.impact === 'positive' ? CHART_COLORS.success :
+                                  trend.impact === 'negative' ? CHART_COLORS.danger : CHART_COLORS.primary,
+                                backgroundColor: trend.impact === 'positive' ? 'rgba(16, 185, 129, 0.1)' :
+                                  trend.impact === 'negative' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(90, 66, 227, 0.1)',
+                                borderWidth: 2,
+                                pointRadius: 3,
+                                pointHoverRadius: 5,
+                                tension: 0.1
+                              }
+                            ]
+                          }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                              y: {
+                                beginAtZero: true,
+                                ticks: {
+                                  font: {
+                                    size: 9
+                                  },
+                                  maxTicksLimit: 5
+                                },
+                                grid: {
+                                  color: '#f0f0f0'
+                                }
+                              },
+                              x: {
+                                ticks: {
+                                  font: {
+                                    size: 9
+                                  },
+                                  maxTicksLimit: 6
+                                },
+                                grid: {
+                                  display: false
+                                }
+                              }
                             },
-                            tooltip: {
-                              titleFont: {
-                                size: 10
+                            plugins: {
+                              legend: {
+                                display: false
                               },
-                              bodyFont: {
-                                size: 10
-                              },
-                              padding: 6
+                              tooltip: {
+                                titleFont: {
+                                  size: 10
+                                },
+                                bodyFont: {
+                                  size: 10
+                                },
+                                padding: 6
+                              }
                             }
-                          }
-                        }}
-                      />
+                          }}
+                        />
+                      )}
                     </div>
                   ) : null}
 
@@ -1043,57 +1105,109 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                         )}
 
                         {/* Historical data chart */}
-                        {ratio.historicalData && ratio.historicalData.length > 1 && (
+                        {ratio.historicalData && ratio.historicalData.length > 0 && (
                           <div className="h-24 mt-3 mb-2">
-                            <Line
-                              data={{
-                                labels: ratio.historicalData.map(item => item.period.length > 6 ? `${item.period.substring(0, 6)}...` : item.period),
-                                datasets: [
-                                  {
-                                    label: ratio.name,
-                                    data: ratio.historicalData.map(item => item.value),
-                                    borderColor: CHART_COLORS.primary,
-                                    backgroundColor: 'rgba(90, 66, 227, 0.1)',
-                                    borderWidth: 2,
-                                    pointRadius: 3,
-                                    pointHoverRadius: 5,
-                                    tension: 0.1
-                                  }
-                                ]
-                              }}
-                              options={{
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                  y: {
-                                    beginAtZero: true,
-                                    ticks: {
-                                      font: {
-                                        size: 10
+                            {ratio.historicalData.length === 1 ? (
+                              // Use Bar chart for single data point
+                              <Bar
+                                data={{
+                                  labels: [ratio.historicalData[0].period],
+                                  datasets: [
+                                    {
+                                      label: ratio.name,
+                                      data: [ratio.historicalData[0].value],
+                                      backgroundColor: CHART_COLORS.primary,
+                                      borderColor: 'white',
+                                      borderWidth: 1,
+                                      borderRadius: 4
+                                    }
+                                  ]
+                                }}
+                                options={{
+                                  responsive: true,
+                                  maintainAspectRatio: false,
+                                  scales: {
+                                    y: {
+                                      beginAtZero: true,
+                                      ticks: {
+                                        font: {
+                                          size: 10
+                                        }
+                                      },
+                                      grid: {
+                                        color: '#f0f0f0'
                                       }
                                     },
-                                    grid: {
-                                      color: '#f0f0f0'
+                                    x: {
+                                      ticks: {
+                                        font: {
+                                          size: 10
+                                        }
+                                      },
+                                      grid: {
+                                        display: false
+                                      }
                                     }
                                   },
-                                  x: {
-                                    ticks: {
-                                      font: {
-                                        size: 10
-                                      }
-                                    },
-                                    grid: {
+                                  plugins: {
+                                    legend: {
                                       display: false
                                     }
                                   }
-                                },
-                                plugins: {
-                                  legend: {
-                                    display: false
+                                }}
+                              />
+                            ) : (
+                              // Use Line chart for multiple data points
+                              <Line
+                                data={{
+                                  labels: ratio.historicalData.map(item => item.period.length > 6 ? `${item.period.substring(0, 6)}...` : item.period),
+                                  datasets: [
+                                    {
+                                      label: ratio.name,
+                                      data: ratio.historicalData.map(item => item.value),
+                                      borderColor: CHART_COLORS.primary,
+                                      backgroundColor: 'rgba(90, 66, 227, 0.1)',
+                                      borderWidth: 2,
+                                      pointRadius: 3,
+                                      pointHoverRadius: 5,
+                                      tension: 0.1
+                                    }
+                                  ]
+                                }}
+                                options={{
+                                  responsive: true,
+                                  maintainAspectRatio: false,
+                                  scales: {
+                                    y: {
+                                      beginAtZero: true,
+                                      ticks: {
+                                        font: {
+                                          size: 10
+                                        }
+                                      },
+                                      grid: {
+                                        color: '#f0f0f0'
+                                      }
+                                    },
+                                    x: {
+                                      ticks: {
+                                        font: {
+                                          size: 10
+                                        }
+                                      },
+                                      grid: {
+                                        display: false
+                                      }
+                                    }
+                                  },
+                                  plugins: {
+                                    legend: {
+                                      display: false
+                                    }
                                   }
-                                }
-                              }}
-                            />
+                                }}
+                              />
+                            )}
                           </div>
                         )}
 
@@ -1159,57 +1273,109 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                         )}
 
                         {/* Historical data chart */}
-                        {ratio.historicalData && ratio.historicalData.length > 1 && (
+                        {ratio.historicalData && ratio.historicalData.length > 0 && (
                           <div className="h-24 mt-3 mb-2">
-                            <Line
-                              data={{
-                                labels: ratio.historicalData.map(item => item.period.length > 6 ? `${item.period.substring(0, 6)}...` : item.period),
-                                datasets: [
-                                  {
-                                    label: ratio.name,
-                                    data: ratio.historicalData.map(item => item.value),
-                                    borderColor: CHART_COLORS.success,
-                                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                                    borderWidth: 2,
-                                    pointRadius: 3,
-                                    pointHoverRadius: 5,
-                                    tension: 0.1
-                                  }
-                                ]
-                              }}
-                              options={{
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                  y: {
-                                    beginAtZero: true,
-                                    ticks: {
-                                      font: {
-                                        size: 10
+                            {ratio.historicalData.length === 1 ? (
+                              // Use Bar chart for single data point
+                              <Bar
+                                data={{
+                                  labels: [ratio.historicalData[0].period],
+                                  datasets: [
+                                    {
+                                      label: ratio.name,
+                                      data: [ratio.historicalData[0].value],
+                                      backgroundColor: CHART_COLORS.success,
+                                      borderColor: 'white',
+                                      borderWidth: 1,
+                                      borderRadius: 4
+                                    }
+                                  ]
+                                }}
+                                options={{
+                                  responsive: true,
+                                  maintainAspectRatio: false,
+                                  scales: {
+                                    y: {
+                                      beginAtZero: true,
+                                      ticks: {
+                                        font: {
+                                          size: 10
+                                        }
+                                      },
+                                      grid: {
+                                        color: '#f0f0f0'
                                       }
                                     },
-                                    grid: {
-                                      color: '#f0f0f0'
+                                    x: {
+                                      ticks: {
+                                        font: {
+                                          size: 10
+                                        }
+                                      },
+                                      grid: {
+                                        display: false
+                                      }
                                     }
                                   },
-                                  x: {
-                                    ticks: {
-                                      font: {
-                                        size: 10
-                                      }
-                                    },
-                                    grid: {
+                                  plugins: {
+                                    legend: {
                                       display: false
                                     }
                                   }
-                                },
-                                plugins: {
-                                  legend: {
-                                    display: false
+                                }}
+                              />
+                            ) : (
+                              // Use Line chart for multiple data points
+                              <Line
+                                data={{
+                                  labels: ratio.historicalData.map(item => item.period.length > 6 ? `${item.period.substring(0, 6)}...` : item.period),
+                                  datasets: [
+                                    {
+                                      label: ratio.name,
+                                      data: ratio.historicalData.map(item => item.value),
+                                      borderColor: CHART_COLORS.success,
+                                      backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                      borderWidth: 2,
+                                      pointRadius: 3,
+                                      pointHoverRadius: 5,
+                                      tension: 0.1
+                                    }
+                                  ]
+                                }}
+                                options={{
+                                  responsive: true,
+                                  maintainAspectRatio: false,
+                                  scales: {
+                                    y: {
+                                      beginAtZero: true,
+                                      ticks: {
+                                        font: {
+                                          size: 10
+                                        }
+                                      },
+                                      grid: {
+                                        color: '#f0f0f0'
+                                      }
+                                    },
+                                    x: {
+                                      ticks: {
+                                        font: {
+                                          size: 10
+                                        }
+                                      },
+                                      grid: {
+                                        display: false
+                                      }
+                                    }
+                                  },
+                                  plugins: {
+                                    legend: {
+                                      display: false
+                                    }
                                   }
-                                }
-                              }}
-                            />
+                                }}
+                              />
+                            )}
                           </div>
                         )}
 
