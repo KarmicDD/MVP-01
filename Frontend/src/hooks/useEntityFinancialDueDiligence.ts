@@ -93,6 +93,33 @@ export interface MissingDocuments {
   recommendations: string[];
 }
 
+export interface DocumentContentAnalysis {
+  overview: string;
+  dueDiligenceFindings: {
+    summary: string;
+    keyInsights: string[];
+    investmentImplications: string[];
+    growthIndicators: string[];
+    riskFactors: string[];
+  };
+  auditFindings: {
+    summary: string;
+    complianceIssues: string[];
+    accountingConcerns: string[];
+    internalControlWeaknesses: string[];
+    fraudRiskIndicators: string[];
+  };
+  documentSpecificAnalysis: {
+    documentType: string;
+    contentSummary: string;
+    dueDiligenceInsights: string[];
+    auditInsights: string[];
+    keyFinancialData: string[];
+    inconsistencies: string[];
+    recommendations: string[];
+  }[];
+}
+
 export interface FinancialTrend {
   name: string;
   description: string;
@@ -135,6 +162,12 @@ export interface FinancialDueDiligenceReport {
     keyFindings: string[];
     recommendedActions: string[];
     keyMetrics: FinancialMetric[];
+    dueDiligenceSummary?: {
+      investmentWorthiness: 'high' | 'medium' | 'low';
+      statement: string;
+      keyStrengths: string[];
+      keyRisks: string[];
+    };
     auditOpinion?: {
       type: 'unqualified' | 'qualified' | 'adverse' | 'disclaimer';
       statement: string;
@@ -298,6 +331,9 @@ export interface FinancialDueDiligenceReport {
     availableDocuments: DocumentAnalysisItem[];
     missingDocuments: MissingDocuments;
   };
+
+  // Document Content Analysis Section
+  documentContentAnalysis?: DocumentContentAnalysis;
 
   // Industry Benchmarking Section
   industryBenchmarking?: {

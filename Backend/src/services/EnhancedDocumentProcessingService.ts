@@ -682,20 +682,35 @@ Created: ${formattedDate}
             ` : '';
 
       prompt = `
-                *** IMPORTANT: THIS IS BOTH A FINANCIAL DUE DILIGENCE AND FORMAL FINANCIAL AUDITING REPORT. YOUR ANALYSIS MUST MEET PROFESSIONAL STANDARDS THAT COULD REPLACE THE WORK OF LAWYERS AND CHARTERED ACCOUNTANTS. ***
-                WRITE HIGH IMPACT AND ACTIONALBE PORINTS AND FINDINGS. DO NOT USE GENERIC OR VAGUE LANGUAGE.  WRITE IN A FORMAL, PROFESSIONAL TONE APPROPRIATE FOR A FINANCIAL AUDIT REPORT.
+                *** IMPORTANT: THIS IS A REPORT THAT SEPARATES FINANCIAL DUE DILIGENCE FROM FORMAL FINANCIAL AUDITING. YOUR ANALYSIS MUST MEET PROFESSIONAL STANDARDS THAT COULD REPLACE THE WORK OF LAWYERS AND CHARTERED ACCOUNTANTS. ***
+                WRITE HIGH IMPACT AND ACTIONABLE POINTS AND FINDINGS. DO NOT USE GENERIC OR VAGUE LANGUAGE. WRITE IN A FORMAL, PROFESSIONAL TONE APPROPRIATE FOR A FINANCIAL REPORT.
                 THE POINTS MUST BE ACTIONABLE AND SPECIFIC TO ${companyName}. DO NOT USE GENERIC STATEMENTS OR VAGUE LANGUAGE.
                 WRITE AS MUCH AS YOU CAN. DO NOT USE SHORT OR VAGUE RESPONSES. BE DETAILED AND THOROUGH. WRITE VERY DETAILED AND THOROUGH RESPONSES.
-                GIVE MORE GRAPHS , CHARTS, AND VISUALIZATIONS. USE COLOR-CODED METRICS AND GRAPHS. MAKE IT VISUALLY APPEALING.
-                EACH SECTION SHOULD HAVE MAXIMUM DATA
-                You are a specialized financial analyst and auditor with expertise in Indian company standards and regulations. Your task is to perform a comprehensive financial due diligence analysis and formal audit for ${companyName} that would satisfy legal and regulatory requirements.
-                Do not use generic or vague language. Write in a formal, professional tone appropriate for a financial audit report.
+                GIVE MORE GRAPHS, CHARTS, AND VISUALIZATIONS. USE COLOR-CODED METRICS AND GRAPHS. MAKE IT VISUALLY APPEALING.
+                EACH SECTION SHOULD HAVE MAXIMUM DATA.
+
+                *** CRITICAL INSTRUCTION: SEPARATE FINANCIAL DUE DILIGENCE FROM AUDITING ***
+                You are a specialized financial analyst and auditor with expertise in Indian company standards and regulations. Your task is to perform TWO DISTINCT ANALYSES for ${companyName}:
+
+                1. FINANCIAL DUE DILIGENCE: Focus on investment worthiness, growth potential, financial health, and business viability
+                   - Analyze financial performance, market position, and growth trajectory
+                   - Evaluate investment potential and risks
+                   - Assess business model sustainability and competitive advantages
+                   - Provide insights relevant for investors making investment decisions
+
+                2. FORMAL FINANCIAL AUDITING: Focus on compliance, accuracy, fraud detection, and adherence to accounting standards
+                   - Verify compliance with accounting standards and regulatory requirements
+                   - Identify potential fraud risks or accounting irregularities
+                   - Assess internal controls and financial reporting processes
+                   - Provide insights relevant for regulatory compliance and financial accuracy
+
+                Do not use generic or vague language. Write in a formal, professional tone appropriate for a financial report.
                 Focus on providing clear, actionable insights and recommendations based on the financial documents provided. Your analysis should be thorough, detailed, and presented in a visually appealing format with color-coded metrics and graphical data.
                 WRITE AS MUCH AS YOU CAN. BE VERY DETAILED AND THOROUGH. WRITE VERY DETAILED AND THOROUGH RESPONSES. EVERY SECTION SHOULD HAVE MAXIMUM DATA.
                 DO NOT USE SHORT OR VAGUE RESPONSES. WRITE AS MUCH AS YOU CAN. BE DETAILED AND THOROUGH. WRITE VERY DETAILED AND THOROUGH RESPONSES.
-                HAVE AS MUCH AS GRAPHS , CHARTS, AND VISUALIZATIONS AS POSSIBLE. USE COLOR-CODED METRICS AND GRAPHS. MAKE IT VISUALLY APPEALING.  
+                HAVE AS MANY GRAPHS, CHARTS, AND VISUALIZATIONS AS POSSIBLE. USE COLOR-CODED METRICS AND GRAPHS. MAKE IT VISUALLY APPEALING.
                 ACT LIKE YOU ARE A FINANCIAL ANALYST AND AUDITOR. AND BE PROFESSIONAL.
-                TASK: Analyze the following financial documents for ${companyName} and provide a comprehensive, professional financial due diligence and audit report that combines both financial analysis and audit findings. Your analysis should be thorough, detailed, and presented in a visually appealing format with color-coded metrics and graphical data. Include data visualizations and charts wherever possible.
+                TASK: Analyze the following financial documents for ${companyName} and provide a comprehensive, professional report that CLEARLY SEPARATES financial due diligence analysis from audit findings. Your analysis should be thorough, detailed, and presented in a visually appealing format with color-coded metrics and graphical data. Include data visualizations and charts wherever possible.
 
                 IMPORTANT REPORT STYLE GUIDELINES:
                 1. Write in a formal, professional tone appropriate for a financial audit report
@@ -759,7 +774,7 @@ Created: ${formattedDate}
                 - When analyzing financial projections, clearly state the time period they cover and assess their reasonableness
 
                 FOLLOW THE RESPONSE FORMAT STRICTLY:
-                DO NOT DEVIATE FROM THE RESPONSE FORMAT. 
+                DO NOT DEVIATE FROM THE RESPONSE FORMAT.
                 ALWAYS RETURN VALID JSON. WITH CORRECT FORMAT.
                 DO NOT INCLUDE ANY EXPLANATIONS OR MARKDOWN FORMATTING.
                 FOLLOW THE STRUCTURE AS IT IS.
@@ -796,6 +811,12 @@ Created: ${formattedDate}
                         }
                       }
                     ],
+                    "dueDiligenceSummary": {
+                      "investmentWorthiness": "high" or "medium" or "low",
+                      "statement": "Summary statement about investment worthiness",
+                      "keyStrengths": ["Strength 1", "Strength 2"],
+                      "keyRisks": ["Risk 1", "Risk 2"]
+                    },
                     "auditOpinion": {
                       "type": "unqualified" or "qualified" or "adverse" or "disclaimer", // Professional audit opinion type
                       "statement": "Professional audit opinion statement",
@@ -839,12 +860,16 @@ Created: ${formattedDate}
                           {"period": "Period 3 (e.g., Q3 2023)", "value": numeric value or "N/A"}
                         ],
                         "chartData": {
-                          "type": "line" or "bar", // Type of chart that would best represent this trend
-                          "labels": ["Period 1", "Period 2", "Period 3"], // Time periods
+                          "type": "line" or "bar" or "pie", // Type of chart that would best represent this data
+                          "labels": ["Period 1", "Period 2", "Period 3"], // Time periods or categories
                           "datasets": [
                             {
                               "label": "Dataset label",
                               "data": [value1, value2, value3], // Numeric values for each period
+                              "backgroundColor": ["#4CAF50", "#FFC107", "#F44336"] // Suggested colors
+                            }
+                          ]
+                        }
                               "borderColor": "#2196F3", // Suggested color for line charts
                               "backgroundColor": "rgba(33, 150, 243, 0.2)" // Suggested background color with transparency
                             }
@@ -1239,6 +1264,34 @@ Created: ${formattedDate}
                       "priorityLevel": "high" or "medium" or "low"
                     }
                   },
+                  "documentContentAnalysis": {
+                    "overview": "Overview of the document content analysis findings",
+                    "dueDiligenceFindings": {
+                      "summary": "Summary of financial due diligence findings from document content",
+                      "keyInsights": ["Key due diligence insight 1", "Key due diligence insight 2"],
+                      "investmentImplications": ["Investment implication 1", "Investment implication 2"],
+                      "growthIndicators": ["Growth indicator 1", "Growth indicator 2"],
+                      "riskFactors": ["Risk factor 1", "Risk factor 2"]
+                    },
+                    "auditFindings": {
+                      "summary": "Summary of audit findings from document content",
+                      "complianceIssues": ["Compliance issue 1", "Compliance issue 2"],
+                      "accountingConcerns": ["Accounting concern 1", "Accounting concern 2"],
+                      "internalControlWeaknesses": ["Internal control weakness 1", "Internal control weakness 2"],
+                      "fraudRiskIndicators": ["Fraud risk indicator 1", "Fraud risk indicator 2"]
+                    },
+                    "documentSpecificAnalysis": [
+                      {
+                        "documentType": "Document type name",
+                        "contentSummary": "Summary of the document's content",
+                        "dueDiligenceInsights": ["Due diligence insight 1", "Due diligence insight 2"],
+                        "auditInsights": ["Audit insight 1", "Audit insight 2"],
+                        "keyFinancialData": ["Financial data point 1", "Financial data point 2"],
+                        "inconsistencies": ["Inconsistency 1", "Inconsistency 2"],
+                        "recommendations": ["Recommendation 1", "Recommendation 2"]
+                      }
+                    ]
+                  },
                   "industryBenchmarking": {
                     "overview": "Overview of industry benchmarking",
                     "industryContext": "Description of the industry context and trends",
@@ -1380,7 +1433,7 @@ Created: ${formattedDate}
                 - Provide detailed ratio analysis with industry comparisons
                 - Include specific, actionable recommendations for improvement
                 - Provide a comprehensive legal and regulatory compliance assessment
-                - Include a financial health score with detailed breakdown of components
+                - Include a financial health score with detailed breakdown of components is
                 - Provide a SWOT analysis (Strengths, Weaknesses, Opportunities, Threats)
                 - Include radar charts comparing company performance to industry benchmarks
                 - Provide trend analysis with line charts showing historical performance
@@ -1403,6 +1456,19 @@ Created: ${formattedDate}
                 - For each recommendation, explain the expected benefit: "By implementing [recommendation], ${companyName} could improve [specific area] by approximately [estimated impact]"
 
                 TREND ANALYSIS GUIDELINES:
+                - GENERATE AT LEAST 6-8 DIFFERENT FINANCIAL TREND GRAPHS covering various aspects of financial performance
+                - EACH TREND MUST INCLUDE CHART DATA with appropriate visualization type (line, bar, etc.)
+                - Include the following ESSENTIAL FINANCIAL TRENDS (with monthly or quarterly data points):
+                  * Revenue Growth Trend
+                  * EBITDA/Profit Margin Trend
+                  * Cash Flow Trend
+                  * Burn Rate Trend
+                  * Customer Acquisition Cost (CAC) Trend
+                  * Lifetime Value (LTV) Trend
+                  * Debt-to-Equity Ratio Trend
+                  * Working Capital Trend
+                  * Accounts Receivable/Payable Trend
+                  * Operational Efficiency Metrics Trend
                 - Use any appropriate term to describe trends (increasing, decreasing, stable, improving, deteriorating, etc.)
                 - Be consistent in your terminology within each section
                 - For financial metrics, use terms like "increasing", "decreasing", "stable", "volatile", "improving", "deteriorating"
@@ -1413,25 +1479,28 @@ Created: ${formattedDate}
                 - Highlight any unusual or concerning trends specific to ${companyName}'s financial data
                 - Explain potential causes for significant trends observed in ${companyName}'s financial statements
                 - Provide forward-looking implications of current trends for ${companyName}'s future performance
+                - ENSURE EACH TREND HAS COMPLETE CHART DATA with appropriate labels, datasets, and colors
 
-                DOCUMENT QUALITY ASSESSMENT:
-                - For each of ${companyName}'s documents, assess quality based on completeness, clarity, and standardization with professional auditor's judgment
-                - Use the metadata (especially File Format, Size, and Time Period) to inform your quality assessment
-                - Note any inconsistencies, errors, or suspicious patterns in ${companyName}'s financial documents that would concern a professional auditor
-                - Identify any red flags in ${companyName}'s documentation that might indicate financial misrepresentation or require further investigation
-                - Assess whether ${companyName}'s documents follow standard accounting practices and Indian accounting standards
-                - Note any unusual transactions or accounting treatments in ${companyName}'s records that deviate from standard practices
-                - Evaluate whether ${companyName}'s documents provide sufficient information for a comprehensive analysis and audit
-                - Identify any gaps in ${companyName}'s documentation that would prevent a complete audit opinion
-                - Assess the reliability of ${companyName}'s financial data based on source documents
-                - Evaluate the consistency between different financial documents provided by ${companyName}
-                - Note any discrepancies between reported figures in different documents from ${companyName}
+                DOCUMENT CONTENT ANALYSIS AND SEPARATE FINANCIAL DD & AUDITING:
+                - For each of ${companyName}'s documents, perform a DEEP ANALYSIS OF THE CONTENT rather than just assessing document quality
+                - SEPARATE FINANCIAL DUE DILIGENCE from AUDITING in your analysis:
+                  * FINANCIAL DUE DILIGENCE: Focus on investment worthiness, growth potential, financial health, and business viability
+                  * AUDITING: Focus on compliance, accuracy, fraud detection, and adherence to accounting standards
+                - For each document, extract key financial data points, trends, and insights that would be valuable for investment decisions
+                - Identify specific financial metrics, ratios, and indicators from the document content that reveal ${companyName}'s true financial position
+                - Analyze content for inconsistencies, errors, or suspicious patterns in ${companyName}'s financial data that would concern a professional auditor
+                - Identify red flags in the actual financial figures and calculations that might indicate misrepresentation or require further investigation
+                - Assess whether the financial data in the documents follows standard accounting practices and Indian accounting standards
+                - Note unusual transactions or accounting treatments in ${companyName}'s financial data that deviate from standard practices
+                - Evaluate whether the financial data provides sufficient information for comprehensive analysis and audit
+                - Identify gaps in financial information that would prevent a complete investment decision or audit opinion
+                - Assess the reliability of ${companyName}'s financial data based on internal consistency and industry benchmarks
+                - Evaluate consistency between different financial figures across documents provided by ${companyName}
+                - Note discrepancies between reported figures in different documents from ${companyName}
                 - Assess whether ${companyName}'s financial statements are prepared in accordance with applicable accounting standards
-                - Evaluate the adequacy of disclosures in ${companyName}'s financial statements
-                - Identify any limitations in the scope of the audit due to quality issues in ${companyName}'s documentation
-                - For each document quality issue, explain how it impacts the reliability of the analysis of ${companyName}'s financial position
-                - For documents with user-provided descriptions, incorporate this context into your quality assessment
-                - When documents cover different time periods, assess the completeness of the financial timeline and identify any gaps
+                - Evaluate the adequacy of financial disclosures in ${companyName}'s statements
+                - For each content analysis finding, explain how it impacts investment decisions AND audit reliability separately
+                - When documents cover different time periods, analyze financial trends and growth patterns across these periods
 
                 DOCUMENT CONTENT:
                 ${documentContent}

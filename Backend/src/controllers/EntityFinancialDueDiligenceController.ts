@@ -643,6 +643,7 @@ export const getFinancialDueDiligenceReport = async (req: Request, res: Response
             taxCompliance: report.taxCompliance,
             auditFindings: report.auditFindings,
             documentAnalysis: report.documentAnalysis,
+            documentContentAnalysis: report.documentContentAnalysis, // Add the new document content analysis section
             availableDocuments: report.availableDocuments,
             missingDocumentTypes: report.missingDocumentTypes,
             generatedDate: report.createdAt,

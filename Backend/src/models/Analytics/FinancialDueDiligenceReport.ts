@@ -220,6 +220,34 @@ export interface IFinancialDueDiligenceReport extends Document {
     };
   };
 
+  // Document Content Analysis Section - New section for analyzing document content
+  documentContentAnalysis?: {
+    overview: string;
+    dueDiligenceFindings: {
+      summary: string;
+      keyInsights: string[];
+      investmentImplications: string[];
+      growthIndicators: string[];
+      riskFactors: string[];
+    };
+    auditFindings: {
+      summary: string;
+      complianceIssues: string[];
+      accountingConcerns: string[];
+      internalControlWeaknesses: string[];
+      fraudRiskIndicators: string[];
+    };
+    documentSpecificAnalysis: {
+      documentType: string;
+      contentSummary: string;
+      dueDiligenceInsights: string[];
+      auditInsights: string[];
+      keyFinancialData: string[];
+      inconsistencies: string[];
+      recommendations: string[];
+    }[];
+  };
+
   // Industry Benchmarking Section
   industryBenchmarking?: {
     overview: string;
@@ -348,6 +376,40 @@ const MissingDocumentsSchema = new Schema({
   priorityLevel: { type: String } // Accept any string value for priorityLevel
 });
 
+// Define schema for document content analysis
+const DocumentContentDueDiligenceFindingsSchema = new Schema({
+  summary: { type: String, required: true },
+  keyInsights: [String],
+  investmentImplications: [String],
+  growthIndicators: [String],
+  riskFactors: [String]
+});
+
+const DocumentContentAuditFindingsSchema = new Schema({
+  summary: { type: String, required: true },
+  complianceIssues: [String],
+  accountingConcerns: [String],
+  internalControlWeaknesses: [String],
+  fraudRiskIndicators: [String]
+});
+
+const DocumentSpecificAnalysisSchema = new Schema({
+  documentType: { type: String, required: true },
+  contentSummary: { type: String, required: true },
+  dueDiligenceInsights: [String],
+  auditInsights: [String],
+  keyFinancialData: [String],
+  inconsistencies: [String],
+  recommendations: [String]
+});
+
+const DocumentContentAnalysisSchema = new Schema({
+  overview: { type: String, required: true },
+  dueDiligenceFindings: DocumentContentDueDiligenceFindingsSchema,
+  auditFindings: DocumentContentAuditFindingsSchema,
+  documentSpecificAnalysis: [DocumentSpecificAnalysisSchema]
+});
+
 // Define schema for industry benchmarking
 const IndustryBenchmarkingMetricSchema = new Schema({
   name: { type: String, required: true },
@@ -465,6 +527,9 @@ const FinancialDueDiligenceReportSchema: Schema = new Schema({
     availableDocuments: [DocumentAnalysisItemSchema],
     missingDocuments: MissingDocumentsSchema
   },
+
+  // Document Content Analysis Section
+  documentContentAnalysis: DocumentContentAnalysisSchema,
 
   // Industry Benchmarking Section
   industryBenchmarking: IndustryBenchmarkingSchema,

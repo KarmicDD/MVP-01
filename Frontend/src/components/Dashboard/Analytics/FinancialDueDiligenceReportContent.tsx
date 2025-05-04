@@ -6,6 +6,7 @@ import { FinancialDueDiligenceReport as EntityFinancialDueDiligenceReport, Chart
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, RadialLinearScale, Title, Tooltip as ChartTooltip, Legend, Filler } from 'chart.js';
 import { Line, Bar, Pie, Radar } from 'react-chartjs-2';
 import ChartRenderer from './ChartRenderer';
+import DocumentContentAnalysisSection from './DocumentContentAnalysisSection';
 
 // Create a union type that can handle both report types
 type FinancialDueDiligenceReport = MatchFinancialDueDiligenceReport | EntityFinancialDueDiligenceReport;
@@ -250,6 +251,89 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+          </div>
+
+          {/* Due Diligence Summary and Audit Opinion */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            {/* Due Diligence Summary (if available) */}
+            {(report.executiveSummary as any)?.dueDiligenceSummary && (
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
+                  <FiDollarSign className="mr-2 text-blue-600" />
+                  Investment Worthiness Assessment
+                </h4>
+                <div className="flex items-center mb-3">
+                  <span className="text-sm font-medium text-gray-700 mr-2">Investment Worthiness:</span>
+                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${(report.executiveSummary as any).dueDiligenceSummary.investmentWorthiness === 'high' ? 'bg-green-100 text-green-800' :
+                    (report.executiveSummary as any).dueDiligenceSummary.investmentWorthiness === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                    {(report.executiveSummary as any).dueDiligenceSummary.investmentWorthiness}
+                  </span>
+                </div>
+                <p className="text-gray-700 mb-3">{(report.executiveSummary as any).dueDiligenceSummary.statement}</p>
+
+                <div className="grid grid-cols-1 gap-3">
+                  {(report.executiveSummary as any).dueDiligenceSummary.keyStrengths && (report.executiveSummary as any).dueDiligenceSummary.keyStrengths.length > 0 && (
+                    <div>
+                      <h5 className="font-medium text-green-700 mb-1">Key Strengths:</h5>
+                      <ul className="list-disc pl-5 space-y-1 bg-white p-2 rounded border border-green-100">
+                        {(report.executiveSummary as any).dueDiligenceSummary.keyStrengths.map((strength: string, index: number) => (
+                          <li key={index} className="text-gray-600 text-sm">{strength}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {(report.executiveSummary as any).dueDiligenceSummary.keyRisks && (report.executiveSummary as any).dueDiligenceSummary.keyRisks.length > 0 && (
+                    <div>
+                      <h5 className="font-medium text-red-700 mb-1">Key Risks:</h5>
+                      <ul className="list-disc pl-5 space-y-1 bg-white p-2 rounded border border-red-100">
+                        {(report.executiveSummary as any).dueDiligenceSummary.keyRisks.map((risk: string, index: number) => (
+                          <li key={index} className="text-gray-600 text-sm">{risk}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Audit Opinion (if available) */}
+            {(report.executiveSummary as any)?.auditOpinion && (
+              <div className={`p-4 rounded-lg ${(report.executiveSummary as any).auditOpinion.type === 'unqualified' ? 'bg-green-50 border border-green-100' :
+                (report.executiveSummary as any).auditOpinion.type === 'qualified' ? 'bg-yellow-50 border border-yellow-100' :
+                  (report.executiveSummary as any).auditOpinion.type === 'adverse' ? 'bg-red-50 border border-red-100' :
+                    'bg-gray-50 border border-gray-100'
+                }`}>
+                <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
+                  <FiShield className="mr-2 text-gray-600" />
+                  Audit Opinion
+                </h4>
+                <p className="text-gray-700 mb-3">{(report.executiveSummary as any).auditOpinion.statement}</p>
+
+                {(report.executiveSummary as any).auditOpinion.qualifications && (report.executiveSummary as any).auditOpinion.qualifications.length > 0 && (
+                  <div className="mt-2">
+                    <h5 className="font-medium text-gray-700 mb-1">Qualifications:</h5>
+                    <ul className="list-disc pl-5 space-y-1 bg-white p-2 rounded border border-gray-200">
+                      {(report.executiveSummary as any).auditOpinion.qualifications.map((qualification: string, index: number) => (
+                        <li key={index} className="text-gray-600 text-sm">{qualification}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="mt-3">
+                  <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${(report.executiveSummary as any).auditOpinion.type === 'unqualified' ? 'bg-green-100 text-green-800' :
+                    (report.executiveSummary as any).auditOpinion.type === 'qualified' ? 'bg-yellow-100 text-yellow-800' :
+                      (report.executiveSummary as any).auditOpinion.type === 'adverse' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                    }`}>
+                    {(report.executiveSummary as any).auditOpinion.type} opinion
+                  </span>
+                </div>
               </div>
             )}
           </div>
@@ -533,21 +617,26 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
         {/* Financial Trends */}
         {report.financialAnalysis?.trends && report.financialAnalysis.trends.length > 0 && (
           <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-            <div className="flex items-center mb-5">
-              <div className="bg-purple-600 p-2 rounded-lg mr-3">
-                <FiTrendingUp className="text-white" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="bg-purple-600 p-2 rounded-lg mr-3">
+                  <FiTrendingUp className="text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-800">Financial Trends</h3>
               </div>
-              <h3 className="text-xl font-bold text-gray-800">Financial Trends</h3>
+              <div className="text-sm text-gray-500">
+                {report.financialAnalysis.trends.length} trend{report.financialAnalysis.trends.length !== 1 ? 's' : ''} available
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {report.financialAnalysis.trends.map((trend, index) => (
                 <motion.div
                   key={index}
-                  className="rounded-lg border p-4"
+                  className="rounded-lg border p-3"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
+                  transition={{ delay: index * 0.05 }}
                   style={{
                     borderColor: trend.impact === 'positive' ? CHART_COLORS.success :
                       trend.impact === 'negative' ? CHART_COLORS.danger : CHART_COLORS.neutral,
@@ -570,15 +659,15 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
 
                   {/* Chart if chartData is available */}
                   {(trend as any).chartData ? (
-                    <div className="h-40 mb-3">
-                      <ChartRenderer chartData={(trend as any).chartData} height={160} />
+                    <div className="h-36 mb-2">
+                      <ChartRenderer chartData={(trend as any).chartData} height={144} />
                     </div>
                   ) : trend.data && trend.data.length > 0 ? (
                     // Fallback to create chart from data if chartData is not available
-                    <div className="h-40 mb-3">
+                    <div className="h-36 mb-2">
                       <Line
                         data={{
-                          labels: trend.data.map(item => item.period.length > 10 ? `${item.period.substring(0, 10)}...` : item.period),
+                          labels: trend.data.map(item => item.period.length > 8 ? `${item.period.substring(0, 8)}...` : item.period),
                           datasets: [
                             {
                               label: trend.name,
@@ -588,8 +677,8 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                               backgroundColor: trend.impact === 'positive' ? 'rgba(16, 185, 129, 0.1)' :
                                 trend.impact === 'negative' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(90, 66, 227, 0.1)',
                               borderWidth: 2,
-                              pointRadius: 4,
-                              pointHoverRadius: 6,
+                              pointRadius: 3,
+                              pointHoverRadius: 5,
                               tension: 0.1
                             }
                           ]
@@ -602,8 +691,9 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                               beginAtZero: true,
                               ticks: {
                                 font: {
-                                  size: 10
-                                }
+                                  size: 9
+                                },
+                                maxTicksLimit: 5
                               },
                               grid: {
                                 color: '#f0f0f0'
@@ -612,8 +702,9 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                             x: {
                               ticks: {
                                 font: {
-                                  size: 10
-                                }
+                                  size: 9
+                                },
+                                maxTicksLimit: 6
                               },
                               grid: {
                                 display: false
@@ -623,6 +714,15 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                           plugins: {
                             legend: {
                               display: false
+                            },
+                            tooltip: {
+                              titleFont: {
+                                size: 10
+                              },
+                              bodyFont: {
+                                size: 10
+                              },
+                              padding: 6
                             }
                           }
                         }}
@@ -630,10 +730,12 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                     </div>
                   ) : null}
 
-                  <p className="text-sm text-gray-600 mb-3">{trend.description}</p>
+                  <p className="text-xs text-gray-600 mb-2 line-clamp-2" title={trend.description}>
+                    {trend.description}
+                  </p>
 
-                  <div className="flex items-center mt-2">
-                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${trend.impact === 'positive' ? 'bg-green-100 text-green-800' :
+                  <div className="flex items-center">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${trend.impact === 'positive' ? 'bg-green-100 text-green-800' :
                       trend.impact === 'negative' ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
@@ -1856,6 +1958,11 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
             </div>
           </div>
         </div>
+
+        {/* Document Content Analysis Section - New section */}
+        {report.documentContentAnalysis && (
+          <DocumentContentAnalysisSection documentContentAnalysis={report.documentContentAnalysis} />
+        )}
 
         {/* Document Analysis Section */}
         {report.documentAnalysis && (
