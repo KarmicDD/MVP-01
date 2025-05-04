@@ -14,6 +14,23 @@ import { cleanJsonResponse, safeJsonParse } from '../utils/jsonHelper';
 // Load environment variables
 dotenv.config();
 
+/**
+ * Interface for document extraction results that includes both raw text and AI-processed content
+ */
+export interface DocumentExtractionResult {
+  rawText: string;           // Text extracted using traditional methods
+  aiProcessedText: string;   // Text extracted using AI (Gemini, OCR)
+  combinedText: string;      // Combined text (typically AI if available, otherwise raw)
+  extractionMethod: string;  // Method used for the combined text (e.g., "gemini", "traditional", "tesseract")
+  metadata?: {               // Optional metadata about the extraction
+    fileType: string;
+    fileName: string;
+    extractionTime: Date;
+    aiConfidence?: number;   // Confidence score if available
+    [key: string]: any;      // Additional metadata
+  };
+}
+
 // Initialize Gemini API
 const apiKey = process.env.GEMINI_API_KEY || '';
 if (!apiKey) {
@@ -22,10 +39,19 @@ if (!apiKey) {
 
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash-preview-04-17",
+  model: "gemini-2.5-pro-exp-03-25", // Updated from preview to exp as recommended
   generationConfig: {
-    maxOutputTokens: 65536, // Set to maximum allowed for Gemini 2.0 Flash
-    temperature: 0.2, // Lower temperature for more deterministic outputs
+    maxOutputTokens: 65536,
+    temperature: 0.2,
+  }
+});
+
+// Document extraction model - using gemini-2.0-flash as requested
+const documentExtractionModel = genAI.getGenerativeModel({
+  model: "gemini-2.0-flash", // Using gemini-2.0-flash as specified for document extraction
+  generationConfig: {
+    maxOutputTokens: 30000,
+    temperature: 0.5, // Very low temperature for more accurate extraction
   }
 });
 
@@ -43,7 +69,7 @@ const pdfExtractAsync = promisify(pdfExtract.extract.bind(pdfExtract));
  */
 export class EnhancedDocumentProcessingService {
   /**
-   * Extract text content from a PDF file
+   * Extract text content from a PDF file using traditional PDF extraction
    * @param filePath Path to the PDF file
    * @returns Extracted text content
    */
@@ -80,11 +106,227 @@ export class EnhancedDocumentProcessingService {
   }
 
   /**
+   * Extract text content from a PDF file using Gemini AI
+   * This is used for all PDFs to ensure tables and graphs are properly extracted
+   * @param filePath Path to the PDF file
+   * @param metadata Optional metadata to provide context for extraction
+   * @returns Extracted text content with preserved formatting
+   */
+  async extractPdfTextWithGemini(filePath: string, metadata?: {
+    documentType?: string;
+    name?: string;
+    timePeriod?: string;
+    description?: string;
+  }): Promise<string> {
+    try {
+      // First check if the file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`PDF file not found: ${filePath}`);
+        return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+      }
+
+      // Read the file as a buffer and convert to base64
+      const fileBuffer = await readFileAsync(filePath);
+
+      // Format document type for display in prompt
+      let documentTypeInfo = '';
+      if (metadata?.documentType) {
+        const formattedType = metadata.documentType.replace('financial_', '').replace(/_/g, ' ');
+        documentTypeInfo = `Document Type: ${formattedType}\n`;
+      }
+
+      // Add time period if available
+      let timePeriodInfo = '';
+      if (metadata?.timePeriod) {
+        timePeriodInfo = `Time Period: ${metadata.timePeriod}\n`;
+      }
+
+      // Add description if available
+      let descriptionInfo = '';
+      if (metadata?.description && metadata.description !== 'No description') {
+        descriptionInfo = `Description: ${metadata.description}\n`;
+      }
+
+      // Create an enhanced context-aware prompt for Gemini to extract text from the PDF
+      const prompt = `
+      Extract all text content from this PDF document with maximum accuracy and completeness.
+      ${documentTypeInfo}${timePeriodInfo}${descriptionInfo}
+      This document requires precise extraction of all information, including tables and graphs.
+
+      CRITICAL EXTRACTION INSTRUCTIONS:
+      1. Extract ABSOLUTELY ALL text content from the document, including headers, footers, footnotes, and any text in images or charts
+      2. Maintain the original formatting with exact preservation of:
+         - Table structures (preserve rows, columns, and cell alignment)
+         - Section headings and hierarchical structure
+         - Paragraph breaks and indentation
+         - Bullet points and numbered lists
+         - Mathematical formulas and equations
+
+      3. FOR TABLES - EXTREMELY IMPORTANT:
+         - Preserve the exact table structure with proper column alignment
+         - Maintain header rows and column relationships
+         - Format tables using a clear tabular format with column separators (| or tabs)
+         - Include column headers and maintain their relationship to data
+         - Ensure all cells, including empty ones, are properly represented
+         - For financial tables, ensure all numbers, calculations, and totals are precisely captured
+
+      4. FOR GRAPHS AND CHARTS - EXTREMELY IMPORTANT:
+         - Extract and describe all graphs and charts in detail
+         - Include all data points, labels, legends, and axes information
+         - For bar charts: list all categories and their corresponding values
+         - For line graphs: list all data points with their x and y coordinates
+         - For pie charts: list all segments with their labels and percentage values
+         - Include any trend lines, annotations, or other visual elements
+         - Format the extracted graph data in a structured way (tables if appropriate)
+
+      5. Include ALL numbers, dates, currencies, percentages, and special characters exactly as they appear
+      6. Preserve ALL paragraph breaks, section divisions, and page structure
+      7. If there are multiple pages, indicate page breaks with "--- Page X ---"
+      8. If you can't read certain parts, indicate with [unreadable text] but try to infer content from context
+      9. Pay special attention to financial data, ensuring all numbers, calculations, and financial terms are captured with 100% accuracy
+      10. Preserve any headers, footers, watermarks, and marginalia that may contain important information
+
+      Return the extracted content as plain text with formatting preserved through spacing and structure.
+      For tables, use a clear tabular format.
+      For graphs, include both a description and the underlying data in a structured format.
+      `;
+
+      // Call Gemini with the PDF content
+      const result = await documentExtractionModel.generateContent([
+        prompt,
+        { inlineData: { mimeType: 'application/pdf', data: fileBuffer.toString('base64') } }
+      ]);
+
+      const response = result.response;
+      const extractedText = response.text();
+
+      if (!extractedText || extractedText.trim().length === 0) {
+        console.warn(`Gemini returned empty or null text for PDF: ${filePath}`);
+        return '[No text content extracted from PDF using Gemini]';
+      }
+
+      return extractedText;
+    } catch (error) {
+      console.error('Error extracting PDF text with Gemini:', error);
+      // Return a placeholder message instead of throwing an error
+      return `[Error processing PDF with Gemini: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+    }
+  }
+
+  /**
+   * Extract text content from a PDF file using both traditional extraction and Gemini AI
+   * @param filePath Path to the PDF file
+   * @param metadata Optional metadata to provide context for extraction
+   * @returns DocumentExtractionResult containing both raw and AI-processed text
+   */
+  async extractPdfTextWithBothMethods(filePath: string, metadata?: {
+    documentType?: string;
+    name?: string;
+    timePeriod?: string;
+    description?: string;
+  }): Promise<DocumentExtractionResult> {
+    const fileName = path.basename(filePath);
+    const fileType = path.extname(filePath).toLowerCase().substring(1);
+    const startTime = new Date();
+
+    try {
+      // First check if the file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`PDF file not found: ${filePath}`);
+        const errorMsg = `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+        return {
+          rawText: errorMsg,
+          aiProcessedText: errorMsg,
+          combinedText: errorMsg,
+          extractionMethod: 'error',
+          metadata: {
+            fileType,
+            fileName,
+            extractionTime: new Date(),
+            error: 'File not found',
+            documentType: metadata?.documentType,
+            timePeriod: metadata?.timePeriod,
+            description: metadata?.description
+          }
+        };
+      }
+
+      // Extract text using both methods in parallel
+      const [rawText, aiProcessedText] = await Promise.all([
+        this.extractPdfText(filePath),
+        this.extractPdfTextWithGemini(filePath, metadata)
+      ]);
+
+      // Determine which text to use as the combined result
+      // Prefer AI-processed text if it's available and not an error message
+      let combinedText = aiProcessedText;
+      let extractionMethod = 'gemini';
+
+      if (
+        !aiProcessedText ||
+        aiProcessedText.includes('[Error processing PDF with Gemini:') ||
+        aiProcessedText.includes('[No text content extracted from PDF using Gemini]')
+      ) {
+        combinedText = rawText;
+        extractionMethod = 'traditional';
+      }
+
+      const endTime = new Date();
+      const processingTime = endTime.getTime() - startTime.getTime();
+
+      // Create a more comprehensive metadata object
+      const resultMetadata = {
+        fileType,
+        fileName,
+        extractionTime: endTime,
+        processingTimeMs: processingTime,
+        documentType: metadata?.documentType,
+        timePeriod: metadata?.timePeriod,
+        description: metadata?.description,
+        extractionQuality: extractionMethod === 'gemini' ? 'high' : 'standard'
+      };
+
+      return {
+        rawText,
+        aiProcessedText,
+        combinedText,
+        extractionMethod,
+        metadata: resultMetadata
+      };
+    } catch (error) {
+      console.error('Error extracting PDF text with both methods:', error);
+      const errorMsg = `[Error processing PDF: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+
+      return {
+        rawText: errorMsg,
+        aiProcessedText: errorMsg,
+        combinedText: errorMsg,
+        extractionMethod: 'error',
+        metadata: {
+          fileType,
+          fileName,
+          extractionTime: new Date(),
+          error: error instanceof Error ? error.message : 'Unknown error',
+          documentType: metadata?.documentType,
+          timePeriod: metadata?.timePeriod,
+          description: metadata?.description
+        }
+      };
+    }
+  }
+
+  /**
    * Extract text and data from an Excel file
    * @param filePath Path to the Excel file
+   * @param metadata Optional metadata to provide context for extraction
    * @returns Extracted data as a string
    */
-  async extractExcelData(filePath: string): Promise<string> {
+  async extractExcelData(filePath: string, metadata?: {
+    documentType?: string;
+    name?: string;
+    timePeriod?: string;
+    description?: string;
+  }): Promise<string> {
     try {
       // First check if the file exists
       if (!fs.existsSync(filePath)) {
@@ -92,24 +334,153 @@ export class EnhancedDocumentProcessingService {
         return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
       }
 
+      try {
+        // First try using Gemini for better extraction, especially for complex spreadsheets
+        const fileBuffer = await readFileAsync(filePath);
+
+        // Format document type for display in prompt
+        let documentTypeInfo = '';
+        if (metadata?.documentType) {
+          const formattedType = metadata.documentType.replace('financial_', '').replace(/_/g, ' ');
+          documentTypeInfo = `Document Type: ${formattedType}\n`;
+        }
+
+        // Add time period if available
+        let timePeriodInfo = '';
+        if (metadata?.timePeriod) {
+          timePeriodInfo = `Time Period: ${metadata.timePeriod}\n`;
+        }
+
+        // Add description if available
+        let descriptionInfo = '';
+        if (metadata?.description && metadata.description !== 'No description') {
+          descriptionInfo = `Description: ${metadata.description}\n`;
+        }
+
+        // Create a context-aware prompt for Gemini to extract data from the Excel file
+        const prompt = `
+        Extract all data from this Excel spreadsheet with maximum accuracy and completeness.
+        ${documentTypeInfo}${timePeriodInfo}${descriptionInfo}
+        This is a financial document that requires precise extraction of all data.
+
+        CRITICAL EXTRACTION INSTRUCTIONS:
+        1. Extract ABSOLUTELY ALL data from ALL sheets in the spreadsheet, leaving nothing out
+        2. Maintain the exact original structure of the data with precise preservation of:
+           - Table layouts and alignments
+           - Column and row relationships
+           - Headers and subheaders
+           - Merged cells (represent them appropriately)
+           - Hierarchical structures
+        3. Preserve all table formats and data relationships with exact fidelity
+        4. Include sheet names as clear section headers
+        5. Format the data in a way that perfectly maintains the row and column structure
+        6. Include ALL numbers, dates, formulas (as their calculated values), and text exactly as they appear
+        7. Preserve ALL formatting that conveys meaning (bold headers, indentation patterns, etc.)
+        8. If you can't read certain parts, indicate with [unreadable data] but try to infer from context
+        9. For each sheet, start with "Sheet: [sheet name]" followed by the data
+        10. Pay special attention to financial data, ensuring all numbers, calculations, and financial terms are captured with 100% accuracy
+        11. Preserve any headers, footers, and notes that may contain important information
+        12. For financial tables, ensure all totals, subtotals, and calculations are clearly represented
+
+        Return the extracted content as plain text with tabs separating columns and newlines separating rows, maintaining the exact structure of the original spreadsheet.
+        `;
+
+        const result = await documentExtractionModel.generateContent([
+          prompt,
+          { inlineData: { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', data: fileBuffer.toString('base64') } }
+        ]);
+
+        const response = result.response;
+        const extractedText = response.text();
+
+        if (extractedText && extractedText.length > 0) {
+          return extractedText;
+        }
+
+        // Fall back to ExcelJS if Gemini fails
+        console.log(`Falling back to ExcelJS for Excel file: ${filePath}`);
+      } catch (geminiError) {
+        console.error('Error extracting Excel data with Gemini:', geminiError);
+        // Continue to fallback method
+      }
+
+      // Fallback to ExcelJS with improved extraction
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(filePath);
       let result = '';
 
-      // Process each sheet
-      workbook.eachSheet((worksheet, sheetId) => {
-        const sheetName = worksheet.name;
-        result += `Sheet: ${sheetName}\n\n`;
+      // Add metadata header if available
+      if (metadata) {
+        result += '=== DOCUMENT INFORMATION ===\n';
+        if (metadata.name) result += `Filename: ${metadata.name}\n`;
+        if (metadata.documentType) {
+          const formattedType = metadata.documentType.replace('financial_', '').replace(/_/g, ' ');
+          result += `Type: ${formattedType}\n`;
+        }
+        if (metadata.timePeriod) result += `Time Period: ${metadata.timePeriod}\n`;
+        if (metadata.description && metadata.description !== 'No description') {
+          result += `Description: ${metadata.description}\n`;
+        }
+        result += '\n';
+      }
 
-        // Process each row
+      // Process each sheet with improved formatting
+      workbook.eachSheet((worksheet, _sheetId) => {
+        const sheetName = worksheet.name;
+        result += `=== SHEET: ${sheetName} ===\n\n`;
+
+        // Get column widths for better formatting
+        const columnWidths: { [key: number]: number } = {};
+
+        // First pass to determine column widths
+        worksheet.eachRow((row, _rowNumber) => {
+          row.eachCell((cell, colNumber) => {
+            const value = cell.value?.toString() || '';
+            if (!columnWidths[colNumber] || value.length > columnWidths[colNumber]) {
+              columnWidths[colNumber] = Math.min(value.length, 30); // Cap at 30 chars
+            }
+          });
+        });
+
+        // Process each row with improved formatting
         worksheet.eachRow((row, rowNumber) => {
           const rowValues: string[] = [];
+
+          // Check if this might be a header row
+          const isHeader = rowNumber === 1 || row.getCell(1).font?.bold;
+
           row.eachCell((cell, colNumber) => {
-            rowValues.push(cell.value?.toString() || '');
+            let value = cell.value?.toString() || '';
+
+            // Format based on cell type
+            if (cell.type === ExcelJS.ValueType.Number) {
+              // Format numbers with appropriate precision
+              const numValue = cell.value as number;
+              value = numValue.toFixed(2);
+            } else if (cell.type === ExcelJS.ValueType.Date) {
+              // Format dates consistently
+              const dateValue = cell.value as Date;
+              value = dateValue.toISOString().split('T')[0];
+            }
+
+            // Pad or truncate to column width
+            if (value.length > columnWidths[colNumber]) {
+              value = value.substring(0, columnWidths[colNumber] - 3) + '...';
+            } else {
+              value = value.padEnd(columnWidths[colNumber]);
+            }
+
+            rowValues.push(value);
           });
 
           if (rowValues.length > 0) {
-            result += rowValues.join('\t') + '\n';
+            // Add separator line after headers
+            if (isHeader) {
+              result += rowValues.join(' | ') + '\n';
+              result += rowValues.map(() => '-'.repeat(columnWidths[1] || 10)).join('-+-') + '\n';
+            } else {
+              result += rowValues.join(' | ') + '\n';
+            }
           }
         });
 
@@ -157,11 +528,40 @@ export class EnhancedDocumentProcessingService {
   }
 
   /**
-   * Extract text from a PowerPoint file using Gemini API
+   * Extract text from a PowerPoint file using traditional methods (placeholder)
    * @param filePath Path to the PowerPoint file
    * @returns Extracted text content
    */
-  async extractPptText(filePath: string): Promise<string> {
+  async extractPptTextTraditional(filePath: string): Promise<string> {
+    try {
+      // First check if the file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`PowerPoint file not found: ${filePath}`);
+        return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+      }
+
+      // Note: There's no good library for extracting text from PowerPoint in Node.js
+      // This is a placeholder that would normally use a library like pptx-parser
+      // For now, we'll return a message indicating we're relying on Gemini for PPT extraction
+      return "[PowerPoint text extraction requires Gemini AI. Using Gemini for extraction.]";
+    } catch (error) {
+      console.error('Error extracting PPT text with traditional method:', error);
+      return `[Error processing PowerPoint file with traditional method: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+    }
+  }
+
+  /**
+   * Extract text from a PowerPoint file using Gemini API
+   * @param filePath Path to the PowerPoint file
+   * @param metadata Optional metadata to provide context for extraction
+   * @returns Extracted text content
+   */
+  async extractPptTextWithGemini(filePath: string, metadata?: {
+    documentType?: string;
+    name?: string;
+    timePeriod?: string;
+    description?: string;
+  }): Promise<string> {
     try {
       // First check if the file exists
       if (!fs.existsSync(filePath)) {
@@ -171,24 +571,207 @@ export class EnhancedDocumentProcessingService {
 
       const fileBuffer = await readFileAsync(filePath);
 
-      // Use Gemini to extract text from PowerPoint
+      // Format document type for display in prompt
+      let documentTypeInfo = '';
+      if (metadata?.documentType) {
+        const formattedType = metadata.documentType.replace('financial_', '').replace(/_/g, ' ');
+        documentTypeInfo = `Document Type: ${formattedType}\n`;
+      }
+
+      // Add time period if available
+      let timePeriodInfo = '';
+      if (metadata?.timePeriod) {
+        timePeriodInfo = `Time Period: ${metadata.timePeriod}\n`;
+      }
+
+      // Add description if available
+      let descriptionInfo = '';
+      if (metadata?.description && metadata.description !== 'No description') {
+        descriptionInfo = `Description: ${metadata.description}\n`;
+      }
+
+      // Enhanced prompt for PowerPoint extraction with better handling of tables and graphs
       const prompt = `
-            Extract all text content from this PowerPoint presentation.
-            Include slide titles, bullet points, notes, and any other textual information.
+      Extract all text content from this PowerPoint presentation with maximum accuracy and completeness.
+      ${documentTypeInfo}${timePeriodInfo}${descriptionInfo}
+      This presentation requires precise extraction of all information, including tables and graphs.
 
-            Format the output as plain text, preserving the structure of the slides.
-            `;
+      CRITICAL EXTRACTION INSTRUCTIONS:
+      1. Extract ABSOLUTELY ALL text content from the presentation, including:
+         - Slide titles and headings
+         - Bullet points and numbered lists
+         - Body text and paragraphs
+         - Speaker notes
+         - Text in headers, footers, and slide numbers
+         - Text embedded in images, charts, and diagrams
+         - Any hidden slides or content
 
-      const result = await model.generateContent([
+      2. Maintain the original structure and formatting:
+         - Clearly indicate each slide with "--- Slide X: [Slide Title] ---"
+         - Preserve the hierarchy of headings and subheadings
+         - Maintain bullet point and numbered list formatting
+         - Preserve paragraph breaks and text alignment
+
+      3. FOR TABLES - EXTREMELY IMPORTANT:
+         - Preserve the exact table structure with proper column alignment
+         - Maintain header rows and column relationships
+         - Format tables using a clear tabular format with column separators (| or tabs)
+         - Include column headers and maintain their relationship to data
+         - Ensure all cells, including empty ones, are properly represented
+         - For financial tables, ensure all numbers, calculations, and totals are precisely captured
+
+      4. FOR GRAPHS AND CHARTS - EXTREMELY IMPORTANT:
+         - Extract and describe all graphs and charts in detail
+         - Include all data points, labels, legends, and axes information
+         - For bar charts: list all categories and their corresponding values
+         - For line graphs: list all data points with their x and y coordinates
+         - For pie charts: list all segments with their labels and percentage values
+         - Include any trend lines, annotations, or other visual elements
+         - Format the extracted graph data in a structured way (tables if appropriate)
+
+      5. Include ALL numbers, dates, currencies, percentages, and special characters exactly as they appear
+      6. If you can't read certain parts, indicate with [unreadable text] but try to infer content from context
+      7. Pay special attention to financial data, ensuring all numbers, calculations, and financial terms are captured with 100% accuracy
+
+      Return the extracted content as plain text with formatting preserved through spacing and structure.
+      For tables, use a clear tabular format.
+      For graphs, include both a description and the underlying data in a structured format.
+      `;
+
+      const result = await documentExtractionModel.generateContent([
         prompt,
-        { fileData: { mime_type: 'application/vnd.ms-powerpoint', data: fileBuffer.toString('base64') } as any }
+        { inlineData: { mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', data: fileBuffer.toString('base64') } }
       ]);
 
       const response = result.response;
-      return response.text() || '[No text content extracted from PowerPoint]';
+      const extractedText = response.text();
+
+      if (!extractedText || extractedText.trim().length === 0) {
+        console.warn(`Gemini returned empty or null text for PowerPoint: ${filePath}`);
+        return '[No text content extracted from PowerPoint using Gemini]';
+      }
+
+      return extractedText;
     } catch (error) {
-      console.error('Error extracting PPT text:', error);
+      console.error('Error extracting PPT text with Gemini:', error);
       // Return a placeholder message instead of throwing an error
+      return `[Error processing PowerPoint file with Gemini: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+    }
+  }
+
+  /**
+   * Extract text from a PowerPoint file using both traditional methods and Gemini AI
+   * @param filePath Path to the PowerPoint file
+   * @param metadata Optional metadata to provide context for extraction
+   * @returns DocumentExtractionResult containing both raw and AI-processed text
+   */
+  async extractPptTextWithBothMethods(filePath: string, metadata?: {
+    documentType?: string;
+    name?: string;
+    timePeriod?: string;
+    description?: string;
+  }): Promise<DocumentExtractionResult> {
+    const fileName = path.basename(filePath);
+    const fileType = path.extname(filePath).toLowerCase().substring(1);
+    const startTime = new Date();
+
+    try {
+      // First check if the file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`PowerPoint file not found: ${filePath}`);
+        const errorMsg = `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+        return {
+          rawText: errorMsg,
+          aiProcessedText: errorMsg,
+          combinedText: errorMsg,
+          extractionMethod: 'error',
+          metadata: {
+            fileType,
+            fileName,
+            extractionTime: new Date(),
+            error: 'File not found',
+            documentType: metadata?.documentType,
+            timePeriod: metadata?.timePeriod,
+            description: metadata?.description
+          }
+        };
+      }
+
+      // Extract text using both methods in parallel
+      const [rawText, aiProcessedText] = await Promise.all([
+        this.extractPptTextTraditional(filePath),
+        this.extractPptTextWithGemini(filePath, metadata)
+      ]);
+
+      // Determine which text to use as the combined result
+      // For PowerPoint, we almost always prefer the AI-processed text
+      let combinedText = aiProcessedText;
+      let extractionMethod = 'gemini';
+
+      if (
+        !aiProcessedText ||
+        aiProcessedText.includes('[Error processing PowerPoint file with Gemini:') ||
+        aiProcessedText.includes('[No text content extracted from PowerPoint using Gemini]')
+      ) {
+        combinedText = rawText;
+        extractionMethod = 'traditional';
+      }
+
+      const endTime = new Date();
+      const processingTime = endTime.getTime() - startTime.getTime();
+
+      // Create a more comprehensive metadata object
+      const resultMetadata = {
+        fileType,
+        fileName,
+        extractionTime: endTime,
+        processingTimeMs: processingTime,
+        documentType: metadata?.documentType,
+        timePeriod: metadata?.timePeriod,
+        description: metadata?.description,
+        extractionQuality: extractionMethod === 'gemini' ? 'high' : 'standard'
+      };
+
+      return {
+        rawText,
+        aiProcessedText,
+        combinedText,
+        extractionMethod,
+        metadata: resultMetadata
+      };
+    } catch (error) {
+      console.error('Error extracting PowerPoint text with both methods:', error);
+      const errorMsg = `[Error processing PowerPoint: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+
+      return {
+        rawText: errorMsg,
+        aiProcessedText: errorMsg,
+        combinedText: errorMsg,
+        extractionMethod: 'error',
+        metadata: {
+          fileType,
+          fileName,
+          extractionTime: new Date(),
+          error: error instanceof Error ? error.message : 'Unknown error',
+          documentType: metadata?.documentType,
+          timePeriod: metadata?.timePeriod,
+          description: metadata?.description
+        }
+      };
+    }
+  }
+
+  /**
+   * Extract text from a PowerPoint file (legacy method for backward compatibility)
+   * @param filePath Path to the PowerPoint file
+   * @returns Extracted text content
+   */
+  async extractPptText(filePath: string): Promise<string> {
+    try {
+      const result = await this.extractPptTextWithGemini(filePath);
+      return result;
+    } catch (error) {
+      console.error('Error in legacy extractPptText method:', error);
       return `[Error processing PowerPoint file: ${error instanceof Error ? error.message : 'Unknown error'}]`;
     }
   }
@@ -196,9 +779,15 @@ export class EnhancedDocumentProcessingService {
   /**
    * Extract text from a Word document
    * @param filePath Path to the Word document
+   * @param metadata Optional metadata to provide context for extraction
    * @returns Extracted text content
    */
-  async extractWordText(filePath: string): Promise<string> {
+  async extractWordText(filePath: string, metadata?: {
+    documentType?: string;
+    name?: string;
+    timePeriod?: string;
+    description?: string;
+  }): Promise<string> {
     try {
       // First check if the file exists
       if (!fs.existsSync(filePath)) {
@@ -206,8 +795,115 @@ export class EnhancedDocumentProcessingService {
         return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
       }
 
-      const result = await mammoth.extractRawText({ path: filePath });
-      return result.value || '[No text content extracted from Word document]';
+      try {
+        // First try using Gemini for better extraction, especially for complex documents
+        const fileBuffer = await readFileAsync(filePath);
+
+        // Format document type for display in prompt
+        let documentTypeInfo = '';
+        if (metadata?.documentType) {
+          const formattedType = metadata.documentType.replace('financial_', '').replace(/_/g, ' ');
+          documentTypeInfo = `Document Type: ${formattedType}\n`;
+        }
+
+        // Add time period if available
+        let timePeriodInfo = '';
+        if (metadata?.timePeriod) {
+          timePeriodInfo = `Time Period: ${metadata.timePeriod}\n`;
+        }
+
+        // Add description if available
+        let descriptionInfo = '';
+        if (metadata?.description && metadata.description !== 'No description') {
+          descriptionInfo = `Description: ${metadata.description}\n`;
+        }
+
+        // Create a context-aware prompt for Gemini to extract text from the Word document
+        const prompt = `
+        Extract all text content from this Word document with maximum accuracy and completeness.
+        ${documentTypeInfo}${timePeriodInfo}${descriptionInfo}
+        This document may contain important financial or business information that needs to be precisely extracted.
+
+        CRITICAL EXTRACTION INSTRUCTIONS:
+        1. Extract ABSOLUTELY ALL text content from the document, including headers, footers, footnotes, endnotes, and any text in images or charts
+        2. Maintain the original formatting with exact preservation of:
+           - Document structure and hierarchy
+           - Section headings and subheadings
+           - Paragraph breaks and indentation
+           - Bullet points and numbered lists
+           - Table structures (preserve rows, columns, and cell alignment)
+           - Text formatting that conveys meaning (bold, italic, underline)
+        3. For tables:
+           - Preserve the exact table structure with proper column alignment
+           - Maintain header rows and column relationships
+           - Format as tab-separated values or in a way that perfectly maintains the structure
+           - Ensure all cells, including empty ones, are properly represented
+        4. Include ALL numbers, dates, currencies, percentages, and special characters exactly as they appear
+        5. Preserve ALL paragraph breaks, section divisions, and page structure
+        6. If there are multiple pages, maintain the document flow and structure
+        7. If you can't read certain parts, indicate with [unreadable text] but try to infer content from context
+        8. Extract ALL information possible, even from complex documents, using context clues when necessary
+        9. Pay special attention to financial data, ensuring all numbers, calculations, and financial terms are captured with 100% accuracy
+        10. Preserve any headers, footers, watermarks, and marginalia that may contain important information
+
+        Return the extracted content as plain text with formatting preserved through spacing and structure.
+        `;
+
+        const result = await documentExtractionModel.generateContent([
+          prompt,
+          { inlineData: { mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', data: fileBuffer.toString('base64') } }
+        ]);
+
+        const response = result.response;
+        const extractedText = response.text();
+
+        if (extractedText && extractedText.length > 0) {
+          return extractedText;
+        }
+
+        // Fall back to mammoth if Gemini fails
+        console.log(`Falling back to mammoth for Word document: ${filePath}`);
+      } catch (geminiError) {
+        console.error('Error extracting Word text with Gemini:', geminiError);
+        // Continue to fallback method
+      }
+
+      // Fallback to mammoth with improved options
+      const options = {
+        path: filePath,
+        styleMap: [
+          "p[style-name='Heading 1'] => h1:fresh",
+          "p[style-name='Heading 2'] => h2:fresh",
+          "p[style-name='Heading 3'] => h3:fresh",
+          "p[style-name='Heading 4'] => h4:fresh",
+          "r[style-name='Strong'] => strong",
+          "r[style-name='Emphasis'] => em",
+          "table => table",
+          "tr => tr",
+          "td => td"
+        ]
+      };
+
+      const result = await mammoth.extractRawText(options);
+
+      // Add metadata header if available
+      let finalText = '';
+      if (metadata) {
+        finalText += '=== DOCUMENT INFORMATION ===\n';
+        if (metadata.name) finalText += `Filename: ${metadata.name}\n`;
+        if (metadata.documentType) {
+          const formattedType = metadata.documentType.replace('financial_', '').replace(/_/g, ' ');
+          finalText += `Type: ${formattedType}\n`;
+        }
+        if (metadata.timePeriod) finalText += `Time Period: ${metadata.timePeriod}\n`;
+        if (metadata.description && metadata.description !== 'No description') {
+          finalText += `Description: ${metadata.description}\n`;
+        }
+        finalText += '\n=== DOCUMENT CONTENT ===\n\n';
+      }
+
+      finalText += result.value || '[No text content extracted from Word document]';
+      return finalText;
     } catch (error) {
       console.error('Error extracting Word text:', error);
       // Return a placeholder message instead of throwing an error
@@ -216,11 +912,11 @@ export class EnhancedDocumentProcessingService {
   }
 
   /**
-   * Extract text from an image using OCR
+   * Extract text from an image using OCR with Tesseract
    * @param filePath Path to the image file
    * @returns Extracted text content
    */
-  async extractImageText(filePath: string): Promise<string> {
+  async extractImageTextWithTesseract(filePath: string): Promise<string> {
     try {
       // First check if the file exists
       if (!fs.existsSync(filePath)) {
@@ -228,6 +924,7 @@ export class EnhancedDocumentProcessingService {
         return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
       }
 
+      // Use Tesseract OCR
       const worker = await createWorker();
       // Use the correct methods for Tesseract.js v6
       await worker.reinitialize('eng');
@@ -236,10 +933,168 @@ export class EnhancedDocumentProcessingService {
       const text = result.data.text;
       await worker.terminate();
 
-      return text || '[No text content extracted from image]';
+      return text || '[No text content extracted from image using Tesseract]';
     } catch (error) {
-      console.error('Error extracting image text:', error);
+      console.error('Error extracting image text with Tesseract:', error);
       // Return a placeholder message instead of throwing an error
+      return `[Error processing image file with Tesseract: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+    }
+  }
+
+  /**
+   * Extract text from an image using Gemini AI
+   * @param filePath Path to the image file
+   * @returns Extracted text content
+   */
+  async extractImageTextWithGemini(filePath: string): Promise<string> {
+    try {
+      // First check if the file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`Image file not found: ${filePath}`);
+        return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+      }
+
+      // Read the file as a buffer
+      const fileBuffer = await readFileAsync(filePath);
+      const fileExtension = path.extname(filePath).toLowerCase();
+      let mimeType = 'image/jpeg'; // Default mime type
+
+      // Set the correct mime type based on file extension
+      if (fileExtension === '.png') {
+        mimeType = 'image/png';
+      } else if (fileExtension === '.gif') {
+        mimeType = 'image/gif';
+      } else if (fileExtension === '.bmp') {
+        mimeType = 'image/bmp';
+      }
+
+      // Create a prompt for Gemini to extract text from the image
+      const prompt = `
+      Extract all text content from this image using OCR.
+
+      IMPORTANT INSTRUCTIONS:
+      1. Extract ALL text visible in the image, including small text and text in any orientation
+      2. Maintain the original formatting as much as possible
+      3. For tables, preserve the table structure and format them as tab-separated values
+      4. Include all numbers, dates, and special characters
+      5. Preserve paragraph breaks and section divisions
+      6. If you can't read certain parts, indicate with [unreadable text]
+      7. If the image contains charts or graphs, describe them briefly and extract any visible text
+
+      Return the extracted content as plain text.
+      `;
+
+      const result = await documentExtractionModel.generateContent([
+        prompt,
+        { inlineData: { mimeType, data: fileBuffer.toString('base64') } }
+      ]);
+
+      const response = result.response;
+      const extractedText = response.text();
+
+      return extractedText || '[No text content extracted from image using Gemini]';
+    } catch (error) {
+      console.error('Error extracting image text with Gemini:', error);
+      // Return a placeholder message instead of throwing an error
+      return `[Error processing image file with Gemini: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+    }
+  }
+
+  /**
+   * Extract text from an image using both Tesseract OCR and Gemini AI
+   * @param filePath Path to the image file
+   * @returns DocumentExtractionResult containing both raw and AI-processed text
+   */
+  async extractImageTextWithBothMethods(filePath: string): Promise<DocumentExtractionResult> {
+    const fileName = path.basename(filePath);
+    const fileExtension = path.extname(filePath).toLowerCase();
+    const fileType = fileExtension.substring(1);
+    const startTime = new Date();
+
+    try {
+      // First check if the file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`Image file not found: ${filePath}`);
+        const errorMsg = `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+        return {
+          rawText: errorMsg,
+          aiProcessedText: errorMsg,
+          combinedText: errorMsg,
+          extractionMethod: 'error',
+          metadata: {
+            fileType,
+            fileName,
+            extractionTime: new Date(),
+            error: 'File not found'
+          }
+        };
+      }
+
+      // Extract text using both methods in parallel
+      const [rawText, aiProcessedText] = await Promise.all([
+        this.extractImageTextWithTesseract(filePath),
+        this.extractImageTextWithGemini(filePath)
+      ]);
+
+      // Determine which text to use as the combined result
+      // Prefer AI-processed text if it's available and not an error message
+      let combinedText = aiProcessedText;
+      let extractionMethod = 'gemini';
+
+      if (
+        !aiProcessedText ||
+        aiProcessedText.includes('[Error processing image file with Gemini:') ||
+        aiProcessedText.includes('[No text content extracted from image using Gemini]')
+      ) {
+        combinedText = rawText;
+        extractionMethod = 'tesseract';
+      }
+
+      const endTime = new Date();
+      const processingTime = endTime.getTime() - startTime.getTime();
+
+      return {
+        rawText,
+        aiProcessedText,
+        combinedText,
+        extractionMethod,
+        metadata: {
+          fileType,
+          fileName,
+          extractionTime: endTime,
+          processingTimeMs: processingTime
+        }
+      };
+    } catch (error) {
+      console.error('Error extracting image text with both methods:', error);
+      const errorMsg = `[Error processing image file: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+
+      return {
+        rawText: errorMsg,
+        aiProcessedText: errorMsg,
+        combinedText: errorMsg,
+        extractionMethod: 'error',
+        metadata: {
+          fileType,
+          fileName,
+          extractionTime: new Date(),
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      };
+    }
+  }
+
+  /**
+   * Extract text from an image using OCR (legacy method for backward compatibility)
+   * @param filePath Path to the image file
+   * @returns Extracted text content
+   */
+  async extractImageText(filePath: string): Promise<string> {
+    try {
+      const result = await this.extractImageTextWithBothMethods(filePath);
+      return result.combinedText;
+    } catch (error) {
+      console.error('Error in legacy extractImageText method:', error);
       return `[Error processing image file: ${error instanceof Error ? error.message : 'Unknown error'}]`;
     }
   }
@@ -269,9 +1124,20 @@ export class EnhancedDocumentProcessingService {
   /**
    * Process a document and extract its content based on file type
    * @param filePath Path to the document (relative or absolute)
-   * @returns Extracted content
+   * @param returnBothExtractions Whether to return both raw and AI-processed text
+   * @param metadata Optional metadata to provide context for extraction
+   * @returns Extracted content or DocumentExtractionResult if returnBothExtractions is true
    */
-  async processDocument(filePath: string): Promise<string> {
+  async processDocument(
+    filePath: string,
+    returnBothExtractions: boolean = false,
+    metadata?: {
+      documentType?: string;
+      name?: string;
+      timePeriod?: string;
+      description?: string;
+    }
+  ): Promise<string | DocumentExtractionResult> {
     try {
       // Convert to absolute path if it's a relative path
       const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, '../..', filePath);
@@ -279,50 +1145,679 @@ export class EnhancedDocumentProcessingService {
       // Check if file exists before processing
       if (!fs.existsSync(absolutePath)) {
         console.error(`File not found: ${absolutePath}`);
-        return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+        const errorMsg = `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+
+        if (returnBothExtractions) {
+          return {
+            rawText: errorMsg,
+            aiProcessedText: errorMsg,
+            combinedText: errorMsg,
+            extractionMethod: 'error',
+            metadata: {
+              fileType: path.extname(absolutePath).toLowerCase().substring(1),
+              fileName: path.basename(absolutePath),
+              extractionTime: new Date(),
+              error: 'File not found',
+              documentType: metadata?.documentType,
+              timePeriod: metadata?.timePeriod,
+              description: metadata?.description
+            }
+          };
+        }
+
+        return errorMsg;
       }
 
       const fileExtension = path.extname(absolutePath).toLowerCase();
+      let result: string | DocumentExtractionResult;
 
       switch (fileExtension) {
         case '.pdf':
-          return this.extractPdfText(absolutePath);
-        case '.ppt':
-        case '.pptx':
-          return this.extractPptText(absolutePath);
-        case '.xls':
-        case '.xlsx':
-          return this.extractExcelData(absolutePath);
-        case '.csv':
-          return this.extractCsvData(absolutePath);
-        case '.doc':
-        case '.docx':
-          return this.extractWordText(absolutePath);
+          // Always use both extraction methods for PDFs
+          const pdfResult = await this.extractPdfTextWithBothMethods(absolutePath, metadata);
+
+          if (returnBothExtractions) {
+            // If caller wants both extractions, return the full result
+            result = pdfResult;
+          } else {
+            // Otherwise, just return the combined text
+            result = pdfResult.combinedText;
+          }
+          break;
         case '.jpg':
         case '.jpeg':
         case '.png':
         case '.gif':
         case '.bmp':
-          return this.extractImageText(absolutePath);
+          if (returnBothExtractions) {
+            result = await this.extractImageTextWithBothMethods(absolutePath);
+          } else {
+            result = await this.extractImageText(absolutePath);
+          }
+          break;
+        case '.ppt':
+        case '.pptx':
+          // Always use both extraction methods for PowerPoint files
+          const pptResult = await this.extractPptTextWithBothMethods(absolutePath, metadata);
+
+          if (returnBothExtractions) {
+            // If caller wants both extractions, return the full result
+            result = pptResult;
+          } else {
+            // Otherwise, just return the combined text
+            result = pptResult.combinedText;
+          }
+          break;
+        case '.xls':
+        case '.xlsx':
+          result = await this.extractExcelData(absolutePath, metadata);
+          if (returnBothExtractions) {
+            result = {
+              rawText: result,
+              aiProcessedText: result, // Currently only one method for Excel
+              combinedText: result,
+              extractionMethod: 'combined',
+              metadata: {
+                fileType: fileExtension.substring(1),
+                fileName: path.basename(absolutePath),
+                extractionTime: new Date(),
+                documentType: metadata?.documentType,
+                timePeriod: metadata?.timePeriod,
+                description: metadata?.description,
+                extractionQuality: 'high'
+              }
+            };
+          }
+          break;
+        case '.csv':
+          result = await this.extractCsvData(absolutePath);
+          if (returnBothExtractions) {
+            result = {
+              rawText: result,
+              aiProcessedText: result, // Currently only one method for CSV
+              combinedText: result,
+              extractionMethod: 'traditional',
+              metadata: {
+                fileType: 'csv',
+                fileName: path.basename(absolutePath),
+                extractionTime: new Date()
+              }
+            };
+          }
+          break;
+        case '.doc':
+        case '.docx':
+          result = await this.extractWordText(absolutePath, metadata);
+          if (returnBothExtractions) {
+            result = {
+              rawText: result,
+              aiProcessedText: result, // Currently only one method for Word
+              combinedText: result,
+              extractionMethod: 'combined',
+              metadata: {
+                fileType: fileExtension.substring(1),
+                fileName: path.basename(absolutePath),
+                extractionTime: new Date(),
+                documentType: metadata?.documentType,
+                timePeriod: metadata?.timePeriod,
+                description: metadata?.description,
+                extractionQuality: 'high'
+              }
+            };
+          }
+          break;
         case '.txt':
         case '.md':
         case '.json':
         case '.xml':
-          return this.extractTextFileContent(absolutePath);
+          result = await this.extractTextFileContent(absolutePath);
+          if (returnBothExtractions) {
+            result = {
+              rawText: result,
+              aiProcessedText: result, // Plain text doesn't need AI processing
+              combinedText: result,
+              extractionMethod: 'traditional',
+              metadata: {
+                fileType: fileExtension.substring(1),
+                fileName: path.basename(absolutePath),
+                extractionTime: new Date()
+              }
+            };
+          }
+          break;
         default:
-          return `[Unsupported file type: ${fileExtension}. The system cannot process this type of document.]`;
+          const unsupportedMsg = `[Unsupported file type: ${fileExtension}. The system cannot process this type of document.]`;
+          if (returnBothExtractions) {
+            result = {
+              rawText: unsupportedMsg,
+              aiProcessedText: unsupportedMsg,
+              combinedText: unsupportedMsg,
+              extractionMethod: 'error',
+              metadata: {
+                fileType: fileExtension.substring(1) || 'unknown',
+                fileName: path.basename(absolutePath),
+                extractionTime: new Date(),
+                error: 'Unsupported file type'
+              }
+            };
+          } else {
+            result = unsupportedMsg;
+          }
       }
+
+      return result;
     } catch (error) {
       console.error(`Error processing document ${filePath}:`, error);
-      return `[Error processing document: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+      const errorMsg = `[Error processing document: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+
+      if (returnBothExtractions) {
+        return {
+          rawText: errorMsg,
+          aiProcessedText: errorMsg,
+          combinedText: errorMsg,
+          extractionMethod: 'error',
+          metadata: {
+            fileType: path.extname(filePath).toLowerCase().substring(1) || 'unknown',
+            fileName: path.basename(filePath),
+            extractionTime: new Date(),
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        };
+      }
+
+      return errorMsg;
     }
   }
 
 
 
   /**
+   * Process documents for financial due diligence by combining raw text, OCR text, and metadata
+   * This method ensures all PDFs and PPTs are processed through Gemini for OCR
+   * Optimized to batch process documents by file type to reduce API calls
+   * @param documents Array of document objects with filePath, documentType, and additional metadata
+   * @returns Combined document content with preserved structure and metadata
+   */
+  async processDocumentsForFinancialDD(documents: Array<{
+    filePath: string,
+    documentType: string,
+    originalName: string,
+    description?: string,
+    timePeriod?: string,
+    fileType?: string,
+    fileSize?: number,
+    createdAt?: string,
+    updatedAt?: string
+  }>): Promise<string> {
+    console.log('Processing documents for financial due diligence with optimized batching...');
+
+    // Create a map to store content by document type
+    const contentByType: { [key: string]: any[] } = {};
+
+    // Group documents by file extension for batch processing
+    const documentsByExtension: { [key: string]: Array<any> } = {};
+
+    // First, group documents by their file extension
+    documents.forEach(doc => {
+      const fileExtension = path.extname(doc.filePath).toLowerCase();
+      if (!documentsByExtension[fileExtension]) {
+        documentsByExtension[fileExtension] = [];
+      }
+      documentsByExtension[fileExtension].push(doc);
+    });
+
+    console.log(`Grouped documents by extension: ${Object.keys(documentsByExtension).join(', ')}`);
+
+    // Process each group of documents by file type
+    for (const [extension, docs] of Object.entries(documentsByExtension)) {
+      console.log(`Processing batch of ${docs.length} ${extension} documents...`);
+
+      // Process PDFs as a batch
+      if (extension === '.pdf') {
+        await this.processPdfDocumentsBatch(docs, contentByType);
+      }
+      // Process PowerPoint files as a batch
+      else if (extension === '.ppt' || extension === '.pptx') {
+        await this.processPptDocumentsBatch(docs, contentByType);
+      }
+      // Process other document types individually
+      else {
+        await this.processOtherDocumentsBatch(docs, contentByType);
+      }
+    }
+
+    // Create a structured JSON object for all document types
+    const combinedData: { [key: string]: any[] } = {};
+
+    // Process each document type
+    for (const [docType, contents] of Object.entries(contentByType)) {
+      // Format document type for display (remove 'financial_' prefix, replace underscores with spaces, and capitalize)
+      const formattedDocType = docType.replace('financial_', '')
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
+      // Add to combined data
+      combinedData[formattedDocType] = contents;
+    }
+
+    // Return the combined data as a JSON string
+    return JSON.stringify(combinedData, null, 2);
+  }
+
+  /**
+   * Process a batch of PDF documents together to reduce API calls
+   * @param documents Array of PDF document objects
+   * @param contentByType Map to store content by document type
+   */
+  private async processPdfDocumentsBatch(
+    documents: Array<any>,
+    contentByType: { [key: string]: any[] }
+  ): Promise<void> {
+    console.log(`Processing batch of ${documents.length} PDF documents...`);
+
+    // Process each PDF document with traditional extraction first
+    const traditionalResults = await Promise.all(documents.map(async (doc) => {
+      try {
+        const rawText = await this.extractPdfText(doc.filePath);
+        return {
+          doc,
+          rawText,
+          success: true
+        };
+      } catch (error) {
+        console.error(`Error extracting raw text from PDF ${doc.originalName}:`, error);
+        return {
+          doc,
+          rawText: `[Error extracting text: ${error instanceof Error ? error.message : 'Unknown error'}]`,
+          success: false
+        };
+      }
+    }));
+
+    // We'll process each document individually to avoid rate limits
+    console.log(`Will process ${traditionalResults.length} PDF documents individually to avoid rate limits`);
+
+    // Create a batch of documents to send to Gemini
+    const batchDocuments = traditionalResults.map((result, index) => {
+      const { doc } = result;
+      return {
+        index,
+        metadata: {
+          documentType: doc.documentType,
+          name: doc.originalName,
+          timePeriod: doc.timePeriod || 'Not specified',
+          description: doc.description || 'No description'
+        }
+      };
+    });
+
+    // Add the batch information to the prompt (not used directly, but kept for reference)
+    // We'll process documents individually instead of in a batch to avoid rate limits
+    console.log(`Prepared batch prompt for ${batchDocuments.length} documents, but will process individually to avoid rate limits`);
+
+    // Process PDFs in smaller batches if there are many
+    const BATCH_SIZE = 3; // Process 3 PDFs at a time to avoid token limits
+    const batches = [];
+
+    for (let i = 0; i < traditionalResults.length; i += BATCH_SIZE) {
+      batches.push(traditionalResults.slice(i, i + BATCH_SIZE));
+    }
+
+    console.log(`Split ${traditionalResults.length} PDFs into ${batches.length} batches of up to ${BATCH_SIZE} documents each`);
+
+    // Process each batch
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
+      console.log(`Processing PDF batch ${batchIndex + 1} of ${batches.length} with ${batch.length} documents...`);
+
+      try {
+        // Process each document in the batch individually to avoid rate limits
+        for (const result of batch) {
+          const { doc, rawText } = result;
+          const {
+            documentType,
+            originalName,
+            description,
+            timePeriod
+          } = doc;
+
+          // Create metadata object
+          const metadata = {
+            documentType,
+            name: originalName,
+            timePeriod,
+            description
+          };
+
+          // Process with Gemini individually
+          let aiProcessedText;
+          try {
+            aiProcessedText = await this.extractPdfTextWithGemini(doc.filePath, metadata);
+            console.log(`Successfully processed PDF with Gemini: ${originalName}`);
+          } catch (error) {
+            console.error(`Error processing PDF with Gemini: ${originalName}`, error);
+            aiProcessedText = `[Error processing with Gemini: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+          }
+
+          // Determine which text to use as the combined result
+          let combinedText = aiProcessedText;
+          let extractionMethod = 'gemini';
+
+          if (
+            !aiProcessedText ||
+            aiProcessedText.includes('[Error processing PDF with Gemini:') ||
+            aiProcessedText.includes('[No text content extracted from PDF using Gemini]')
+          ) {
+            combinedText = rawText;
+            extractionMethod = 'traditional';
+          }
+
+          // Initialize array for this document type if it doesn't exist
+          if (!contentByType[documentType]) {
+            contentByType[documentType] = [];
+          }
+
+          // Create a structured object for the document data
+          const documentData = {
+            metadata: {
+              filename: originalName,
+              type: documentType.replace('financial_', '').replace(/_/g, ' '),
+              description: description || 'No description provided',
+              timePeriod: timePeriod || 'Not specified'
+            },
+            content: combinedText,
+            rawText: rawText,
+            aiProcessedText: aiProcessedText,
+            extractionMethod: extractionMethod
+          };
+
+          // Add content with document name and metadata
+          contentByType[documentType].push(documentData);
+        }
+      } catch (error) {
+        console.error(`Error processing PDF batch ${batchIndex + 1}:`, error);
+
+        // Handle the error for each document in the batch
+        for (const result of batch) {
+          const { doc } = result;
+          const { documentType, originalName, description, timePeriod } = doc;
+
+          // Initialize array for this document type if it doesn't exist
+          if (!contentByType[documentType]) {
+            contentByType[documentType] = [];
+          }
+
+          // Create a structured object for the error document data
+          const errorDocumentData = {
+            metadata: {
+              filename: originalName,
+              type: documentType.replace('financial_', '').replace(/_/g, ' '),
+              description: description || 'No description provided',
+              timePeriod: timePeriod || 'Not specified',
+              status: 'ERROR - Document processing failed'
+            },
+            content: `Error: Failed to process this document. ${error instanceof Error ? error.message : 'Unknown error'}`,
+            error: true
+          };
+
+          // Add error content
+          contentByType[documentType].push(errorDocumentData);
+        }
+      }
+
+      // Add a delay between batches to avoid rate limits
+      if (batchIndex < batches.length - 1) {
+        console.log('Waiting 2 seconds before processing next batch to avoid rate limits...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+  }
+
+  /**
+   * Process a batch of PowerPoint documents together to reduce API calls
+   * @param documents Array of PowerPoint document objects
+   * @param contentByType Map to store content by document type
+   */
+  private async processPptDocumentsBatch(
+    documents: Array<any>,
+    contentByType: { [key: string]: any[] }
+  ): Promise<void> {
+    console.log(`Processing batch of ${documents.length} PowerPoint documents...`);
+
+    // Process each PowerPoint document with traditional extraction first
+    const traditionalResults = await Promise.all(documents.map(async (doc) => {
+      try {
+        const rawText = await this.extractPptTextTraditional(doc.filePath);
+        return {
+          doc,
+          rawText,
+          success: true
+        };
+      } catch (error) {
+        console.error(`Error extracting raw text from PowerPoint ${doc.originalName}:`, error);
+        return {
+          doc,
+          rawText: `[Error extracting text: ${error instanceof Error ? error.message : 'Unknown error'}]`,
+          success: false
+        };
+      }
+    }));
+
+    // Process PowerPoints in smaller batches
+    const BATCH_SIZE = 3; // Process 3 PowerPoints at a time to avoid token limits
+    const batches = [];
+
+    for (let i = 0; i < traditionalResults.length; i += BATCH_SIZE) {
+      batches.push(traditionalResults.slice(i, i + BATCH_SIZE));
+    }
+
+    console.log(`Split ${traditionalResults.length} PowerPoints into ${batches.length} batches of up to ${BATCH_SIZE} documents each`);
+
+    // Process each batch
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
+      console.log(`Processing PowerPoint batch ${batchIndex + 1} of ${batches.length} with ${batch.length} documents...`);
+
+      try {
+        // Process each document in the batch individually to avoid rate limits
+        for (const result of batch) {
+          const { doc, rawText } = result;
+          const {
+            documentType,
+            originalName,
+            description,
+            timePeriod
+          } = doc;
+
+          // Create metadata object
+          const metadata = {
+            documentType,
+            name: originalName,
+            timePeriod,
+            description
+          };
+
+          // Process with Gemini individually
+          let aiProcessedText;
+          try {
+            aiProcessedText = await this.extractPptTextWithGemini(doc.filePath, metadata);
+            console.log(`Successfully processed PowerPoint with Gemini: ${originalName}`);
+          } catch (error) {
+            console.error(`Error processing PowerPoint with Gemini: ${originalName}`, error);
+            aiProcessedText = `[Error processing with Gemini: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+          }
+
+          // Determine which text to use as the combined result
+          let combinedText = aiProcessedText;
+          let extractionMethod = 'gemini';
+
+          if (
+            !aiProcessedText ||
+            aiProcessedText.includes('[Error processing PowerPoint with Gemini:') ||
+            aiProcessedText.includes('[No text content extracted from PowerPoint using Gemini]')
+          ) {
+            combinedText = rawText;
+            extractionMethod = 'traditional';
+          }
+
+          // Initialize array for this document type if it doesn't exist
+          if (!contentByType[documentType]) {
+            contentByType[documentType] = [];
+          }
+
+          // Create a structured object for the document data
+          const documentData = {
+            metadata: {
+              filename: originalName,
+              type: documentType.replace('financial_', '').replace(/_/g, ' '),
+              description: description || 'No description provided',
+              timePeriod: timePeriod || 'Not specified'
+            },
+            content: combinedText,
+            rawText: rawText,
+            aiProcessedText: aiProcessedText,
+            extractionMethod: extractionMethod
+          };
+
+          // Add content with document name and metadata
+          contentByType[documentType].push(documentData);
+        }
+      } catch (error) {
+        console.error(`Error processing PowerPoint batch ${batchIndex + 1}:`, error);
+
+        // Handle the error for each document in the batch
+        for (const result of batch) {
+          const { doc } = result;
+          const { documentType, originalName, description, timePeriod } = doc;
+
+          // Initialize array for this document type if it doesn't exist
+          if (!contentByType[documentType]) {
+            contentByType[documentType] = [];
+          }
+
+          // Create a structured object for the error document data
+          const errorDocumentData = {
+            metadata: {
+              filename: originalName,
+              type: documentType.replace('financial_', '').replace(/_/g, ' '),
+              description: description || 'No description provided',
+              timePeriod: timePeriod || 'Not specified',
+              status: 'ERROR - Document processing failed'
+            },
+            content: `Error: Failed to process this document. ${error instanceof Error ? error.message : 'Unknown error'}`,
+            error: true
+          };
+
+          // Add error content
+          contentByType[documentType].push(errorDocumentData);
+        }
+      }
+
+      // Add a delay between batches to avoid rate limits
+      if (batchIndex < batches.length - 1) {
+        console.log('Waiting 2 seconds before processing next batch to avoid rate limits...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+  }
+
+  /**
+   * Process other types of documents (Excel, Word, etc.)
+   * @param documents Array of document objects
+   * @param contentByType Map to store content by document type
+   */
+  private async processOtherDocumentsBatch(
+    documents: Array<any>,
+    contentByType: { [key: string]: any[] }
+  ): Promise<void> {
+    console.log(`Processing batch of ${documents.length} other documents...`);
+
+    // Process each document individually
+    for (const doc of documents) {
+      const {
+        filePath,
+        documentType,
+        originalName,
+        description,
+        timePeriod
+      } = doc;
+
+      try {
+        // Create metadata object
+        const metadata = {
+          documentType,
+          name: originalName,
+          timePeriod,
+          description
+        };
+
+        // Process document with both extraction methods
+        const result = await this.processDocument(filePath, true, metadata);
+
+        // Ensure we have a DocumentExtractionResult
+        if (typeof result === 'string') {
+          console.error(`Unexpected string result from processDocument for ${originalName}`);
+          throw new Error('Expected DocumentExtractionResult but got string');
+        }
+
+        const { rawText, aiProcessedText, combinedText, extractionMethod } = result;
+
+        // Initialize array for this document type if it doesn't exist
+        if (!contentByType[documentType]) {
+          contentByType[documentType] = [];
+        }
+
+        // Create a structured object for the document data
+        const documentData = {
+          metadata: {
+            filename: originalName,
+            type: documentType.replace('financial_', '').replace(/_/g, ' '),
+            description: description || 'No description provided',
+            timePeriod: timePeriod || 'Not specified'
+          },
+          content: combinedText,
+          rawText: rawText,
+          aiProcessedText: aiProcessedText,
+          extractionMethod: extractionMethod
+        };
+
+        // Add content with document name and metadata
+        contentByType[documentType].push(documentData);
+      } catch (error) {
+        console.error(`Error processing ${originalName}:`, error);
+
+        // Initialize array for this document type if it doesn't exist
+        if (!contentByType[documentType]) {
+          contentByType[documentType] = [];
+        }
+
+        // Create a structured object for the error document data
+        const errorDocumentData = {
+          metadata: {
+            filename: originalName,
+            type: documentType.replace('financial_', '').replace(/_/g, ' '),
+            description: description || 'No description provided',
+            timePeriod: timePeriod || 'Not specified',
+            status: 'ERROR - Document processing failed'
+          },
+          content: `Error: Failed to process this document. ${error instanceof Error ? error.message : 'Unknown error'}`,
+          error: true
+        };
+
+        // Add error content
+        contentByType[documentType].push(errorDocumentData);
+      }
+
+      // Add a small delay between documents to avoid rate limits
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
+
+  /**
    * Process multiple documents with comprehensive metadata and combine their content with document type identifiers
    * @param documents Array of document objects with filePath, documentType, and additional metadata
+   * @param returnBothExtractions Whether to include both raw and AI-processed text in the metadata
    * @returns Combined extracted content with document type identifiers and metadata
    */
   async processMultipleDocumentsWithMetadata(documents: Array<{
@@ -335,7 +1830,7 @@ export class EnhancedDocumentProcessingService {
     fileSize?: number,
     createdAt?: string,
     updatedAt?: string
-  }>): Promise<string> {
+  }>, returnBothExtractions: boolean = false): Promise<string> {
     // Create a map to store content by document type
     const contentByType: { [key: string]: string[] } = {};
 
@@ -353,33 +1848,59 @@ export class EnhancedDocumentProcessingService {
       } = doc;
 
       try {
-        const content = await this.processDocument(filePath); // This will handle the path conversion internally
+        // Create metadata object to pass to document processing
+        const metadata = {
+          documentType,
+          name: originalName,
+          timePeriod,
+          description
+        };
+
+        // Process document with both extraction methods if requested, passing metadata
+        const result = await this.processDocument(filePath, returnBothExtractions, metadata);
+
+        // Get the content to display
+        let content: string;
+        let extractionMethod: string = 'standard';
+        let rawText: string | null = null;
+        let aiProcessedText: string | null = null;
+
+        if (returnBothExtractions && typeof result !== 'string') {
+          content = result.combinedText;
+          extractionMethod = result.extractionMethod;
+          rawText = result.rawText;
+          aiProcessedText = result.aiProcessedText;
+        } else {
+          content = result as string;
+        }
 
         // Initialize array for this document type if it doesn't exist
         if (!contentByType[documentType]) {
           contentByType[documentType] = [];
         }
 
-        // Format file size in a readable way
-        const formattedFileSize = fileSize ? `${(fileSize / 1024 / 1024).toFixed(2)} MB` : 'Unknown size';
+        // Create a structured JSON object for the document data
+        const documentData: any = {
+          metadata: {
+            filename: originalName,
+            type: documentType.replace('financial_', '').replace(/_/g, ' '),
+            description: description || 'No description provided',
+            timePeriod: timePeriod || 'Not specified'
+          },
+          content: content
+        };
 
-        // Format date in a readable way
-        const formattedDate = createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown date';
+        // Add raw and AI-processed text if both extractions were performed
+        if (returnBothExtractions && rawText && aiProcessedText) {
+          documentData.rawText = rawText;
+          documentData.aiProcessedText = aiProcessedText;
+        }
 
-        // Create metadata section
-        const metadataSection = `
---- Document Metadata ---
-Filename: ${originalName}
-Type: ${documentType.replace('financial_', '').replace(/_/g, ' ')}
-Description: ${description || 'No description provided'}
-Time Period: ${timePeriod || 'Not specified'}
-File Format: ${fileType || 'Unknown format'}
-Size: ${formattedFileSize}
-Created: ${formattedDate}
-`;
+        // Convert to JSON string for storage
+        const documentContent = JSON.stringify(documentData, null, 2);
 
         // Add content with document name and metadata
-        contentByType[documentType].push(`--- Document: ${originalName} ---\n${metadataSection}\n--- Document Content ---\n\n${content}\n\n`);
+        contentByType[documentType].push(documentContent);
 
         return {
           documentType,
@@ -389,7 +1910,10 @@ Created: ${formattedDate}
           fileType,
           fileSize,
           createdAt,
-          content
+          content,
+          extractionMethod: returnBothExtractions ? extractionMethod : undefined,
+          rawText: returnBothExtractions ? rawText : undefined,
+          aiProcessedText: returnBothExtractions ? aiProcessedText : undefined
         };
       } catch (error) {
         console.error(`Error processing ${originalName}:`, error);
@@ -399,26 +1923,24 @@ Created: ${formattedDate}
           contentByType[documentType] = [];
         }
 
-        // Format file size in a readable way
-        const formattedFileSize = fileSize ? `${(fileSize / 1024 / 1024).toFixed(2)} MB` : 'Unknown size';
+        // Create a structured JSON object for the error document data
+        const errorDocumentData = {
+          metadata: {
+            filename: originalName,
+            type: documentType.replace('financial_', '').replace(/_/g, ' '),
+            description: description || 'No description provided',
+            timePeriod: timePeriod || 'Not specified',
+            status: 'ERROR - Document processing failed'
+          },
+          content: 'Error: Failed to process this document. Please check the file format and try again.',
+          error: true
+        };
 
-        // Format date in a readable way
-        const formattedDate = createdAt ? new Date(createdAt).toLocaleDateString() : 'Unknown date';
+        // Convert to JSON string for storage
+        const errorContent = JSON.stringify(errorDocumentData, null, 2);
 
-        // Create metadata section even for failed documents
-        const metadataSection = `
---- Document Metadata ---
-Filename: ${originalName}
-Type: ${documentType.replace('financial_', '').replace(/_/g, ' ')}
-Description: ${description || 'No description provided'}
-Time Period: ${timePeriod || 'Not specified'}
-File Format: ${fileType || 'Unknown format'}
-Size: ${formattedFileSize}
-Created: ${formattedDate}
-`;
-
-        // Add error message with metadata
-        contentByType[documentType].push(`--- Document: ${originalName} ---\n${metadataSection}\n--- Document Content ---\n\nError: Failed to process this document\n\n`);
+        // Add error content
+        contentByType[documentType].push(errorContent);
 
         return {
           documentType,
@@ -436,10 +1958,10 @@ Created: ${formattedDate}
     // Wait for all documents to be processed
     await Promise.all(contentPromises);
 
-    // Combine content with document type identifiers
-    let combinedContent = '';
+    // Create a structured JSON object for all document types
+    const combinedData: { [key: string]: any[] } = {};
 
-    // Add each document type section
+    // Process each document type
     for (const [docType, contents] of Object.entries(contentByType)) {
       // Format document type for display (remove 'financial_' prefix, replace underscores with spaces, and capitalize)
       const formattedDocType = docType.replace('financial_', '')
@@ -447,20 +1969,31 @@ Created: ${formattedDate}
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
 
-      combinedContent += `=== ${formattedDocType} ===\n\n`;
-      combinedContent += contents.join('\n');
-      combinedContent += '\n\n';
+      // Parse each JSON string back to an object
+      const parsedContents = contents.map(content => {
+        try {
+          return JSON.parse(content);
+        } catch (error) {
+          console.error(`Error parsing JSON content for ${docType}:`, error);
+          return { error: true, content: content };
+        }
+      });
+
+      // Add to combined data
+      combinedData[formattedDocType] = parsedContents;
     }
 
-    return combinedContent;
+    // Return the combined data as a JSON string
+    return JSON.stringify(combinedData, null, 2);
   }
 
   /**
    * Process multiple documents and combine their content with document type identifiers
    * @param filePaths Array of file paths
+   * @param returnBothExtractions Whether to include both raw and AI-processed text in the output
    * @returns Combined extracted content with document type identifiers
    */
-  async processMultipleDocuments(filePaths: string[]): Promise<string> {
+  async processMultipleDocuments(filePaths: string[], returnBothExtractions: boolean = false): Promise<string> {
     // Create a map to store content by document type
     const contentByType: { [key: string]: string[] } = {};
 
@@ -478,21 +2011,68 @@ Created: ${formattedDate}
         documentType = `financial_${match[1]}`;
       }
 
+      // Create basic metadata from filename and path
+      const metadata = {
+        documentType,
+        name: fileName,
+        // Try to extract time period from filename (e.g., 2023, 2022-2023)
+        timePeriod: fileName.match(/\b(20\d\d(-20\d\d)?)\b/)?.[1] || '',
+        description: ''
+      };
+
       try {
-        const content = await this.processDocument(filePath); // This will handle the path conversion internally
+        // Process document with both extraction methods if requested, passing metadata
+        const result = await this.processDocument(filePath, returnBothExtractions, metadata);
+
+        // Get the content to display
+        let content: string;
+        let extractionMethod: string = 'standard';
+        let rawText: string | null = null;
+        let aiProcessedText: string | null = null;
+
+        if (returnBothExtractions && typeof result !== 'string') {
+          content = result.combinedText;
+          extractionMethod = result.extractionMethod;
+          rawText = result.rawText;
+          aiProcessedText = result.aiProcessedText;
+        } else {
+          content = result as string;
+        }
 
         // Initialize array for this document type if it doesn't exist
         if (!contentByType[documentType]) {
           contentByType[documentType] = [];
         }
 
+        // Create a structured JSON object for the document data
+        const documentData: any = {
+          metadata: {
+            filename: fileName,
+            type: documentType.replace('financial_', '').replace(/_/g, ' '),
+            timePeriod: metadata.timePeriod || 'Not specified'
+          },
+          content: content
+        };
+
+        // Add raw and AI-processed text if both extractions were performed
+        if (returnBothExtractions && rawText && aiProcessedText) {
+          documentData.rawText = rawText;
+          documentData.aiProcessedText = aiProcessedText;
+        }
+
+        // Convert to JSON string for storage
+        const documentContent = JSON.stringify(documentData, null, 2);
+
         // Add content with document name
-        contentByType[documentType].push(`--- Document: ${fileName} ---\n\n${content}\n\n`);
+        contentByType[documentType].push(documentContent);
 
         return {
           documentType,
           fileName,
-          content
+          content,
+          extractionMethod: returnBothExtractions ? extractionMethod : undefined,
+          rawText: returnBothExtractions ? rawText : undefined,
+          aiProcessedText: returnBothExtractions ? aiProcessedText : undefined
         };
       } catch (error) {
         console.error(`Error processing ${fileName}:`, error);
@@ -502,8 +2082,23 @@ Created: ${formattedDate}
           contentByType[documentType] = [];
         }
 
-        // Add error message
-        contentByType[documentType].push(`--- Document: ${fileName} ---\n\nError: Failed to process this document\n\n`);
+        // Create a structured JSON object for the error document data
+        const errorDocumentData = {
+          metadata: {
+            filename: fileName,
+            type: documentType.replace('financial_', '').replace(/_/g, ' '),
+            timePeriod: metadata.timePeriod || 'Not specified',
+            status: 'ERROR - Document processing failed'
+          },
+          content: 'Error: Failed to process this document. Please check the file format and try again.',
+          error: true
+        };
+
+        // Convert to JSON string for storage
+        const errorContent = JSON.stringify(errorDocumentData, null, 2);
+
+        // Add error content
+        contentByType[documentType].push(errorContent);
 
         return {
           documentType,
@@ -516,10 +2111,10 @@ Created: ${formattedDate}
     // Wait for all documents to be processed
     await Promise.all(contentPromises);
 
-    // Combine content with document type identifiers
-    let combinedContent = '';
+    // Create a structured JSON object for all document types
+    const combinedData: { [key: string]: any[] } = {};
 
-    // Add each document type section
+    // Process each document type
     for (const [docType, contents] of Object.entries(contentByType)) {
       // Format document type for display (remove 'financial_' prefix, replace underscores with spaces, and capitalize)
       const formattedDocType = docType.replace('financial_', '')
@@ -527,12 +2122,22 @@ Created: ${formattedDate}
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
 
-      combinedContent += `=== ${formattedDocType} ===\n\n`;
-      combinedContent += contents.join('\n');
-      combinedContent += '\n\n';
+      // Parse each JSON string back to an object
+      const parsedContents = contents.map(content => {
+        try {
+          return JSON.parse(content);
+        } catch (error) {
+          console.error(`Error parsing JSON content for ${docType}:`, error);
+          return { error: true, content: content };
+        }
+      });
+
+      // Add to combined data
+      combinedData[formattedDocType] = parsedContents;
     }
 
-    return combinedContent;
+    // Return the combined data as a JSON string
+    return JSON.stringify(combinedData, null, 2);
   }
 
   /**
@@ -575,20 +2180,7 @@ Created: ${formattedDate}
       });
     }
 
-    // Check legal and regulatory compliance areas if they exist
-    if (data && data.legalAndRegulatoryCompliance &&
-      data.legalAndRegulatoryCompliance.complianceAreas &&
-      Array.isArray(data.legalAndRegulatoryCompliance.complianceAreas)) {
 
-      data.legalAndRegulatoryCompliance.complianceAreas.forEach((area: any, index: number) => {
-        if (area && area.status) {
-          if (!validStatusValues.includes(area.status)) {
-            console.log(`Invalid legal compliance status "${area.status}" found at index ${index}. Fixing to "partial".`);
-            area.status = 'partial';
-          }
-        }
-      });
-    }
   }
 
   /**
@@ -634,6 +2226,38 @@ Created: ${formattedDate}
     if (data && data.shareholdersTable) {
       console.log('Validating shareholders table...');
 
+      // Check if shareholders is a string that looks like an array (from JSON stringification)
+      if (data.shareholdersTable.shareholders && typeof data.shareholdersTable.shareholders === 'string') {
+        try {
+          // Try to parse the string as JSON
+          const parsedShareholders = JSON.parse(data.shareholdersTable.shareholders);
+          if (Array.isArray(parsedShareholders)) {
+            data.shareholdersTable.shareholders = parsedShareholders;
+            console.log('Successfully parsed shareholdersTable.shareholders from string to array');
+          }
+        } catch (error) {
+          // If it's not valid JSON but looks like an array representation
+          if (typeof data.shareholdersTable.shareholders === 'string' &&
+            data.shareholdersTable.shareholders.trim().startsWith('[') &&
+            data.shareholdersTable.shareholders.trim().endsWith(']')) {
+            console.log('Attempting to evaluate shareholdersTable.shareholders string as array');
+            try {
+              // This is a safer alternative to eval
+              const shareholdersStr = data.shareholdersTable.shareholders.replace(/'/g, '"');
+              data.shareholdersTable.shareholders = JSON.parse(shareholdersStr);
+            } catch (evalError) {
+              console.error('Failed to parse shareholdersTable.shareholders string:', evalError);
+              // Reset to empty array if parsing fails
+              data.shareholdersTable.shareholders = [];
+            }
+          } else {
+            console.error('Failed to parse shareholdersTable.shareholders:', error);
+            // Reset to empty array
+            data.shareholdersTable.shareholders = [];
+          }
+        }
+      }
+
       // Ensure shareholders array exists
       if (!data.shareholdersTable.shareholders || !Array.isArray(data.shareholdersTable.shareholders)) {
         data.shareholdersTable.shareholders = [];
@@ -646,42 +2270,148 @@ Created: ${formattedDate}
           shareholder.name = `Shareholder ${index + 1}`;
         }
 
-        // Ensure numeric fields are properly formatted
-        ['equityPercentage', 'shareCount', 'faceValue', 'investmentAmount'].forEach(field => {
-          if (shareholder[field] && typeof shareholder[field] !== 'number' && shareholder[field] !== 'N/A') {
-            // Try to convert to number if possible
-            const numValue = parseFloat(shareholder[field]);
-            if (!isNaN(numValue)) {
-              shareholder[field] = numValue;
-            } else {
-              shareholder[field] = 'N/A';
-            }
-          }
-        });
-      });
-
-      // Ensure totalShares and totalEquity are properly formatted
-      ['totalShares', 'totalEquity'].forEach(field => {
-        if (data.shareholdersTable[field] && typeof data.shareholdersTable[field] !== 'number' && data.shareholdersTable[field] !== 'N/A') {
-          // Try to convert to number if possible
-          const numValue = parseFloat(data.shareholdersTable[field]);
-          if (!isNaN(numValue)) {
-            data.shareholdersTable[field] = numValue;
+        // Ensure equityPercentage is a string
+        if (shareholder.equityPercentage === undefined || shareholder.equityPercentage === null) {
+          shareholder.equityPercentage = "0%";
+        } else if (typeof shareholder.equityPercentage !== 'string') {
+          // If it's a number, convert to percentage string
+          if (typeof shareholder.equityPercentage === 'number') {
+            shareholder.equityPercentage = `${shareholder.equityPercentage}%`;
           } else {
-            data.shareholdersTable[field] = 'N/A';
+            shareholder.equityPercentage = String(shareholder.equityPercentage);
+          }
+
+          // Add % sign if not present
+          if (!shareholder.equityPercentage.includes('%')) {
+            shareholder.equityPercentage = `${shareholder.equityPercentage}%`;
           }
         }
+
+        // Ensure shareCount is a number or string
+        if (shareholder.shareCount === undefined || shareholder.shareCount === null) {
+          shareholder.shareCount = "0";
+        } else if (typeof shareholder.shareCount !== 'string' && typeof shareholder.shareCount !== 'number') {
+          shareholder.shareCount = String(shareholder.shareCount);
+        }
+
+        // Ensure shareClass is a string
+        if (!shareholder.shareClass) {
+          shareholder.shareClass = "Equity";
+        }
+
+        // Ensure all other fields are strings
+        if (shareholder.faceValue && typeof shareholder.faceValue !== 'string') {
+          shareholder.faceValue = String(shareholder.faceValue);
+        }
+
+        if (shareholder.investmentAmount && typeof shareholder.investmentAmount !== 'string') {
+          shareholder.investmentAmount = String(shareholder.investmentAmount);
+        }
+
+        if (shareholder.votingRights && typeof shareholder.votingRights !== 'string') {
+          shareholder.votingRights = String(shareholder.votingRights);
+        }
+
+        if (shareholder.notes && typeof shareholder.notes !== 'string') {
+          shareholder.notes = String(shareholder.notes);
+        }
       });
+
+      // Check if recommendations is a string that looks like an array
+      if (data.shareholdersTable.recommendations && typeof data.shareholdersTable.recommendations === 'string') {
+        try {
+          const parsedRecommendations = JSON.parse(data.shareholdersTable.recommendations);
+          if (Array.isArray(parsedRecommendations)) {
+            data.shareholdersTable.recommendations = parsedRecommendations;
+          }
+        } catch (error) {
+          // If it's not valid JSON but looks like an array representation
+          if (typeof data.shareholdersTable.recommendations === 'string' &&
+            data.shareholdersTable.recommendations.trim().startsWith('[') &&
+            data.shareholdersTable.recommendations.trim().endsWith(']')) {
+            try {
+              const recommendationsStr = data.shareholdersTable.recommendations.replace(/'/g, '"');
+              data.shareholdersTable.recommendations = JSON.parse(recommendationsStr);
+            } catch (evalError) {
+              data.shareholdersTable.recommendations = [];
+            }
+          } else {
+            data.shareholdersTable.recommendations = [];
+          }
+        }
+      }
 
       // Ensure recommendations array exists
       if (!data.shareholdersTable.recommendations || !Array.isArray(data.shareholdersTable.recommendations)) {
         data.shareholdersTable.recommendations = [];
       }
+
+      // Ensure overview and analysis exist
+      if (!data.shareholdersTable.overview) {
+        data.shareholdersTable.overview = "No overview available for the shareholding structure.";
+      }
+      if (!data.shareholdersTable.analysis) {
+        data.shareholdersTable.analysis = "No analysis available for the shareholding structure.";
+      }
+
+      // Ensure totalShares and totalEquity exist
+      if (!data.shareholdersTable.totalShares) {
+        data.shareholdersTable.totalShares = "0";
+      }
+
+      if (!data.shareholdersTable.totalEquity) {
+        data.shareholdersTable.totalEquity = "100%";
+      }
+    }
+
+    // If shareholdersTable doesn't exist, create it with default values
+    if (!data.shareholdersTable) {
+      console.log('Creating default shareholders table...');
+      data.shareholdersTable = {
+        overview: "No shareholders information available in the provided documents.",
+        shareholders: [],
+        totalShares: "0",
+        totalEquity: "100%",
+        analysis: "Unable to analyze shareholding structure due to lack of data.",
+        recommendations: ["Provide cap table or shareholding documents for analysis."]
+      };
     }
 
     // Validate directors table
     if (data && data.directorsTable) {
       console.log('Validating directors table...');
+
+      // Check if directors is a string that looks like an array (from JSON stringification)
+      if (data.directorsTable.directors && typeof data.directorsTable.directors === 'string') {
+        try {
+          // Try to parse the string as JSON
+          const parsedDirectors = JSON.parse(data.directorsTable.directors);
+          if (Array.isArray(parsedDirectors)) {
+            data.directorsTable.directors = parsedDirectors;
+            console.log('Successfully parsed directorsTable.directors from string to array');
+          }
+        } catch (error) {
+          // If it's not valid JSON but looks like an array representation
+          if (typeof data.directorsTable.directors === 'string' &&
+            data.directorsTable.directors.trim().startsWith('[') &&
+            data.directorsTable.directors.trim().endsWith(']')) {
+            console.log('Attempting to evaluate directorsTable.directors string as array');
+            try {
+              // This is a safer alternative to eval
+              const directorsStr = data.directorsTable.directors.replace(/'/g, '"');
+              data.directorsTable.directors = JSON.parse(directorsStr);
+            } catch (evalError) {
+              console.error('Failed to parse directorsTable.directors string:', evalError);
+              // Reset to empty array if parsing fails
+              data.directorsTable.directors = [];
+            }
+          } else {
+            console.error('Failed to parse directorsTable.directors:', error);
+            // Reset to empty array
+            data.directorsTable.directors = [];
+          }
+        }
+      }
 
       // Ensure directors array exists
       if (!data.directorsTable.directors || !Array.isArray(data.directorsTable.directors)) {
@@ -700,92 +2430,977 @@ Created: ${formattedDate}
           director.position = 'Director';
         }
 
-        // Ensure shareholding is properly formatted
-        if (director.shareholding && typeof director.shareholding !== 'number' && director.shareholding !== 'N/A') {
-          // Try to convert to number if possible
-          const numValue = parseFloat(director.shareholding);
-          if (!isNaN(numValue)) {
-            director.shareholding = numValue;
-          } else {
-            director.shareholding = 'N/A';
+        // Ensure DIN is a string
+        if (director.din !== undefined && director.din !== null && typeof director.din !== 'string') {
+          director.din = String(director.din);
+        }
+
+        // Ensure appointmentDate is a string
+        if (director.appointmentDate !== undefined && director.appointmentDate !== null && typeof director.appointmentDate !== 'string') {
+          try {
+            // Try to convert to a date string if it's a Date object
+            director.appointmentDate = new Date(director.appointmentDate).toISOString().split('T')[0];
+          } catch (e) {
+            director.appointmentDate = String(director.appointmentDate);
           }
         }
 
-        // Ensure otherDirectorships is an array
-        if (!director.otherDirectorships || !Array.isArray(director.otherDirectorships)) {
+        // Ensure shareholding is a string or number
+        if (director.shareholding === undefined || director.shareholding === null) {
+          director.shareholding = "0%";
+        } else if (typeof director.shareholding !== 'string') {
+          director.shareholding = String(director.shareholding);
+
+          // Add % sign if it's a percentage and doesn't already have it
+          if (!director.shareholding.includes('%') &&
+            !isNaN(parseFloat(director.shareholding)) &&
+            parseFloat(director.shareholding) <= 100) {
+            director.shareholding = `${director.shareholding}%`;
+          }
+        }
+
+        // Ensure expertise is a string
+        if (director.expertise && typeof director.expertise !== 'string') {
+          director.expertise = String(director.expertise);
+        }
+
+        // Ensure notes is a string
+        if (director.notes && typeof director.notes !== 'string') {
+          director.notes = String(director.notes);
+        }
+
+        // Ensure otherDirectorships is an array of strings
+        if (director.otherDirectorships) {
+          if (typeof director.otherDirectorships === 'string') {
+            try {
+              const parsedDirectorships = JSON.parse(director.otherDirectorships);
+              if (Array.isArray(parsedDirectorships)) {
+                director.otherDirectorships = parsedDirectorships;
+              } else {
+                director.otherDirectorships = [String(director.otherDirectorships)];
+              }
+            } catch (error) {
+              director.otherDirectorships = [String(director.otherDirectorships)];
+            }
+          } else if (!Array.isArray(director.otherDirectorships)) {
+            director.otherDirectorships = [String(director.otherDirectorships)];
+          }
+        } else {
           director.otherDirectorships = [];
         }
       });
+
+      // Check if recommendations is a string that looks like an array
+      if (data.directorsTable.recommendations && typeof data.directorsTable.recommendations === 'string') {
+        try {
+          const parsedRecommendations = JSON.parse(data.directorsTable.recommendations);
+          if (Array.isArray(parsedRecommendations)) {
+            data.directorsTable.recommendations = parsedRecommendations;
+          }
+        } catch (error) {
+          // If it's not valid JSON but looks like an array representation
+          if (typeof data.directorsTable.recommendations === 'string' &&
+            data.directorsTable.recommendations.trim().startsWith('[') &&
+            data.directorsTable.recommendations.trim().endsWith(']')) {
+            try {
+              const recommendationsStr = data.directorsTable.recommendations.replace(/'/g, '"');
+              data.directorsTable.recommendations = JSON.parse(recommendationsStr);
+            } catch (evalError) {
+              data.directorsTable.recommendations = [];
+            }
+          } else {
+            data.directorsTable.recommendations = [];
+          }
+        }
+      }
 
       // Ensure recommendations array exists
       if (!data.directorsTable.recommendations || !Array.isArray(data.directorsTable.recommendations)) {
         data.directorsTable.recommendations = [];
       }
+
+      // Ensure overview and analysis exist
+      if (!data.directorsTable.overview) {
+        data.directorsTable.overview = "No overview available for the board of directors.";
+      }
+      if (!data.directorsTable.analysis) {
+        data.directorsTable.analysis = "No analysis available for the board of directors.";
+      }
     }
 
     // Validate key business agreements
     if (data && data.keyBusinessAgreements) {
+      console.log('Validating key business agreements...');
+
+      // Check if agreements is a string that looks like an array (from JSON stringification)
+      if (data.keyBusinessAgreements.agreements && typeof data.keyBusinessAgreements.agreements === 'string') {
+        try {
+          // Try to parse the string as JSON
+          const parsedAgreements = JSON.parse(data.keyBusinessAgreements.agreements);
+          if (Array.isArray(parsedAgreements)) {
+            data.keyBusinessAgreements.agreements = parsedAgreements;
+            console.log('Successfully parsed keyBusinessAgreements.agreements from string to array');
+          }
+        } catch (error) {
+          // If it's not valid JSON but looks like an array representation
+          if (typeof data.keyBusinessAgreements.agreements === 'string' &&
+            data.keyBusinessAgreements.agreements.trim().startsWith('[') &&
+            data.keyBusinessAgreements.agreements.trim().endsWith(']')) {
+            console.log('Attempting to evaluate keyBusinessAgreements.agreements string as array');
+            try {
+              // This is a safer alternative to eval
+              const agreementsStr = data.keyBusinessAgreements.agreements.replace(/'/g, '"');
+              data.keyBusinessAgreements.agreements = JSON.parse(agreementsStr);
+            } catch (evalError) {
+              console.error('Failed to parse keyBusinessAgreements.agreements string:', evalError);
+              // Reset to empty array if parsing fails
+              data.keyBusinessAgreements.agreements = [];
+            }
+          } else {
+            console.error('Failed to parse keyBusinessAgreements.agreements:', error);
+            // Reset to empty array
+            data.keyBusinessAgreements.agreements = [];
+          }
+        }
+      }
+
+      // Ensure agreements array exists
       if (!data.keyBusinessAgreements.agreements || !Array.isArray(data.keyBusinessAgreements.agreements)) {
         data.keyBusinessAgreements.agreements = [];
       }
+
+      // Ensure each agreement has required fields
+      data.keyBusinessAgreements.agreements.forEach((agreement: any, index: number) => {
+        if (!agreement.type && !agreement.agreementType) {
+          console.log(`Missing type for agreement at index ${index}. Adding placeholder.`);
+          agreement.type = `Agreement ${index + 1}`;
+        }
+
+        // Convert agreementType to type if needed for consistency
+        if (agreement.agreementType && !agreement.type) {
+          agreement.type = agreement.agreementType;
+        }
+
+        // Ensure type is a string
+        if (agreement.type && typeof agreement.type !== 'string') {
+          agreement.type = String(agreement.type);
+        }
+
+        // Handle parties field - could be string, array, or other
+        if (!agreement.parties) {
+          agreement.parties = [];
+        } else if (typeof agreement.parties === 'string') {
+          // Check if it's a stringified array
+          if (agreement.parties.trim().startsWith('[') && agreement.parties.trim().endsWith(']')) {
+            try {
+              const partiesStr = agreement.parties.replace(/'/g, '"');
+              const parsedParties = JSON.parse(partiesStr);
+              if (Array.isArray(parsedParties)) {
+                agreement.parties = parsedParties;
+              } else {
+                agreement.parties = [agreement.parties];
+              }
+            } catch (error) {
+              agreement.parties = [agreement.parties];
+            }
+          } else {
+            // It's a regular string, keep as is or convert to array based on your needs
+            agreement.parties = [agreement.parties];
+          }
+        } else if (!Array.isArray(agreement.parties)) {
+          // Convert any other type to string and put in array
+          agreement.parties = [String(agreement.parties)];
+        }
+
+        // Ensure all other fields are strings
+        if (agreement.effectiveDate && typeof agreement.effectiveDate !== 'string') {
+          agreement.effectiveDate = String(agreement.effectiveDate);
+        }
+
+        if (agreement.expiryDate && typeof agreement.expiryDate !== 'string') {
+          agreement.expiryDate = String(agreement.expiryDate);
+        }
+
+        if (agreement.financialImpact && typeof agreement.financialImpact !== 'string') {
+          agreement.financialImpact = String(agreement.financialImpact);
+        }
+
+        if (agreement.notes && typeof agreement.notes !== 'string') {
+          agreement.notes = String(agreement.notes);
+        }
+
+        // Handle keyTerms field - could be string, array, or other
+        if (agreement.keyTerms) {
+          if (typeof agreement.keyTerms === 'string') {
+            // Check if it's a stringified array
+            if (agreement.keyTerms.trim().startsWith('[') && agreement.keyTerms.trim().endsWith(']')) {
+              try {
+                const keyTermsStr = agreement.keyTerms.replace(/'/g, '"');
+                const parsedKeyTerms = JSON.parse(keyTermsStr);
+                if (Array.isArray(parsedKeyTerms)) {
+                  agreement.keyTerms = parsedKeyTerms;
+                } else {
+                  agreement.keyTerms = [agreement.keyTerms];
+                }
+              } catch (error) {
+                agreement.keyTerms = [agreement.keyTerms];
+              }
+            } else {
+              agreement.keyTerms = [agreement.keyTerms];
+            }
+          } else if (!Array.isArray(agreement.keyTerms)) {
+            agreement.keyTerms = [String(agreement.keyTerms)];
+          }
+        } else {
+          agreement.keyTerms = [];
+        }
+
+        // Handle risks field - could be string, array, or other
+        if (agreement.risks) {
+          if (typeof agreement.risks === 'string') {
+            // Check if it's a stringified array
+            if (agreement.risks.trim().startsWith('[') && agreement.risks.trim().endsWith(']')) {
+              try {
+                const risksStr = agreement.risks.replace(/'/g, '"');
+                const parsedRisks = JSON.parse(risksStr);
+                if (Array.isArray(parsedRisks)) {
+                  agreement.risks = parsedRisks;
+                } else {
+                  agreement.risks = [agreement.risks];
+                }
+              } catch (error) {
+                agreement.risks = [agreement.risks];
+              }
+            } else {
+              agreement.risks = [agreement.risks];
+            }
+          } else if (!Array.isArray(agreement.risks)) {
+            agreement.risks = [String(agreement.risks)];
+          }
+        } else {
+          agreement.risks = [];
+        }
+      });
+
+      // Check if recommendations is a string that looks like an array
+      if (data.keyBusinessAgreements.recommendations && typeof data.keyBusinessAgreements.recommendations === 'string') {
+        try {
+          const parsedRecommendations = JSON.parse(data.keyBusinessAgreements.recommendations);
+          if (Array.isArray(parsedRecommendations)) {
+            data.keyBusinessAgreements.recommendations = parsedRecommendations;
+          }
+        } catch (error) {
+          // If it's not valid JSON but looks like an array representation
+          if (typeof data.keyBusinessAgreements.recommendations === 'string' &&
+            data.keyBusinessAgreements.recommendations.trim().startsWith('[') &&
+            data.keyBusinessAgreements.recommendations.trim().endsWith(']')) {
+            try {
+              const recommendationsStr = data.keyBusinessAgreements.recommendations.replace(/'/g, '"');
+              data.keyBusinessAgreements.recommendations = JSON.parse(recommendationsStr);
+            } catch (evalError) {
+              data.keyBusinessAgreements.recommendations = [];
+            }
+          } else {
+            data.keyBusinessAgreements.recommendations = [];
+          }
+        }
+      }
+
+      // Ensure recommendations array exists
       if (!data.keyBusinessAgreements.recommendations || !Array.isArray(data.keyBusinessAgreements.recommendations)) {
         data.keyBusinessAgreements.recommendations = [];
+      }
+
+      // Ensure overview and analysis exist
+      if (!data.keyBusinessAgreements.overview) {
+        data.keyBusinessAgreements.overview = "No overview available for key business agreements.";
+      }
+
+      if (!data.keyBusinessAgreements.analysis) {
+        data.keyBusinessAgreements.analysis = "No analysis available for key business agreements.";
       }
     }
 
     // Validate leave policy
     if (data && data.leavePolicy) {
-      if (!data.leavePolicy.policyDetails) {
-        data.leavePolicy.policyDetails = { leaveTypes: [] };
+      console.log('Validating leave policy...');
+
+      // Check if policies is a string that looks like an array (from JSON stringification)
+      if (data.leavePolicy.policies && typeof data.leavePolicy.policies === 'string') {
+        try {
+          // Try to parse the string as JSON
+          const parsedPolicies = JSON.parse(data.leavePolicy.policies);
+          if (Array.isArray(parsedPolicies)) {
+            data.leavePolicy.policies = parsedPolicies;
+            console.log('Successfully parsed leavePolicy.policies from string to array');
+          }
+        } catch (error) {
+          // If it's not valid JSON but looks like an array representation
+          if (typeof data.leavePolicy.policies === 'string' &&
+            data.leavePolicy.policies.trim().startsWith('[') &&
+            data.leavePolicy.policies.trim().endsWith(']')) {
+            console.log('Attempting to evaluate leavePolicy.policies string as array');
+            try {
+              // This is a safer alternative to eval
+              const policiesStr = data.leavePolicy.policies.replace(/'/g, '"');
+              data.leavePolicy.policies = JSON.parse(policiesStr);
+            } catch (evalError) {
+              console.error('Failed to parse leavePolicy.policies string:', evalError);
+              // Reset to empty array if parsing fails
+              data.leavePolicy.policies = [];
+            }
+          } else {
+            console.error('Failed to parse leavePolicy.policies:', error);
+            // Reset to empty array
+            data.leavePolicy.policies = [];
+          }
+        }
       }
-      if (!data.leavePolicy.policyDetails.leaveTypes || !Array.isArray(data.leavePolicy.policyDetails.leaveTypes)) {
-        data.leavePolicy.policyDetails.leaveTypes = [];
+
+      // Ensure policies array exists
+      if (!data.leavePolicy.policies || !Array.isArray(data.leavePolicy.policies)) {
+        data.leavePolicy.policies = [];
       }
+
+      // Ensure each policy has required fields
+      data.leavePolicy.policies.forEach((policy: any, index: number) => {
+        if (!policy.type) {
+          console.log(`Missing type for leave policy at index ${index}. Adding placeholder.`);
+          policy.type = `Leave Type ${index + 1}`;
+        }
+
+        // Ensure type is a string
+        if (policy.type && typeof policy.type !== 'string') {
+          policy.type = String(policy.type);
+        }
+
+        // Handle carryForward field - could be string, boolean, or other
+        if (policy.carryForward === undefined || policy.carryForward === null) {
+          policy.carryForward = false;
+        } else if (typeof policy.carryForward === 'string') {
+          // Convert string representations to boolean
+          policy.carryForward = policy.carryForward.toLowerCase() === 'true' ||
+            policy.carryForward.toLowerCase() === 'yes' ||
+            policy.carryForward === '1';
+        } else if (typeof policy.carryForward !== 'boolean') {
+          // Convert any other type to boolean
+          policy.carryForward = Boolean(policy.carryForward);
+        }
+
+        // Handle encashment field - could be string, boolean, or other
+        if (policy.encashment === undefined || policy.encashment === null) {
+          policy.encashment = false;
+        } else if (typeof policy.encashment === 'string') {
+          // Convert string representations to boolean
+          policy.encashment = policy.encashment.toLowerCase() === 'true' ||
+            policy.encashment.toLowerCase() === 'yes' ||
+            policy.encashment === '1';
+        } else if (typeof policy.encashment !== 'boolean') {
+          // Convert any other type to boolean
+          policy.encashment = Boolean(policy.encashment);
+        }
+
+        // Ensure daysAllowed is a number or string
+        if (policy.daysAllowed === undefined || policy.daysAllowed === null) {
+          policy.daysAllowed = "Not specified";
+        } else if (typeof policy.daysAllowed !== 'string' && typeof policy.daysAllowed !== 'number') {
+          policy.daysAllowed = String(policy.daysAllowed);
+        }
+
+        // Ensure eligibility is a string
+        if (policy.eligibility && typeof policy.eligibility !== 'string') {
+          policy.eligibility = String(policy.eligibility);
+        }
+
+        // Ensure notes is a string
+        if (policy.notes && typeof policy.notes !== 'string') {
+          policy.notes = String(policy.notes);
+        }
+      });
+
+      // Check if recommendations is a string that looks like an array
+      if (data.leavePolicy.recommendations && typeof data.leavePolicy.recommendations === 'string') {
+        try {
+          const parsedRecommendations = JSON.parse(data.leavePolicy.recommendations);
+          if (Array.isArray(parsedRecommendations)) {
+            data.leavePolicy.recommendations = parsedRecommendations;
+          }
+        } catch (error) {
+          // If it's not valid JSON but looks like an array representation
+          if (typeof data.leavePolicy.recommendations === 'string' &&
+            data.leavePolicy.recommendations.trim().startsWith('[') &&
+            data.leavePolicy.recommendations.trim().endsWith(']')) {
+            try {
+              const recommendationsStr = data.leavePolicy.recommendations.replace(/'/g, '"');
+              data.leavePolicy.recommendations = JSON.parse(recommendationsStr);
+            } catch (evalError) {
+              data.leavePolicy.recommendations = [];
+            }
+          } else {
+            data.leavePolicy.recommendations = [];
+          }
+        }
+      }
+
+      // Ensure recommendations array exists
       if (!data.leavePolicy.recommendations || !Array.isArray(data.leavePolicy.recommendations)) {
         data.leavePolicy.recommendations = [];
+      }
+
+      // Ensure overview and analysis exist
+      if (!data.leavePolicy.overview) {
+        data.leavePolicy.overview = "No overview available for the leave policy.";
+      }
+      if (!data.leavePolicy.analysis) {
+        data.leavePolicy.analysis = "No analysis available for the leave policy.";
       }
     }
 
     // Validate provisions and prepayments
     if (data && data.provisionsAndPrepayments) {
-      if (!data.provisionsAndPrepayments.provisions || !Array.isArray(data.provisionsAndPrepayments.provisions)) {
-        data.provisionsAndPrepayments.provisions = [];
+      console.log('Validating provisions and prepayments...');
+
+      // Check if items is a string that looks like an array (from JSON stringification)
+      if (data.provisionsAndPrepayments.items && typeof data.provisionsAndPrepayments.items === 'string') {
+        try {
+          // Try to parse the string as JSON
+          const parsedItems = JSON.parse(data.provisionsAndPrepayments.items);
+          if (Array.isArray(parsedItems)) {
+            data.provisionsAndPrepayments.items = parsedItems;
+            console.log('Successfully parsed provisionsAndPrepayments.items from string to array');
+          }
+        } catch (error) {
+          // If it's not valid JSON but looks like an array representation
+          if (typeof data.provisionsAndPrepayments.items === 'string' &&
+            data.provisionsAndPrepayments.items.trim().startsWith('[') &&
+            data.provisionsAndPrepayments.items.trim().endsWith(']')) {
+            console.log('Attempting to evaluate provisionsAndPrepayments.items string as array');
+            try {
+              // This is a safer alternative to eval
+              const itemsStr = data.provisionsAndPrepayments.items.replace(/'/g, '"');
+              data.provisionsAndPrepayments.items = JSON.parse(itemsStr);
+            } catch (evalError) {
+              console.error('Failed to parse provisionsAndPrepayments.items string:', evalError);
+              // Reset to empty array if parsing fails
+              data.provisionsAndPrepayments.items = [];
+            }
+          } else {
+            console.error('Failed to parse provisionsAndPrepayments.items:', error);
+            // Reset to empty array
+            data.provisionsAndPrepayments.items = [];
+          }
+        }
       }
-      if (!data.provisionsAndPrepayments.prepayments || !Array.isArray(data.provisionsAndPrepayments.prepayments)) {
-        data.provisionsAndPrepayments.prepayments = [];
+
+      // Ensure items array exists
+      if (!data.provisionsAndPrepayments.items || !Array.isArray(data.provisionsAndPrepayments.items)) {
+        data.provisionsAndPrepayments.items = [];
       }
+
+      // Ensure each item has required fields
+      data.provisionsAndPrepayments.items.forEach((item: any, index: number) => {
+        if (!item.name) {
+          console.log(`Missing name for provision/prepayment at index ${index}. Adding placeholder.`);
+          item.name = `Item ${index + 1}`;
+        }
+
+        if (!item.type) {
+          console.log(`Missing type for provision/prepayment at index ${index}. Adding placeholder.`);
+          item.type = 'Provision';
+        }
+
+        if (!item.status) {
+          item.status = 'uncertain';
+        }
+
+        // Ensure all fields are strings
+        if (item.amount && typeof item.amount !== 'string') {
+          item.amount = String(item.amount);
+        }
+
+        if (item.period && typeof item.period !== 'string') {
+          item.period = String(item.period);
+        }
+
+        if (item.status && typeof item.status !== 'string') {
+          item.status = String(item.status);
+        }
+
+        if (item.notes && typeof item.notes !== 'string') {
+          item.notes = String(item.notes);
+        }
+      });
+
+      // Ensure recommendations array exists
       if (!data.provisionsAndPrepayments.recommendations || !Array.isArray(data.provisionsAndPrepayments.recommendations)) {
         data.provisionsAndPrepayments.recommendations = [];
+      }
+
+      // Ensure overview and analysis exist
+      if (!data.provisionsAndPrepayments.overview) {
+        data.provisionsAndPrepayments.overview = "No overview available for provisions and prepayments.";
+      }
+
+      if (!data.provisionsAndPrepayments.analysis) {
+        data.provisionsAndPrepayments.analysis = "No analysis available for provisions and prepayments.";
       }
     }
 
     // Validate deferred tax assets
     if (data && data.deferredTaxAssets) {
-      if (!data.deferredTaxAssets.assets || !Array.isArray(data.deferredTaxAssets.assets)) {
-        data.deferredTaxAssets.assets = [];
+      console.log('Validating deferred tax assets...');
+
+      // Check if items is a string that looks like an array (from JSON stringification)
+      if (data.deferredTaxAssets.items && typeof data.deferredTaxAssets.items === 'string') {
+        try {
+          // Try to parse the string as JSON
+          const parsedItems = JSON.parse(data.deferredTaxAssets.items);
+          if (Array.isArray(parsedItems)) {
+            data.deferredTaxAssets.items = parsedItems;
+            console.log('Successfully parsed deferredTaxAssets.items from string to array');
+          }
+        } catch (error) {
+          // If it's not valid JSON but looks like an array representation
+          if (typeof data.deferredTaxAssets.items === 'string' &&
+            data.deferredTaxAssets.items.trim().startsWith('[') &&
+            data.deferredTaxAssets.items.trim().endsWith(']')) {
+            console.log('Attempting to evaluate deferredTaxAssets.items string as array');
+            try {
+              // This is a safer alternative to eval
+              const itemsStr = data.deferredTaxAssets.items.replace(/'/g, '"');
+              data.deferredTaxAssets.items = JSON.parse(itemsStr);
+            } catch (evalError) {
+              console.error('Failed to parse deferredTaxAssets.items string:', evalError);
+              // Reset to empty array if parsing fails
+              data.deferredTaxAssets.items = [];
+            }
+          } else {
+            console.error('Failed to parse deferredTaxAssets.items:', error);
+            // Reset to empty array
+            data.deferredTaxAssets.items = [];
+          }
+        }
       }
+
+      // Ensure items array exists
+      if (!data.deferredTaxAssets.items || !Array.isArray(data.deferredTaxAssets.items)) {
+        data.deferredTaxAssets.items = [];
+      }
+
+      // Ensure each item has required fields
+      data.deferredTaxAssets.items.forEach((item: any, index: number) => {
+        if (!item.name) {
+          console.log(`Missing name for deferred tax asset at index ${index}. Adding placeholder.`);
+          item.name = `Asset ${index + 1}`;
+        }
+
+        if (!item.riskLevel) {
+          console.log(`Missing risk level for deferred tax asset at index ${index}. Setting to medium.`);
+          item.riskLevel = 'medium';
+        } else if (!['low', 'medium', 'high'].includes(item.riskLevel)) {
+          console.log(`Invalid risk level "${item.riskLevel}" for deferred tax asset at index ${index}. Setting to medium.`);
+          item.riskLevel = 'medium';
+        }
+
+        // Ensure all fields are strings
+        if (item.amount && typeof item.amount !== 'string') {
+          item.amount = String(item.amount);
+        }
+
+        if (item.origin && typeof item.origin !== 'string') {
+          item.origin = String(item.origin);
+        }
+
+        if (item.expectedUtilization && typeof item.expectedUtilization !== 'string') {
+          item.expectedUtilization = String(item.expectedUtilization);
+        }
+
+        if (item.riskLevel && typeof item.riskLevel !== 'string') {
+          item.riskLevel = String(item.riskLevel);
+        }
+
+        if (item.notes && typeof item.notes !== 'string') {
+          item.notes = String(item.notes);
+        }
+      });
+
+      // Ensure recommendations array exists
       if (!data.deferredTaxAssets.recommendations || !Array.isArray(data.deferredTaxAssets.recommendations)) {
         data.deferredTaxAssets.recommendations = [];
       }
+
+      // Ensure overview and analysis exist
+      if (!data.deferredTaxAssets.overview) {
+        data.deferredTaxAssets.overview = "No overview available for deferred tax assets.";
+      }
+      if (!data.deferredTaxAssets.analysis) {
+        data.deferredTaxAssets.analysis = "No analysis available for deferred tax assets.";
+      }
+    }
+
+    // If any of the table sections don't exist, create them with default values
+    if (!data.directorsTable) {
+      console.log('Creating default directors table...');
+      data.directorsTable = {
+        overview: "No directors information available in the provided documents.",
+        directors: [],
+        analysis: "Unable to analyze directors information due to lack of data.",
+        recommendations: ["Provide company incorporation documents or annual returns to analyze the board of directors."]
+      };
+    }
+
+    if (!data.keyBusinessAgreements) {
+      console.log('Creating default key business agreements...');
+      data.keyBusinessAgreements = {
+        overview: "No key business agreements information available in the provided documents.",
+        agreements: [],
+        analysis: "Unable to analyze key business agreements due to lack of data.",
+        recommendations: ["Provide contracts and business agreements for analysis."]
+      };
+    }
+
+    if (!data.leavePolicy) {
+      console.log('Creating default leave policy...');
+      data.leavePolicy = {
+        overview: "No leave policy information available in the provided documents.",
+        policies: [],
+        analysis: "Unable to analyze leave policy due to lack of data.",
+        recommendations: ["Provide HR policy documents for analysis."]
+      };
+    }
+
+    if (!data.provisionsAndPrepayments) {
+      console.log('Creating default provisions and prepayments...');
+      data.provisionsAndPrepayments = {
+        overview: "No provisions and prepayments information available in the provided documents.",
+        items: [],
+        analysis: "Unable to analyze provisions and prepayments due to lack of data.",
+        recommendations: ["Provide detailed balance sheet and notes to accounts for analysis."]
+      };
+    }
+
+    if (!data.deferredTaxAssets) {
+      console.log('Creating default deferred tax assets...');
+      data.deferredTaxAssets = {
+        overview: "No deferred tax assets information available in the provided documents.",
+        items: [],
+        analysis: "Unable to analyze deferred tax assets due to lack of data.",
+        recommendations: ["Provide tax computation documents and notes to accounts for analysis."]
+      };
     }
   }
 
   /**
+   * Extract raw data from documents without using AI
+   * @param documents Array of document objects with file paths and metadata
+   * @returns Structured raw data from all documents
+   */
+  async extractRawDataFromDocuments(documents: Array<{
+    filePath: string,
+    documentType: string,
+    originalName: string,
+    description?: string,
+    timePeriod?: string,
+    fileType?: string,
+    fileSize?: number,
+    createdAt?: string,
+    updatedAt?: string
+  }>): Promise<{
+    rawContent: string,
+    documentsByType: { [key: string]: Array<any> }
+  }> {
+    console.log('Extracting raw data from documents without AI...');
+
+    // Create a map to store documents by type
+    const documentsByType: { [key: string]: Array<any> } = {};
+    let combinedRawContent = '';
+
+    // Process each document to extract raw text
+    await Promise.all(documents.map(async (doc) => {
+      const {
+        filePath,
+        documentType,
+        originalName,
+        description,
+        timePeriod,
+        fileType,
+        fileSize,
+        createdAt
+      } = doc;
+
+      try {
+        // Process document using traditional methods (not AI)
+        // We'll use our existing methods but extract only the raw text
+        const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, '../..', filePath);
+
+        if (!fs.existsSync(absolutePath)) {
+          console.error(`File not found: ${absolutePath}`);
+          return {
+            documentType,
+            originalName,
+            description,
+            timePeriod,
+            fileType,
+            fileSize,
+            createdAt,
+            content: `[File not found: ${originalName}]`,
+            error: true
+          };
+        }
+
+        // Extract text based on file type using traditional methods
+        const fileExtension = path.extname(absolutePath).toLowerCase();
+        let rawContent = '';
+
+        switch (fileExtension) {
+          case '.pdf':
+            rawContent = await this.extractPdfText(absolutePath);
+            break;
+          case '.xls':
+          case '.xlsx':
+            // Use ExcelJS directly instead of Gemini
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.readFile(absolutePath);
+            let excelContent = '';
+
+            // Process each sheet
+            workbook.eachSheet((worksheet, _sheetId) => {
+              const sheetName = worksheet.name;
+              excelContent += `=== SHEET: ${sheetName} ===\n\n`;
+
+              // Process each row
+              worksheet.eachRow((row, _rowNumber) => {
+                const rowValues: string[] = [];
+
+                row.eachCell((cell, _colNumber) => {
+                  let value = cell.value?.toString() || '';
+                  rowValues.push(value);
+                });
+
+                if (rowValues.length > 0) {
+                  excelContent += rowValues.join('\t') + '\n';
+                }
+              });
+
+              excelContent += '\n\n';
+            });
+
+            rawContent = excelContent || '[No data extracted from Excel file]';
+            break;
+          case '.csv':
+            rawContent = await this.extractCsvData(absolutePath);
+            break;
+          case '.doc':
+          case '.docx':
+            // Use mammoth directly instead of Gemini
+            const result = await mammoth.extractRawText({ path: absolutePath });
+            rawContent = result.value || '[No text content extracted from Word document]';
+            break;
+          case '.txt':
+          case '.md':
+          case '.json':
+          case '.xml':
+            rawContent = await this.extractTextFileContent(absolutePath);
+            break;
+          case '.jpg':
+          case '.jpeg':
+          case '.png':
+          case '.gif':
+          case '.bmp':
+            // Use Tesseract directly instead of Gemini
+            rawContent = await this.extractImageTextWithTesseract(absolutePath);
+            break;
+          case '.ppt':
+          case '.pptx':
+            // For PowerPoint, we don't have a traditional extraction method
+            // We'll use a placeholder message
+            rawContent = '[PowerPoint content requires AI extraction - raw text unavailable]';
+            break;
+          default:
+            rawContent = `[Unsupported file type: ${fileExtension}]`;
+        }
+
+        // No need to format file size and date as we're using JSON
+
+        // Create a structured JSON object for the document data
+        const documentData = {
+          metadata: {
+            filename: originalName,
+            type: documentType.replace('financial_', '').replace(/_/g, ' '),
+            description: description || 'No description provided',
+            timePeriod: timePeriod || 'Not specified'
+          },
+          content: rawContent
+        };
+
+        // Convert to JSON string for storage
+        const documentContent = JSON.stringify(documentData, null, 2);
+
+        // Add to combined content
+        combinedRawContent += documentContent + '\n\n';
+
+        // Initialize array for this document type if it doesn't exist
+        if (!documentsByType[documentType]) {
+          documentsByType[documentType] = [];
+        }
+
+        // Add document to the appropriate type
+        documentsByType[documentType].push({
+          documentType,
+          originalName,
+          description,
+          timePeriod,
+          fileType,
+          fileSize,
+          createdAt,
+          content: rawContent,
+          metadata: documentData.metadata,
+          formattedContent: documentContent
+        });
+
+        return {
+          documentType,
+          originalName,
+          description,
+          timePeriod,
+          fileType,
+          fileSize,
+          createdAt,
+          content: rawContent,
+          metadata: documentData.metadata,
+          formattedContent: documentContent
+        };
+      } catch (error) {
+        console.error(`Error processing ${originalName}:`, error);
+
+        // Initialize array for this document type if it doesn't exist
+        if (!documentsByType[documentType]) {
+          documentsByType[documentType] = [];
+        }
+
+        // Add error document to the appropriate type
+        documentsByType[documentType].push({
+          documentType,
+          originalName,
+          description,
+          timePeriod,
+          fileType,
+          fileSize,
+          createdAt,
+          error: true,
+          errorMessage: error instanceof Error ? error.message : 'Unknown error'
+        });
+
+        return {
+          documentType,
+          originalName,
+          description,
+          timePeriod,
+          fileType,
+          fileSize,
+          createdAt,
+          error: true,
+          errorMessage: error instanceof Error ? error.message : 'Unknown error'
+        };
+      }
+    }));
+
+    // Create a structured JSON object for all document types
+    const combinedData: { [key: string]: any[] } = {};
+
+    // Process each document type
+    for (const [docType, docs] of Object.entries(documentsByType)) {
+      // Format document type for display (remove 'financial_' prefix, replace underscores with spaces, and capitalize)
+      const formattedDocType = docType.replace('financial_', '')
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
+      // Process each document
+      const processedDocs = docs.map(doc => {
+        if (doc.error) {
+          // Create error document data
+          return {
+            metadata: {
+              filename: doc.originalName,
+              type: doc.documentType.replace('financial_', '').replace(/_/g, ' '),
+              description: doc.description || 'No description provided',
+              timePeriod: doc.timePeriod || 'Not specified',
+              status: 'ERROR - Document processing failed'
+            },
+            content: `Error: Failed to process this document. ${doc.errorMessage || 'Please check the file format and try again.'}`,
+            error: true
+          };
+        } else {
+          // Return the document data
+          return {
+            metadata: doc.metadata,
+            content: doc.content
+          };
+        }
+      });
+
+      // Add to combined data
+      combinedData[formattedDocType] = processedDocs;
+    }
+
+    // Convert the combined data to JSON string
+    const finalCombinedContent = JSON.stringify(combinedData, null, 2);
+
+    return {
+      rawContent: finalCombinedContent,
+      documentsByType
+    };
+  }
+
+  /**
    * Extract financial data from documents using Gemini AI
-   * @param documentContent Combined document content
+   * This method can work with either:
+   * 1. Pre-combined document content (legacy mode)
+   * 2. An array of document objects (new mode that extracts raw data first)
+   *
+   * @param documentContentOrDocuments Combined document content string or array of document objects
    * @param companyName Name of the company
    * @param startupInfo Additional startup information
    * @param investorInfo Additional investor information
+   * @param missingDocumentTypes Array of missing document types
    * @returns Extracted financial data
    */
   async extractFinancialData(
-    documentContent: string,
+    documentContentOrDocuments: string | Array<{
+      filePath: string,
+      documentType: string,
+      originalName: string,
+      description?: string,
+      timePeriod?: string,
+      fileType?: string,
+      fileSize?: number,
+      createdAt?: string,
+      updatedAt?: string
+    }>,
     companyName: string,
     startupInfo?: any,
     investorInfo?: any,
     missingDocumentTypes?: string[]
   ): Promise<any> {
     try {
+      // Determine if we're using the new or legacy mode
+      let documentContent: string;
+
+      if (typeof documentContentOrDocuments === 'string') {
+        // Legacy mode - documentContent is already a string
+        console.log('Using legacy mode with pre-combined document content');
+        documentContent = documentContentOrDocuments;
+      } else {
+        // Enhanced mode - process documents with our new flow:
+        // 1. Extract raw text from all documents
+        // 2. Send PDFs and PPTs to Gemini for OCR (preserving tables and graphs)
+        // 3. Combine raw text, OCR text, and metadata
+        console.log('Using enhanced mode with improved document processing flow');
+        documentContent = await this.processDocumentsForFinancialDD(documentContentOrDocuments);
+        console.log('Enhanced document processing complete, sending to Gemini for financial analysis');
+      }
+
       // Create a prompt for Gemini based on the report type
       let prompt = '';
 
@@ -827,6 +3442,12 @@ Created: ${formattedDate}
             ` : '';
 
       prompt = `
+
+                FOLLOW THE GIVEN INSTRUCTIONS STRICTLY.
+
+                WHILE GENERATING GRAPHS, CHARTS, AND VISUALIZATIONS, USE COLOR-CODED METRICS AND GRAPHS. GIVE OUT MAXIMUM DATA,
+                ACCURATE AND MAXIMUM DATA FOR CHARTS.
+
                 *** IMPORTANT: THIS IS A REPORT THAT SEPARATES FINANCIAL DUE DILIGENCE FROM FORMAL FINANCIAL AUDITING. YOUR ANALYSIS MUST MEET PROFESSIONAL STANDARDS THAT COULD REPLACE THE WORK OF LAWYERS AND CHARTERED ACCOUNTANTS. ***
                 WRITE HIGH IMPACT AND ACTIONABLE POINTS AND FINDINGS. DO NOT USE GENERIC OR VAGUE LANGUAGE. WRITE IN A FORMAL, PROFESSIONAL TONE APPROPRIATE FOR A FINANCIAL REPORT.
                 THE POINTS MUST BE ACTIONABLE AND SPECIFIC TO ${companyName}. DO NOT USE GENERIC STATEMENTS OR VAGUE LANGUAGE.
@@ -836,7 +3457,7 @@ Created: ${formattedDate}
 
                 *** CRITICAL INSTRUCTION: SEPARATE FINANCIAL DUE DILIGENCE FROM AUDITING ***
                 You are a specialized financial analyst and auditor with expertise in Indian company standards and regulations. Your task is to perform TWO DISTINCT ANALYSES for ${companyName}:
-                KEEP THE TOTAL RESPONSE LENGTH UNDER 62,536 TOKENS.
+                KEEP THE TOTAL RESPONSE LENGTH UNDER 60,000 TOKENS.
 
                 1. FINANCIAL DUE DILIGENCE: Focus on investment worthiness, growth potential, financial health, and business viability
                    - Analyze financial performance, market position, and growth trajectory
@@ -926,6 +3547,9 @@ Created: ${formattedDate}
                 FOLLOW THE STRUCTURE AS IT IS.
                 DO NOT ADD OR REMOVE ANY FIELDS.
                 DO NOT CHANGE THE FIELD NAMES OR TYPES.
+
+                FOLLOW THIS VERY VERY STRICTLY DO NOT CHANGE ANYTHING, BE VERY STRICT ABOUT THE STRUCTURE.
+                DO NOT ADD ANYTHING ELSE. DO NOT EXPLAIN OR JUSTIFY YOUR ANSWERS.
 
                 RESPONSE FORMAT: Return ONLY valid JSON with this exact structure:
                 {
@@ -1517,53 +4141,21 @@ Created: ${formattedDate}
                       }
                     }
                   },
-                  "legalAndRegulatoryCompliance": {
-                    "overview": "Overview of legal and regulatory compliance",
-                    "complianceAreas": [
-                      {
-                        "area": "Area name (e.g., Companies Act, GST, Income Tax)",
-                        "status": "compliant" or "partial" or "non-compliant", // IMPORTANT: Only these three values are allowed - do NOT use "unknown" or any other value
-                        "description": "Description of compliance status",
-                        "risks": ["Risk 1", "Risk 2"],
-                        "recommendations": ["Recommendation 1", "Recommendation 2"],
-                        "deadlines": "Upcoming compliance deadlines"
-                      }
-                    ],
-                    "pendingLegalMatters": [
-                      {
-                        "matter": "Description of legal matter",
-                        "status": "pending" or "resolved" or "in_progress",
-                        "potentialImpact": "Description of potential impact",
-                        "recommendedAction": "Recommended action"
-                      }
-                    ],
-                    "complianceChart": {
-                      "type": "pie", // Pie chart for compliance status
-                      "labels": ["Compliant", "Partial", "Non-compliant"],
-                      "datasets": [
-                        {
-                          "data": [compliantCount, partialCount, nonCompliantCount], // Count of compliance areas by status
-                          "backgroundColor": ["#4CAF50", "#FF9800", "#F44336"]
-                        }
-                      ]
-                    }
-                  },
+
                   "shareholdersTable": {
                     "overview": "Overview of the company's shareholding structure",
                     "shareholders": [
                       {
                         "name": "Shareholder name",
-                        "equityPercentage": numeric value or "N/A",
-                        "shareCount": numeric value or "N/A",
-                        "faceValue": numeric value or "N/A",
-                        "investmentAmount": numeric value or "N/A",
-                        "shareClass": "Share class (e.g., Equity, Preference)",
-                        "votingRights": "Description of voting rights",
-                        "notes": "Additional notes about this shareholder"
+                        "equityPercentage": "Percentage value (e.g., 25%)",
+                        "shareCount": "Number of shares",
+                        "faceValue": "Face value per share",
+                        "investmentAmount": "Total investment amount",
+                        "shareClass": "Share class (e.g., Equity, Preference)"
                       }
                     ],
-                    "totalShares": numeric value or "N/A",
-                    "totalEquity": numeric value or "N/A",
+                    "totalShares": "Total number of shares",
+                    "totalEquity": "Total equity percentage (should be 100%)",
                     "analysis": "Detailed analysis of the shareholding structure",
                     "recommendations": ["Recommendation 1", "Recommendation 2"]
                   },
@@ -1575,10 +4167,8 @@ Created: ${formattedDate}
                         "position": "Position/designation",
                         "appointmentDate": "Date of appointment",
                         "din": "Director Identification Number",
-                        "shareholding": numeric value or "N/A",
-                        "expertise": "Area of expertise/background",
-                        "otherDirectorships": ["Company 1", "Company 2"],
-                        "notes": "Additional notes about this director"
+                        "shareholding": "Shareholding percentage or count",
+                        "expertise": "Area of expertise/background"
                       }
                     ],
                     "analysis": "Detailed analysis of the board composition",
@@ -1588,14 +4178,12 @@ Created: ${formattedDate}
                     "overview": "Overview of key business agreements",
                     "agreements": [
                       {
-                        "agreementType": "Type of agreement",
-                        "parties": ["Party 1", "Party 2"],
-                        "effectiveDate": "Effective date",
-                        "expiryDate": "Expiry date",
-                        "keyTerms": ["Key term 1", "Key term 2"],
-                        "financialImpact": "Description of financial impact",
-                        "risks": ["Risk 1", "Risk 2"],
-                        "notes": "Additional notes about this agreement"
+                        "type": "Type of agreement",
+                        "parties": "Parties involved",
+                        "date": "Effective date",
+                        "duration": "Duration of agreement",
+                        "value": "Financial value",
+                        "keyTerms": "Key terms and conditions"
                       }
                     ],
                     "analysis": "Detailed analysis of the business agreements",
@@ -1603,40 +4191,27 @@ Created: ${formattedDate}
                   },
                   "leavePolicy": {
                     "overview": "Overview of the company's leave policy",
-                    "policyDetails": {
-                      "leaveTypes": [
-                        {
-                          "type": "Type of leave",
-                          "entitlement": "Entitlement details",
-                          "carryForward": "Carry forward policy",
-                          "encashment": "Encashment policy",
-                          "conditions": "Conditions for availing"
-                        }
-                      ],
-                      "complianceStatus": "Compliance status with labor laws",
-                      "financialImplications": "Financial implications of the leave policy"
-                    },
+                    "policies": [
+                      {
+                        "type": "Type of leave",
+                        "daysAllowed": "Number of days allowed",
+                        "eligibility": "Eligibility criteria",
+                        "carryForward": true or false,
+                        "encashment": true or false
+                      }
+                    ],
                     "analysis": "Detailed analysis of the leave policy",
                     "recommendations": ["Recommendation 1", "Recommendation 2"]
                   },
                   "provisionsAndPrepayments": {
                     "overview": "Overview of provisions and prepayments",
-                    "provisions": [
+                    "items": [
                       {
-                        "type": "Type of provision",
-                        "amount": numeric value or "N/A",
-                        "purpose": "Purpose of provision",
-                        "accountingTreatment": "Accounting treatment",
-                        "adequacy": "Assessment of adequacy",
-                        "notes": "Additional notes"
-                      }
-                    ],
-                    "prepayments": [
-                      {
-                        "type": "Type of prepayment",
-                        "amount": numeric value or "N/A",
+                        "name": "Item name",
+                        "type": "Type (Provision or Prepayment)",
+                        "amount": "Amount value",
                         "period": "Period covered",
-                        "amortizationSchedule": "Amortization schedule",
+                        "status": "adequate" or "inadequate" or "uncertain",
                         "notes": "Additional notes"
                       }
                     ],
@@ -1645,14 +4220,13 @@ Created: ${formattedDate}
                   },
                   "deferredTaxAssets": {
                     "overview": "Overview of deferred tax assets",
-                    "assets": [
+                    "items": [
                       {
-                        "type": "Type of deferred tax asset",
-                        "amount": numeric value or "N/A",
+                        "name": "Asset name",
+                        "amount": "Amount value",
                         "origin": "Origin/source",
                         "expectedUtilization": "Expected utilization timeline",
-                        "recoverability": "Assessment of recoverability",
-                        "notes": "Additional notes"
+                        "riskLevel": "low" or "medium" or "high"
                       }
                     ],
                     "analysis": "Detailed analysis of deferred tax position",
@@ -1694,7 +4268,7 @@ Created: ${formattedDate}
                 - Include percentage changes and trends for all key metrics
                 - Provide detailed ratio analysis with industry comparisons
                 - Include specific, actionable recommendations for improvement
-                - Provide a comprehensive legal and regulatory compliance assessment
+                - Ensure all table sections (shareholdersTable, directorsTable, keyBusinessAgreements, leavePolicy, provisionsAndPrepayments, deferredTaxAssets) are properly populated
                 - Include a financial health score with detailed breakdown of components is
                 - Provide a SWOT analysis (Strengths, Weaknesses, Opportunities, Threats)
                 - Include radar charts comparing company performance to industry benchmarks
@@ -1748,16 +4322,6 @@ Created: ${formattedDate}
                 - SEPARATE FINANCIAL DUE DILIGENCE from AUDITING in your analysis with clear distinction:
                   * FINANCIAL DUE DILIGENCE: Focus on investment worthiness, growth potential, financial health, and business viability with specific ROI calculations and valuation metrics
                   * AUDITING: Focus on compliance, accuracy, fraud detection, and adherence to accounting standards with specific references to Indian accounting standards
-
-                - DOCUMENT-SPECIFIC FINANCIAL ANALYSIS REQUIREMENTS:
-                  * Balance Sheet: Extract and analyze specific asset values, liability amounts, equity position, debt structure, working capital, and key financial ratios
-                  * Income Statement: Extract and analyze revenue figures, expense breakdowns, profit margins, operating efficiency, and year-over-year growth rates
-                  * Cash Flow Statement: Extract and analyze operating cash flows, investing activities, financing activities, free cash flow, and cash conversion metrics
-                  * Cap Table: Extract and analyze ownership structure, equity dilution, valuation history, investor stakes, and capitalization metrics
-                  * Financial Projections: Extract and analyze growth forecasts, revenue projections, expense projections, and assess realism of assumptions
-                  * Tax Returns: Extract and analyze tax liabilities, effective tax rates, tax planning strategies, and compliance with tax regulations
-                  * Pitch Deck: Extract and analyze equity distribution, face value, and other ownership parameters
-                  * Other/Miscellaneous Documents: Extract any relevant financial information, especially related to shareholders, directors, business agreements, leave policies, provisions, and deferred tax assets
 
                 - DETAILED FINANCIAL CONTENT EXTRACTION:
                   * Extract exact financial figures with proper currency notation (₹) and time periods
@@ -1861,10 +4425,57 @@ Created: ${formattedDate}
                 ${documentContent}
                 `;
 
-      // Call Gemini API
-      const result = await model.generateContent(prompt);
-      const response = result.response;
-      const text = response.text();
+      // Call Gemini API with retry logic
+      console.log('Calling Gemini API for financial analysis with retry logic...');
+
+      // Implement retry logic with exponential backoff
+      const MAX_RETRIES = 3;
+      const INITIAL_RETRY_DELAY = 5000; // 5 seconds
+
+      let retryCount = 0;
+      let text = '';
+      let result;
+
+      while (retryCount <= MAX_RETRIES) {
+        try {
+          // If this is a retry, wait with exponential backoff
+          if (retryCount > 0) {
+            const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount - 1);
+            console.log(`Retry attempt ${retryCount}/${MAX_RETRIES}. Waiting ${delay / 1000} seconds before retrying...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+
+          result = await model.generateContent(prompt);
+          const response = result.response;
+          text = response.text();
+
+          // If we got here, the call was successful
+          console.log('Successfully received response from Gemini API');
+          break;
+        } catch (error) {
+          retryCount++;
+
+          // Check if this is a rate limit error
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const isRateLimitError =
+            errorMessage.includes('429') ||
+            errorMessage.includes('Too Many Requests') ||
+            errorMessage.includes('rate limit') ||
+            errorMessage.includes('quota');
+
+          if (isRateLimitError && retryCount <= MAX_RETRIES) {
+            console.warn(`Rate limit error encountered. Will retry (${retryCount}/${MAX_RETRIES})...`);
+            // Continue to next iteration which will wait and retry
+          } else if (retryCount > MAX_RETRIES) {
+            console.error('Maximum retry attempts reached. Giving up.');
+            throw error;
+          } else {
+            // Not a rate limit error or we've exceeded max retries
+            console.error('Error calling Gemini API:', error);
+            throw error;
+          }
+        }
+      }
 
       // Parse the JSON response
       try {
@@ -1873,7 +4484,6 @@ Created: ${formattedDate}
 
         // Use our safe JSON parser that can handle common issues
         const parsedData = safeJsonParse(cleanedText);
-
         if (parsedData === null) {
           console.error('Failed to parse Gemini response even with error correction');
           console.log('Raw response:', text);

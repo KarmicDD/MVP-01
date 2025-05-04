@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FiDownload, FiShare2, FiDollarSign, FiTrendingUp, FiAlertCircle, FiCheckCircle, FiBarChart2, FiFileText, FiInfo, FiArrowUp, FiArrowDown, FiMinus, FiActivity, FiTarget, FiGlobe, FiAward, FiShield, FiLayers, FiPieChart } from 'react-icons/fi';
+import { FiDownload, FiShare2, FiDollarSign, FiTrendingUp, FiAlertCircle, FiCheckCircle, FiBarChart2, FiFileText, FiInfo, FiArrowUp, FiArrowDown, FiMinus, FiActivity, FiTarget, FiGlobe, FiAward, FiShield, FiLayers, FiPieChart, FiUsers, FiBriefcase, FiCalendar, FiPackage, FiCreditCard } from 'react-icons/fi';
 import { FinancialDueDiligenceReport as MatchFinancialDueDiligenceReport } from '../../../hooks/useFinancialDueDiligence';
 import { FinancialDueDiligenceReport as EntityFinancialDueDiligenceReport, ChartData } from '../../../hooks/useEntityFinancialDueDiligence';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, RadialLinearScale, Title, Tooltip as ChartTooltip, Legend, Filler } from 'chart.js';
@@ -8,8 +8,137 @@ import { Line, Bar, Pie, Radar } from 'react-chartjs-2';
 import ChartRenderer from './ChartRenderer';
 import DocumentContentAnalysisSection from './DocumentContentAnalysisSection';
 
-// Create a union type that can handle both report types
-type FinancialDueDiligenceReport = MatchFinancialDueDiligenceReport | EntityFinancialDueDiligenceReport;
+// Define additional properties that exist in the MongoDB schema but not in the TypeScript interfaces
+interface AdditionalReportProperties {
+  shareholdersTable?: {
+    overview: string;
+    shareholders: {
+      name: string;
+      equityPercentage: number | string;
+      shareCount: number | string;
+      faceValue: number | string;
+      investmentAmount?: number | string;
+      shareClass?: string;
+      votingRights?: string;
+      notes?: string;
+    }[];
+    totalShares: number | string;
+    totalEquity: number | string;
+    analysis: string;
+    recommendations: string[];
+  };
+
+  directorsTable?: {
+    overview: string;
+    directors: {
+      name: string;
+      position: string;
+      appointmentDate?: string;
+      din?: string;
+      shareholding?: number | string;
+      expertise?: string;
+      otherDirectorships?: string[];
+      notes?: string;
+    }[];
+    analysis: string;
+    recommendations: string[];
+  };
+
+  keyBusinessAgreements?: {
+    overview: string;
+    agreements: {
+      type?: string;
+      agreementType?: string;
+      parties: string[] | string;
+      effectiveDate?: string;
+      expiryDate?: string;
+      keyTerms?: string[];
+      financialImpact?: string;
+      risks?: string[];
+      notes?: string;
+      // Additional fields used in the UI
+      date?: string;
+      duration?: string;
+      value?: string | number;
+    }[];
+    analysis: string;
+    recommendations: string[];
+  };
+
+  leavePolicy?: {
+    overview: string;
+    policies: {
+      type: string;
+      daysAllowed: number | string;
+      eligibility?: string;
+      carryForward?: string;
+      encashment?: string;
+      notes?: string;
+    }[];
+    analysis: string;
+    recommendations: string[];
+  };
+
+  provisionsAndPrepayments?: {
+    overview: string;
+    items: {
+      name: string;
+      type: string;
+      amount: number | string;
+      period?: string;
+      justification?: string;
+      notes?: string;
+      status?: string;
+    }[];
+    analysis: string;
+    recommendations: string[];
+  };
+
+  deferredTaxAssets?: {
+    overview: string;
+    items: {
+      name: string;
+      amount: number | string;
+      origin?: string;
+      expectedUtilization?: string;
+      recoverability?: string;
+      notes?: string;
+      riskLevel?: string;
+    }[];
+    analysis: string;
+    recommendations: string[];
+  };
+
+  documentContentAnalysis?: {
+    overview: string;
+    dueDiligenceFindings: {
+      summary: string;
+      keyInsights: string[];
+      investmentImplications: string[];
+      growthIndicators: string[];
+      riskFactors: string[];
+    };
+    auditFindings: {
+      summary: string;
+      complianceIssues: string[];
+      accountingConcerns: string[];
+      internalControlWeaknesses: string[];
+      fraudRiskIndicators: string[];
+    };
+    documentSpecificAnalysis: {
+      documentType: string;
+      contentSummary: string;
+      dueDiligenceInsights: string[];
+      auditInsights: string[];
+      keyFinancialData: string[];
+      inconsistencies: string[];
+      recommendations: string[];
+    }[];
+  };
+}
+
+// Create a union type that can handle both report types and includes the additional properties
+type FinancialDueDiligenceReport = (MatchFinancialDueDiligenceReport | EntityFinancialDueDiligenceReport) & AdditionalReportProperties;
 
 interface FinancialDueDiligenceReportContentProps {
   report: FinancialDueDiligenceReport;
@@ -1080,7 +1209,9 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                             <div className="flex justify-between text-xs text-gray-500 mb-1">
                               <span>0</span>
                               <span>Industry Avg: {ratio.industry_average}</span>
-                              <span>{Math.max(ratio.value, ratio.industry_average) * 1.5}</span>
+                              <span>{typeof ratio.value === 'number' && typeof ratio.industry_average === 'number'
+                                ? (Math.max(ratio.value, ratio.industry_average) * 1.5).toFixed(2)
+                                : 'N/A'}</span>
                             </div>
                             <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
                               {/* Company value bar */}
@@ -1090,14 +1221,18 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                                     'bg-red-500'
                                   }`}
                                 style={{
-                                  width: `${Math.min(100, (ratio.value / (Math.max(ratio.value, ratio.industry_average) * 1.5)) * 100)}%`
+                                  width: typeof ratio.value === 'number' && typeof ratio.industry_average === 'number'
+                                    ? `${Math.min(100, (ratio.value / (Math.max(ratio.value, ratio.industry_average) * 1.5)) * 100)}%`
+                                    : '0%'
                                 }}
                               ></div>
                               {/* Industry average marker */}
                               <div
                                 className="h-4 w-0.5 bg-gray-800 absolute mt-[-8px]"
                                 style={{
-                                  marginLeft: `${Math.min(100, (ratio.industry_average / (Math.max(ratio.value, ratio.industry_average) * 1.5)) * 100)}%`
+                                  marginLeft: typeof ratio.value === 'number' && typeof ratio.industry_average === 'number'
+                                    ? `${Math.min(100, (ratio.industry_average / (Math.max(ratio.value, ratio.industry_average) * 1.5)) * 100)}%`
+                                    : '0%'
                                 }}
                               ></div>
                             </div>
@@ -1248,7 +1383,9 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                             <div className="flex justify-between text-xs text-gray-500 mb-1">
                               <span>0</span>
                               <span>Industry Avg: {ratio.industry_average}</span>
-                              <span>{Math.max(ratio.value, ratio.industry_average) * 1.5}</span>
+                              <span>{typeof ratio.value === 'number' && typeof ratio.industry_average === 'number'
+                                ? (Math.max(ratio.value, ratio.industry_average) * 1.5).toFixed(2)
+                                : 'N/A'}</span>
                             </div>
                             <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
                               {/* Company value bar */}
@@ -1258,14 +1395,18 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                                     'bg-red-500'
                                   }`}
                                 style={{
-                                  width: `${Math.min(100, (ratio.value / (Math.max(ratio.value, ratio.industry_average) * 1.5)) * 100)}%`
+                                  width: typeof ratio.value === 'number' && typeof ratio.industry_average === 'number'
+                                    ? `${Math.min(100, (ratio.value / (Math.max(ratio.value, ratio.industry_average) * 1.5)) * 100)}%`
+                                    : '0%'
                                 }}
                               ></div>
                               {/* Industry average marker */}
                               <div
                                 className="h-4 w-0.5 bg-gray-800 absolute mt-[-8px]"
                                 style={{
-                                  marginLeft: `${Math.min(100, (ratio.industry_average / (Math.max(ratio.value, ratio.industry_average) * 1.5)) * 100)}%`
+                                  marginLeft: typeof ratio.value === 'number' && typeof ratio.industry_average === 'number'
+                                    ? `${Math.min(100, (ratio.industry_average / (Math.max(ratio.value, ratio.industry_average) * 1.5)) * 100)}%`
+                                    : '0%'
                                 }}
                               ></div>
                             </div>
@@ -2079,51 +2220,407 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
           </div>
         )}
 
-        {/* Legal and Regulatory Compliance - Placeholder section */}
-        <div className="bg-white p-6 rounded-xl shadow-md border border-blue-100">
-          <div className="flex items-center mb-5">
-            <div className="bg-blue-600 p-2 rounded-lg mr-3">
-              <FiShield className="text-white" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-800">Legal & Regulatory Compliance</h3>
-          </div>
-
-          <div className="mb-4">
-            <p className="text-gray-700">Legal and regulatory compliance information will be displayed here when available.</p>
-          </div>
-
-          {/* Simplified Compliance Areas */}
-          <div className="mb-6">
-            <h4 className="font-semibold text-gray-800 mb-3">Compliance Areas</h4>
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <p className="text-gray-700">No compliance data available for this report.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Company Information - Placeholder section */}
-        <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200 mt-6">
-          <div className="flex items-center mb-5">
-            <div className="bg-gray-600 p-2 rounded-lg mr-3">
-              <FiInfo className="text-white" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-800">Company Information</h3>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Simplified Company Information */}
-            <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-4 rounded-lg border border-indigo-100">
-              <h4 className="font-semibold text-indigo-800 mb-3 flex items-center">
-                <FiBarChart2 className="mr-2 text-indigo-600" />
-                Company Details
-              </h4>
-              <div className="space-y-2 bg-white p-3 rounded-lg border border-indigo-50">
-                <p className="text-sm"><span className="font-medium text-gray-700">Company:</span> {(report as any).companyName || (report as any).startupInfo?.companyName || (report as any).entityProfile?.companyName || "Not available"}</p>
-                <p className="text-sm"><span className="font-medium text-gray-700">Report Date:</span> {new Date(report.generatedDate).toLocaleDateString()}</p>
+        {/* Shareholders Table Section */}
+        {report.shareholdersTable && report.shareholdersTable.shareholders && report.shareholdersTable.shareholders.length > 0 && (
+          <div className="bg-white p-6 rounded-xl shadow-md border border-blue-100 mt-6">
+            <div className="flex items-center mb-5">
+              <div className="bg-blue-600 p-2 rounded-lg mr-3">
+                <FiUsers className="text-white" />
               </div>
+              <h3 className="text-xl font-bold text-gray-800">Shareholders Structure</h3>
             </div>
+
+            <div className="mb-4">
+              <p className="text-gray-700">{report.shareholdersTable.overview}</p>
+            </div>
+
+            <div className="overflow-x-auto bg-white rounded-lg border border-gray-200 mb-6">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shareholder</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Equity %</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Share Count</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Face Value</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Investment</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Share Class</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {report.shareholdersTable.shareholders.map((shareholder, index) => (
+                    <tr key={index} className="hover:bg-gray-50 transition-colors duration-150">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{shareholder.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{shareholder.equityPercentage}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{shareholder.shareCount}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{shareholder.faceValue}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{shareholder.investmentAmount || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{shareholder.shareClass || 'N/A'}</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">Total</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{report.shareholdersTable.totalEquity}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{report.shareholdersTable.totalShares}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"></td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"></td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
+              <h4 className="font-semibold text-blue-800 mb-3">Analysis</h4>
+              <p className="text-gray-700">{report.shareholdersTable.analysis}</p>
+            </div>
+
+            {report.shareholdersTable.recommendations && report.shareholdersTable.recommendations.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-gray-800 mb-3">Recommendations</h4>
+                <div className="space-y-2">
+                  {report.shareholdersTable.recommendations.map((rec, index) => (
+                    <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-100 text-gray-700 flex items-start">
+                      <div className="bg-green-500 text-white rounded-full p-1 mr-3 flex-shrink-0 mt-0.5">
+                        <FiCheckCircle size={14} />
+                      </div>
+                      <p className="text-gray-600">{rec}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        )}
+
+        {/* Directors Table Section */}
+        {report.directorsTable && report.directorsTable.directors && report.directorsTable.directors.length > 0 && (
+          <div className="bg-white p-6 rounded-xl shadow-md border border-purple-100 mt-6">
+            <div className="flex items-center mb-5">
+              <div className="bg-purple-600 p-2 rounded-lg mr-3">
+                <FiBriefcase className="text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">Board of Directors</h3>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-gray-700">{report.directorsTable.overview}</p>
+            </div>
+
+            <div className="overflow-x-auto bg-white rounded-lg border border-gray-200 mb-6">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Appointment Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DIN</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shareholding</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expertise</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {report.directorsTable.directors.map((director, index) => (
+                    <tr key={index} className="hover:bg-gray-50 transition-colors duration-150">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{director.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{director.position}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{director.appointmentDate || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{director.din || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{director.shareholding || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{director.expertise || 'N/A'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bg-purple-50 p-4 rounded-lg border border-purple-100 mb-4">
+              <h4 className="font-semibold text-purple-800 mb-3">Analysis</h4>
+              <p className="text-gray-700">{report.directorsTable.analysis}</p>
+            </div>
+
+            {report.directorsTable.recommendations && report.directorsTable.recommendations.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-gray-800 mb-3">Recommendations</h4>
+                <div className="space-y-2">
+                  {report.directorsTable.recommendations.map((rec, index) => (
+                    <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-100 text-gray-700 flex items-start">
+                      <div className="bg-green-500 text-white rounded-full p-1 mr-3 flex-shrink-0 mt-0.5">
+                        <FiCheckCircle size={14} />
+                      </div>
+                      <p className="text-gray-600">{rec}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Key Business Agreements Section */}
+        {report.keyBusinessAgreements && report.keyBusinessAgreements.agreements && report.keyBusinessAgreements.agreements.length > 0 && (
+          <div className="bg-white p-6 rounded-xl shadow-md border border-green-100 mt-6">
+            <div className="flex items-center mb-5">
+              <div className="bg-green-600 p-2 rounded-lg mr-3">
+                <FiFileText className="text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">Key Business Agreements</h3>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-gray-700">{report.keyBusinessAgreements.overview}</p>
+            </div>
+
+            <div className="overflow-x-auto bg-white rounded-lg border border-gray-200 mb-6">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Agreement Type</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parties</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Key Terms</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {report.keyBusinessAgreements.agreements.map((agreement, index) => (
+                    <tr key={index} className="hover:bg-gray-50 transition-colors duration-150">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{agreement.type}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{agreement.parties}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{agreement.date || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{agreement.duration || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{agreement.value || 'N/A'}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">{agreement.keyTerms || 'N/A'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bg-green-50 p-4 rounded-lg border border-green-100 mb-4">
+              <h4 className="font-semibold text-green-800 mb-3">Analysis</h4>
+              <p className="text-gray-700">{report.keyBusinessAgreements.analysis}</p>
+            </div>
+
+            {report.keyBusinessAgreements.recommendations && report.keyBusinessAgreements.recommendations.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-gray-800 mb-3">Recommendations</h4>
+                <div className="space-y-2">
+                  {report.keyBusinessAgreements.recommendations.map((rec, index) => (
+                    <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-100 text-gray-700 flex items-start">
+                      <div className="bg-green-500 text-white rounded-full p-1 mr-3 flex-shrink-0 mt-0.5">
+                        <FiCheckCircle size={14} />
+                      </div>
+                      <p className="text-gray-600">{rec}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Leave Policy Section */}
+        {report.leavePolicy && report.leavePolicy.policies && report.leavePolicy.policies.length > 0 && (
+          <div className="bg-white p-6 rounded-xl shadow-md border border-indigo-100 mt-6">
+            <div className="flex items-center mb-5">
+              <div className="bg-indigo-600 p-2 rounded-lg mr-3">
+                <FiCalendar className="text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">Leave Policy</h3>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-gray-700">{report.leavePolicy.overview}</p>
+            </div>
+
+            <div className="overflow-x-auto bg-white rounded-lg border border-gray-200 mb-6">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Allowed</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Eligibility</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Carry Forward</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Encashment</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {report.leavePolicy.policies.map((policy, index) => (
+                    <tr key={index} className="hover:bg-gray-50 transition-colors duration-150">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{policy.type}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{policy.daysAllowed}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{policy.eligibility || 'All employees'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{policy.carryForward ? 'Yes' : 'No'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{policy.encashment ? 'Yes' : 'No'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 mb-4">
+              <h4 className="font-semibold text-indigo-800 mb-3">Analysis</h4>
+              <p className="text-gray-700">{report.leavePolicy.analysis}</p>
+            </div>
+
+            {report.leavePolicy.recommendations && report.leavePolicy.recommendations.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-gray-800 mb-3">Recommendations</h4>
+                <div className="space-y-2">
+                  {report.leavePolicy.recommendations.map((rec, index) => (
+                    <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-100 text-gray-700 flex items-start">
+                      <div className="bg-green-500 text-white rounded-full p-1 mr-3 flex-shrink-0 mt-0.5">
+                        <FiCheckCircle size={14} />
+                      </div>
+                      <p className="text-gray-600">{rec}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Provisions & Prepayments Section */}
+        {report.provisionsAndPrepayments && report.provisionsAndPrepayments.items && report.provisionsAndPrepayments.items.length > 0 && (
+          <div className="bg-white p-6 rounded-xl shadow-md border border-amber-100 mt-6">
+            <div className="flex items-center mb-5">
+              <div className="bg-amber-600 p-2 rounded-lg mr-3">
+                <FiPackage className="text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">Provisions & Prepayments</h3>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-gray-700">{report.provisionsAndPrepayments.overview}</p>
+            </div>
+
+            <div className="overflow-x-auto bg-white rounded-lg border border-gray-200 mb-6">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {report.provisionsAndPrepayments.items.map((item, index) => (
+                    <tr key={index} className="hover:bg-gray-50 transition-colors duration-150">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.type}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.amount}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.period || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span className={`px-2 py-1 text-xs rounded-full ${item.status === 'adequate' ? 'bg-green-100 text-green-800' :
+                          item.status === 'inadequate' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">{item.notes || 'N/A'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 mb-4">
+              <h4 className="font-semibold text-amber-800 mb-3">Analysis</h4>
+              <p className="text-gray-700">{report.provisionsAndPrepayments.analysis}</p>
+            </div>
+
+            {report.provisionsAndPrepayments.recommendations && report.provisionsAndPrepayments.recommendations.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-gray-800 mb-3">Recommendations</h4>
+                <div className="space-y-2">
+                  {report.provisionsAndPrepayments.recommendations.map((rec, index) => (
+                    <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-100 text-gray-700 flex items-start">
+                      <div className="bg-green-500 text-white rounded-full p-1 mr-3 flex-shrink-0 mt-0.5">
+                        <FiCheckCircle size={14} />
+                      </div>
+                      <p className="text-gray-600">{rec}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Deferred Tax Assets Section */}
+        {report.deferredTaxAssets && report.deferredTaxAssets.items && report.deferredTaxAssets.items.length > 0 && (
+          <div className="bg-white p-6 rounded-xl shadow-md border border-cyan-100 mt-6">
+            <div className="flex items-center mb-5">
+              <div className="bg-cyan-600 p-2 rounded-lg mr-3">
+                <FiCreditCard className="text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">Deferred Tax Assets</h3>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-gray-700">{report.deferredTaxAssets.overview}</p>
+            </div>
+
+            <div className="overflow-x-auto bg-white rounded-lg border border-gray-200 mb-6">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asset</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origin</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected Utilization</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk Level</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {report.deferredTaxAssets.items.map((item, index) => (
+                    <tr key={index} className="hover:bg-gray-50 transition-colors duration-150">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.amount}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.origin || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.expectedUtilization || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span className={`px-2 py-1 text-xs rounded-full ${item.riskLevel === 'low' ? 'bg-green-100 text-green-800' :
+                          item.riskLevel === 'high' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                          {item.riskLevel}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bg-cyan-50 p-4 rounded-lg border border-cyan-100 mb-4">
+              <h4 className="font-semibold text-cyan-800 mb-3">Analysis</h4>
+              <p className="text-gray-700">{report.deferredTaxAssets.analysis}</p>
+            </div>
+
+            {report.deferredTaxAssets.recommendations && report.deferredTaxAssets.recommendations.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-gray-800 mb-3">Recommendations</h4>
+                <div className="space-y-2">
+                  {report.deferredTaxAssets.recommendations.map((rec, index) => (
+                    <div key={index} className="bg-green-50 p-3 rounded-lg border border-green-100 text-gray-700 flex items-start">
+                      <div className="bg-green-500 text-white rounded-full p-1 mr-3 flex-shrink-0 mt-0.5">
+                        <FiCheckCircle size={14} />
+                      </div>
+                      <p className="text-gray-600">{rec}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Document Content Analysis Section - New section */}
         {report.documentContentAnalysis && (

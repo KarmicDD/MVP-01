@@ -321,17 +321,14 @@ export interface IFinancialDueDiligenceReport extends Document {
   // Leave Policy Section
   leavePolicy?: {
     overview: string;
-    policyDetails: {
-      leaveTypes: {
-        type: string;
-        entitlement: string;
-        carryForward?: string;
-        encashment?: string;
-        conditions?: string;
-      }[];
-      complianceStatus: string;
-      financialImplications: string;
-    };
+    policies: {
+      type: string;
+      daysAllowed: number | string;
+      eligibility?: string;
+      carryForward?: string;
+      encashment?: string;
+      notes?: string;
+    }[];
     analysis: string;
     recommendations: string[];
   };
@@ -339,38 +336,17 @@ export interface IFinancialDueDiligenceReport extends Document {
   // Provisions & Prepayments Section
   provisionsAndPrepayments?: {
     overview: string;
-    provisions: {
-      type: string;
-      amount: number | string;
-      purpose: string;
-      accountingTreatment: string;
-      adequacy: string;
-      notes?: string;
-    }[];
-    prepayments: {
-      type: string;
-      amount: number | string;
-      period: string;
-      amortizationSchedule?: string;
-      notes?: string;
-    }[];
-    analysis: string;
+    items: any; // Accept any type of data without validation
+    analysis?: string;
     recommendations: string[];
   };
 
   // Deferred Tax Assets Section
   deferredTaxAssets?: {
     overview: string;
-    assets: {
-      type: string;
-      amount: number | string;
-      origin: string;
-      expectedUtilization: string;
-      recoverability: string;
-      notes?: string;
-    }[];
-    analysis: string;
-    recommendations: string[];
+    items: any; // Accept any type of data without validation
+    analysis?: string;
+    recommendations?: string[];
   };
 
   // Document Sources and Metadata
@@ -702,17 +678,14 @@ const FinancialDueDiligenceReportSchema: Schema = new Schema({
   // Leave Policy Section
   leavePolicy: {
     overview: String,
-    policyDetails: {
-      leaveTypes: [{
-        type: String,
-        entitlement: String,
-        carryForward: String,
-        encashment: String,
-        conditions: String
-      }],
-      complianceStatus: String,
-      financialImplications: String
-    },
+    policies: [{
+      type: String,
+      daysAllowed: Schema.Types.Mixed,
+      eligibility: String,
+      carryForward: String,
+      encashment: String,
+      notes: String
+    }],
     analysis: String,
     recommendations: [String]
   },
@@ -720,21 +693,7 @@ const FinancialDueDiligenceReportSchema: Schema = new Schema({
   // Provisions & Prepayments Section
   provisionsAndPrepayments: {
     overview: String,
-    provisions: [{
-      type: String,
-      amount: Schema.Types.Mixed,
-      purpose: String,
-      accountingTreatment: String,
-      adequacy: String,
-      notes: String
-    }],
-    prepayments: [{
-      type: String,
-      amount: Schema.Types.Mixed,
-      period: String,
-      amortizationSchedule: String,
-      notes: String
-    }],
+    items: Schema.Types.Mixed, // Accept any type of data without validation
     analysis: String,
     recommendations: [String]
   },
@@ -742,14 +701,7 @@ const FinancialDueDiligenceReportSchema: Schema = new Schema({
   // Deferred Tax Assets Section
   deferredTaxAssets: {
     overview: String,
-    assets: [{
-      type: String,
-      amount: Schema.Types.Mixed,
-      origin: String,
-      expectedUtilization: String,
-      recoverability: String,
-      notes: String
-    }],
+    items: Schema.Types.Mixed, // Accept any type of data without validation
     analysis: String,
     recommendations: [String]
   },

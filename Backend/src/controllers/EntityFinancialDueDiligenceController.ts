@@ -231,6 +231,14 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                     ratioAnalysis: oldAnalysis.ratioAnalysis,
                     taxCompliance: oldAnalysis.taxCompliance,
                     auditFindings: oldAnalysis.auditFindings,
+
+                    // Add the table sections
+                    directorsTable: oldAnalysis.directorsTable,
+                    keyBusinessAgreements: oldAnalysis.keyBusinessAgreements,
+                    leavePolicy: oldAnalysis.leavePolicy,
+                    provisionsAndPrepayments: oldAnalysis.provisionsAndPrepayments,
+                    deferredTaxAssets: oldAnalysis.deferredTaxAssets,
+
                     availableDocuments: oldAnalysis.availableDocuments,
                     missingDocumentTypes: oldAnalysis.missingDocumentTypes,
                     generatedDate: oldAnalysis.createdAt,
@@ -282,6 +290,14 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                     ratioAnalysis: existingAnalysis.ratioAnalysis,
                     taxCompliance: existingAnalysis.taxCompliance,
                     auditFindings: existingAnalysis.auditFindings,
+
+                    // Add the table sections
+                    directorsTable: existingAnalysis.directorsTable,
+                    keyBusinessAgreements: existingAnalysis.keyBusinessAgreements,
+                    leavePolicy: existingAnalysis.leavePolicy,
+                    provisionsAndPrepayments: existingAnalysis.provisionsAndPrepayments,
+                    deferredTaxAssets: existingAnalysis.deferredTaxAssets,
+
                     availableDocuments: existingAnalysis.availableDocuments,
                     missingDocumentTypes: existingAnalysis.missingDocumentTypes,
                     generatedDate: existingAnalysis.createdAt
@@ -360,33 +376,23 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 updatedAt: doc.updatedAt ? doc.updatedAt.toISOString() : new Date().toISOString()
             }));
 
-            // Process documents and extract content with document type metadata
+            // Log document metadata for debugging
             console.log('Processing documents with metadata:', documentsWithMetadata.map(d => ({
                 type: d.documentType,
                 name: d.originalName,
                 timePeriod: d.timePeriod || 'Not specified',
                 description: d.description ? (d.description.length > 30 ? d.description.substring(0, 30) + '...' : d.description) : 'No description'
             })));
-            const combinedContent = await enhancedDocumentProcessingService.processMultipleDocumentsWithMetadata(documentsWithMetadata);
-
-            // Check if document processing was successful
-            if (!combinedContent || combinedContent.includes('Error: Failed to process this document')) {
-                console.log('Document processing failed');
-                res.status(400).json({
-                    message: 'Failed to process financial documents',
-                    errorCode: 'DOCUMENT_PROCESSING_FAILED',
-                    availableDocuments,
-                    missingDocumentTypes
-                });
-                return;
-            }
 
             // Extract financial data using Gemini with enhanced context
-            console.log('Extracting financial data using Gemini');
+            // Using the new approach that extracts raw data first, then sends to Gemini
+            console.log('Extracting financial data using raw extraction first, then Gemini');
             let financialData;
             try {
+                // Pass the document objects directly to extractFinancialData
+                // This will use the new approach that extracts raw data first
                 financialData = await enhancedDocumentProcessingService.extractFinancialData(
-                    combinedContent,
+                    documentsWithMetadata, // Pass documents directly instead of combined content
                     companyName,
                     entityProfile,
                     null, // No counterparty info needed
@@ -548,6 +554,46 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                     }
                 },
 
+                // Directors Table Section
+                directorsTable: financialData.directorsTable || {
+                    overview: "No directors information available in the provided documents.",
+                    directors: [],
+                    analysis: "Unable to analyze directors information due to lack of data.",
+                    recommendations: ["Provide company incorporation documents or annual returns to analyze the board of directors."]
+                },
+
+                // Key Business Agreements Section
+                keyBusinessAgreements: financialData.keyBusinessAgreements || {
+                    overview: "No key business agreements information available in the provided documents.",
+                    agreements: [],
+                    analysis: "Unable to analyze key business agreements due to lack of data.",
+                    recommendations: ["Provide contracts and business agreements for analysis."]
+                },
+
+                // Leave Policy Section
+                leavePolicy: financialData.leavePolicy || {
+                    overview: "No leave policy information available in the provided documents.",
+                    policies: [],
+                    analysis: "Unable to analyze leave policy due to lack of data.",
+                    recommendations: ["Provide HR policy documents for analysis."]
+                },
+
+                // Provisions & Prepayments Section
+                provisionsAndPrepayments: financialData.provisionsAndPrepayments || {
+                    overview: "No provisions and prepayments information available in the provided documents.",
+                    items: [],
+                    analysis: "Unable to analyze provisions and prepayments due to lack of data.",
+                    recommendations: ["Provide detailed balance sheet and notes to accounts for analysis."]
+                },
+
+                // Deferred Tax Assets Section
+                deferredTaxAssets: financialData.deferredTaxAssets || {
+                    overview: "No deferred tax assets information available in the provided documents.",
+                    items: [],
+                    analysis: "Unable to analyze deferred tax assets due to lack of data.",
+                    recommendations: ["Provide tax computation documents and notes to accounts for analysis."]
+                },
+
                 // Metadata
                 documentSources: documents.map(doc => doc._id ? doc._id.toString() : ''),
                 status: 'final',
@@ -571,6 +617,14 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 taxCompliance: financialReport.taxCompliance,
                 auditFindings: financialReport.auditFindings,
                 documentAnalysis: financialReport.documentAnalysis,
+
+                // Add the table sections
+                directorsTable: financialReport.directorsTable,
+                keyBusinessAgreements: financialReport.keyBusinessAgreements,
+                leavePolicy: financialReport.leavePolicy,
+                provisionsAndPrepayments: financialReport.provisionsAndPrepayments,
+                deferredTaxAssets: financialReport.deferredTaxAssets,
+
                 availableDocuments: financialReport.availableDocuments,
                 missingDocumentTypes: financialReport.missingDocumentTypes,
                 generatedDate: financialReport.createdAt,
@@ -644,6 +698,14 @@ export const getFinancialDueDiligenceReport = async (req: Request, res: Response
             auditFindings: report.auditFindings,
             documentAnalysis: report.documentAnalysis,
             documentContentAnalysis: report.documentContentAnalysis, // Add the new document content analysis section
+
+            // Add the table sections
+            directorsTable: report.directorsTable,
+            keyBusinessAgreements: report.keyBusinessAgreements,
+            leavePolicy: report.leavePolicy,
+            provisionsAndPrepayments: report.provisionsAndPrepayments,
+            deferredTaxAssets: report.deferredTaxAssets,
+
             availableDocuments: report.availableDocuments,
             missingDocumentTypes: report.missingDocumentTypes,
             generatedDate: report.createdAt,
