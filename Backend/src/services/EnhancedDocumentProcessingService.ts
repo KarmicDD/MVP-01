@@ -22,9 +22,9 @@ if (!apiKey) {
 
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.0-flash-thinking-exp-01-21",
+  model: "gemini-2.5-flash-preview-04-17",
   generationConfig: {
-    maxOutputTokens: 32768, // Set to maximum allowed for Gemini 2.0 Flash
+    maxOutputTokens: 65536, // Set to maximum allowed for Gemini 2.0 Flash
     temperature: 0.2, // Lower temperature for more deterministic outputs
   }
 });
@@ -626,6 +626,151 @@ Created: ${formattedDate}
   }
 
   /**
+   * Validates and ensures proper structure for all new sections
+   * @param data The parsed data from Gemini API
+   */
+  validateNewSections(data: any): void {
+    // Validate shareholders table
+    if (data && data.shareholdersTable) {
+      console.log('Validating shareholders table...');
+
+      // Ensure shareholders array exists
+      if (!data.shareholdersTable.shareholders || !Array.isArray(data.shareholdersTable.shareholders)) {
+        data.shareholdersTable.shareholders = [];
+      }
+
+      // Ensure each shareholder has required fields
+      data.shareholdersTable.shareholders.forEach((shareholder: any, index: number) => {
+        if (!shareholder.name) {
+          console.log(`Missing name for shareholder at index ${index}. Adding placeholder.`);
+          shareholder.name = `Shareholder ${index + 1}`;
+        }
+
+        // Ensure numeric fields are properly formatted
+        ['equityPercentage', 'shareCount', 'faceValue', 'investmentAmount'].forEach(field => {
+          if (shareholder[field] && typeof shareholder[field] !== 'number' && shareholder[field] !== 'N/A') {
+            // Try to convert to number if possible
+            const numValue = parseFloat(shareholder[field]);
+            if (!isNaN(numValue)) {
+              shareholder[field] = numValue;
+            } else {
+              shareholder[field] = 'N/A';
+            }
+          }
+        });
+      });
+
+      // Ensure totalShares and totalEquity are properly formatted
+      ['totalShares', 'totalEquity'].forEach(field => {
+        if (data.shareholdersTable[field] && typeof data.shareholdersTable[field] !== 'number' && data.shareholdersTable[field] !== 'N/A') {
+          // Try to convert to number if possible
+          const numValue = parseFloat(data.shareholdersTable[field]);
+          if (!isNaN(numValue)) {
+            data.shareholdersTable[field] = numValue;
+          } else {
+            data.shareholdersTable[field] = 'N/A';
+          }
+        }
+      });
+
+      // Ensure recommendations array exists
+      if (!data.shareholdersTable.recommendations || !Array.isArray(data.shareholdersTable.recommendations)) {
+        data.shareholdersTable.recommendations = [];
+      }
+    }
+
+    // Validate directors table
+    if (data && data.directorsTable) {
+      console.log('Validating directors table...');
+
+      // Ensure directors array exists
+      if (!data.directorsTable.directors || !Array.isArray(data.directorsTable.directors)) {
+        data.directorsTable.directors = [];
+      }
+
+      // Ensure each director has required fields
+      data.directorsTable.directors.forEach((director: any, index: number) => {
+        if (!director.name) {
+          console.log(`Missing name for director at index ${index}. Adding placeholder.`);
+          director.name = `Director ${index + 1}`;
+        }
+
+        if (!director.position) {
+          console.log(`Missing position for director at index ${index}. Adding placeholder.`);
+          director.position = 'Director';
+        }
+
+        // Ensure shareholding is properly formatted
+        if (director.shareholding && typeof director.shareholding !== 'number' && director.shareholding !== 'N/A') {
+          // Try to convert to number if possible
+          const numValue = parseFloat(director.shareholding);
+          if (!isNaN(numValue)) {
+            director.shareholding = numValue;
+          } else {
+            director.shareholding = 'N/A';
+          }
+        }
+
+        // Ensure otherDirectorships is an array
+        if (!director.otherDirectorships || !Array.isArray(director.otherDirectorships)) {
+          director.otherDirectorships = [];
+        }
+      });
+
+      // Ensure recommendations array exists
+      if (!data.directorsTable.recommendations || !Array.isArray(data.directorsTable.recommendations)) {
+        data.directorsTable.recommendations = [];
+      }
+    }
+
+    // Validate key business agreements
+    if (data && data.keyBusinessAgreements) {
+      if (!data.keyBusinessAgreements.agreements || !Array.isArray(data.keyBusinessAgreements.agreements)) {
+        data.keyBusinessAgreements.agreements = [];
+      }
+      if (!data.keyBusinessAgreements.recommendations || !Array.isArray(data.keyBusinessAgreements.recommendations)) {
+        data.keyBusinessAgreements.recommendations = [];
+      }
+    }
+
+    // Validate leave policy
+    if (data && data.leavePolicy) {
+      if (!data.leavePolicy.policyDetails) {
+        data.leavePolicy.policyDetails = { leaveTypes: [] };
+      }
+      if (!data.leavePolicy.policyDetails.leaveTypes || !Array.isArray(data.leavePolicy.policyDetails.leaveTypes)) {
+        data.leavePolicy.policyDetails.leaveTypes = [];
+      }
+      if (!data.leavePolicy.recommendations || !Array.isArray(data.leavePolicy.recommendations)) {
+        data.leavePolicy.recommendations = [];
+      }
+    }
+
+    // Validate provisions and prepayments
+    if (data && data.provisionsAndPrepayments) {
+      if (!data.provisionsAndPrepayments.provisions || !Array.isArray(data.provisionsAndPrepayments.provisions)) {
+        data.provisionsAndPrepayments.provisions = [];
+      }
+      if (!data.provisionsAndPrepayments.prepayments || !Array.isArray(data.provisionsAndPrepayments.prepayments)) {
+        data.provisionsAndPrepayments.prepayments = [];
+      }
+      if (!data.provisionsAndPrepayments.recommendations || !Array.isArray(data.provisionsAndPrepayments.recommendations)) {
+        data.provisionsAndPrepayments.recommendations = [];
+      }
+    }
+
+    // Validate deferred tax assets
+    if (data && data.deferredTaxAssets) {
+      if (!data.deferredTaxAssets.assets || !Array.isArray(data.deferredTaxAssets.assets)) {
+        data.deferredTaxAssets.assets = [];
+      }
+      if (!data.deferredTaxAssets.recommendations || !Array.isArray(data.deferredTaxAssets.recommendations)) {
+        data.deferredTaxAssets.recommendations = [];
+      }
+    }
+  }
+
+  /**
    * Extract financial data from documents using Gemini AI
    * @param documentContent Combined document content
    * @param companyName Name of the company
@@ -691,6 +836,7 @@ Created: ${formattedDate}
 
                 *** CRITICAL INSTRUCTION: SEPARATE FINANCIAL DUE DILIGENCE FROM AUDITING ***
                 You are a specialized financial analyst and auditor with expertise in Indian company standards and regulations. Your task is to perform TWO DISTINCT ANALYSES for ${companyName}:
+                KEEP THE TOTAL RESPONSE LENGTH UNDER 62,536 TOKENS.
 
                 1. FINANCIAL DUE DILIGENCE: Focus on investment worthiness, growth potential, financial health, and business viability
                    - Analyze financial performance, market position, and growth trajectory
@@ -1252,43 +1398,45 @@ Created: ${formattedDate}
                         "documentType": "Document type name",
                         "quality": "good" or "moderate" or "poor",
                         "completeness": "complete" or "partial" or "incomplete",
-                        "keyInsights": ["Key insight 1", "Key insight 2"],
+                        "keyInsights": ["Detailed financial insight 1 about specific numbers/metrics in this document", "Detailed financial insight 2 about specific numbers/metrics in this document"],
                         "dataReliability": "high" or "medium" or "low" or "N/A",
-                        "recommendations": ["Recommendation for document improvement"]
+                        "financialHighlights": ["Key financial figure 1: value with context", "Key financial figure 2: value with context"],
+                        "redFlags": ["Specific financial concern 1 with details", "Specific financial concern 2 with details"],
+                        "recommendations": ["Specific recommendation for improving financial data quality"]
                       }
                     ],
                     "missingDocuments": {
                       "list": ["Document type 1", "Document type 2"],
-                      "impact": "Description of how missing documents impact the analysis",
-                      "recommendations": ["Recommendation for missing documents"],
+                      "impact": "Detailed description of how missing documents impact specific financial analysis areas",
+                      "recommendations": ["Specific recommendation for obtaining missing financial documents"],
                       "priorityLevel": "high" or "medium" or "low"
                     }
                   },
                   "documentContentAnalysis": {
-                    "overview": "Overview of the document content analysis findings",
+                    "overview": "Comprehensive overview of the financial content analysis findings across all documents",
                     "dueDiligenceFindings": {
-                      "summary": "Summary of financial due diligence findings from document content",
-                      "keyInsights": ["Key due diligence insight 1", "Key due diligence insight 2"],
-                      "investmentImplications": ["Investment implication 1", "Investment implication 2"],
-                      "growthIndicators": ["Growth indicator 1", "Growth indicator 2"],
-                      "riskFactors": ["Risk factor 1", "Risk factor 2"]
+                      "summary": "Detailed summary of financial due diligence findings with specific metrics and figures from document content",
+                      "keyInsights": ["Specific financial insight with exact figures and time periods", "Detailed analysis of financial performance with exact metrics"],
+                      "investmentImplications": ["Specific investment implication with financial reasoning and data points", "Detailed ROI/valuation analysis with supporting figures"],
+                      "growthIndicators": ["Specific growth metric with exact figures and comparison to industry standards", "Detailed trend analysis with percentage changes over time"],
+                      "riskFactors": ["Specific financial risk with quantified potential impact", "Detailed analysis of financial vulnerability with supporting data"]
                     },
                     "auditFindings": {
-                      "summary": "Summary of audit findings from document content",
-                      "complianceIssues": ["Compliance issue 1", "Compliance issue 2"],
-                      "accountingConcerns": ["Accounting concern 1", "Accounting concern 2"],
-                      "internalControlWeaknesses": ["Internal control weakness 1", "Internal control weakness 2"],
-                      "fraudRiskIndicators": ["Fraud risk indicator 1", "Fraud risk indicator 2"]
+                      "summary": "Detailed summary of audit findings with specific accounting issues identified in the documents",
+                      "complianceIssues": ["Specific compliance issue with exact regulatory requirement and financial impact", "Detailed analysis of compliance gap with recommended remediation"],
+                      "accountingConcerns": ["Specific accounting concern with exact figures and GAAP/Ind AS reference", "Detailed analysis of accounting treatment with financial impact"],
+                      "internalControlWeaknesses": ["Specific internal control weakness with financial process affected and risk quantification", "Detailed control gap analysis with recommended improvements"],
+                      "fraudRiskIndicators": ["Specific fraud risk indicator with exact suspicious patterns/transactions", "Detailed analysis of potential fraud risk with financial impact"]
                     },
                     "documentSpecificAnalysis": [
                       {
                         "documentType": "Document type name",
-                        "contentSummary": "Summary of the document's content",
-                        "dueDiligenceInsights": ["Due diligence insight 1", "Due diligence insight 2"],
-                        "auditInsights": ["Audit insight 1", "Audit insight 2"],
-                        "keyFinancialData": ["Financial data point 1", "Financial data point 2"],
-                        "inconsistencies": ["Inconsistency 1", "Inconsistency 2"],
-                        "recommendations": ["Recommendation 1", "Recommendation 2"]
+                        "contentSummary": "Detailed summary of the document's financial content with time period and key figures",
+                        "dueDiligenceInsights": ["Specific financial insight from this document with exact figures and implications", "Detailed analysis of financial performance metrics from this document"],
+                        "auditInsights": ["Specific audit insight from this document with accounting standards reference", "Detailed analysis of financial reporting quality from this document"],
+                        "keyFinancialData": ["Specific financial figure: exact value with context and trend", "Key ratio: exact value with industry comparison and interpretation"],
+                        "inconsistencies": ["Specific inconsistency between figures with exact values and locations", "Detailed analysis of data discrepancy with potential causes"],
+                        "recommendations": ["Specific recommendation based on document content with expected financial impact", "Detailed improvement suggestion with implementation steps"]
                       }
                     ]
                   },
@@ -1399,6 +1547,116 @@ Created: ${formattedDate}
                         }
                       ]
                     }
+                  },
+                  "shareholdersTable": {
+                    "overview": "Overview of the company's shareholding structure",
+                    "shareholders": [
+                      {
+                        "name": "Shareholder name",
+                        "equityPercentage": numeric value or "N/A",
+                        "shareCount": numeric value or "N/A",
+                        "faceValue": numeric value or "N/A",
+                        "investmentAmount": numeric value or "N/A",
+                        "shareClass": "Share class (e.g., Equity, Preference)",
+                        "votingRights": "Description of voting rights",
+                        "notes": "Additional notes about this shareholder"
+                      }
+                    ],
+                    "totalShares": numeric value or "N/A",
+                    "totalEquity": numeric value or "N/A",
+                    "analysis": "Detailed analysis of the shareholding structure",
+                    "recommendations": ["Recommendation 1", "Recommendation 2"]
+                  },
+                  "directorsTable": {
+                    "overview": "Overview of the company's board of directors",
+                    "directors": [
+                      {
+                        "name": "Director name",
+                        "position": "Position/designation",
+                        "appointmentDate": "Date of appointment",
+                        "din": "Director Identification Number",
+                        "shareholding": numeric value or "N/A",
+                        "expertise": "Area of expertise/background",
+                        "otherDirectorships": ["Company 1", "Company 2"],
+                        "notes": "Additional notes about this director"
+                      }
+                    ],
+                    "analysis": "Detailed analysis of the board composition",
+                    "recommendations": ["Recommendation 1", "Recommendation 2"]
+                  },
+                  "keyBusinessAgreements": {
+                    "overview": "Overview of key business agreements",
+                    "agreements": [
+                      {
+                        "agreementType": "Type of agreement",
+                        "parties": ["Party 1", "Party 2"],
+                        "effectiveDate": "Effective date",
+                        "expiryDate": "Expiry date",
+                        "keyTerms": ["Key term 1", "Key term 2"],
+                        "financialImpact": "Description of financial impact",
+                        "risks": ["Risk 1", "Risk 2"],
+                        "notes": "Additional notes about this agreement"
+                      }
+                    ],
+                    "analysis": "Detailed analysis of the business agreements",
+                    "recommendations": ["Recommendation 1", "Recommendation 2"]
+                  },
+                  "leavePolicy": {
+                    "overview": "Overview of the company's leave policy",
+                    "policyDetails": {
+                      "leaveTypes": [
+                        {
+                          "type": "Type of leave",
+                          "entitlement": "Entitlement details",
+                          "carryForward": "Carry forward policy",
+                          "encashment": "Encashment policy",
+                          "conditions": "Conditions for availing"
+                        }
+                      ],
+                      "complianceStatus": "Compliance status with labor laws",
+                      "financialImplications": "Financial implications of the leave policy"
+                    },
+                    "analysis": "Detailed analysis of the leave policy",
+                    "recommendations": ["Recommendation 1", "Recommendation 2"]
+                  },
+                  "provisionsAndPrepayments": {
+                    "overview": "Overview of provisions and prepayments",
+                    "provisions": [
+                      {
+                        "type": "Type of provision",
+                        "amount": numeric value or "N/A",
+                        "purpose": "Purpose of provision",
+                        "accountingTreatment": "Accounting treatment",
+                        "adequacy": "Assessment of adequacy",
+                        "notes": "Additional notes"
+                      }
+                    ],
+                    "prepayments": [
+                      {
+                        "type": "Type of prepayment",
+                        "amount": numeric value or "N/A",
+                        "period": "Period covered",
+                        "amortizationSchedule": "Amortization schedule",
+                        "notes": "Additional notes"
+                      }
+                    ],
+                    "analysis": "Detailed analysis of provisions and prepayments",
+                    "recommendations": ["Recommendation 1", "Recommendation 2"]
+                  },
+                  "deferredTaxAssets": {
+                    "overview": "Overview of deferred tax assets",
+                    "assets": [
+                      {
+                        "type": "Type of deferred tax asset",
+                        "amount": numeric value or "N/A",
+                        "origin": "Origin/source",
+                        "expectedUtilization": "Expected utilization timeline",
+                        "recoverability": "Assessment of recoverability",
+                        "notes": "Additional notes"
+                      }
+                    ],
+                    "analysis": "Detailed analysis of deferred tax position",
+                    "recommendations": ["Recommendation 1", "Recommendation 2"]
                   }
                 }
 
@@ -1426,8 +1684,12 @@ Created: ${formattedDate}
                 - Provide industry benchmarking to show how the company compares to peers
                 - Include growth projections based on historical performance and industry trends
                 - Include a detailed analysis of available documents in the documentAnalysis section
-                - For each available document, assess its quality, completeness, and key insights
-                - For missing documents, explain how this impacts the analysis and provide recommendations
+                - For each available document, go beyond assessing quality and completeness - analyze the actual financial content
+                - Extract specific financial figures, metrics, ratios, and trends from each document
+                - Identify key financial highlights that reveal the company's true financial position
+                - Flag any concerning financial indicators or red flags found in the document content
+                - Provide specific insights about what the financial data in each document reveals about the company
+                - For missing documents, explain specifically how this impacts particular financial analysis areas
                 - Ensure all metrics have appropriate status indicators (good/warning/critical)
                 - Include percentage changes and trends for all key metrics
                 - Provide detailed ratio analysis with industry comparisons
@@ -1482,25 +1744,118 @@ Created: ${formattedDate}
                 - ENSURE EACH TREND HAS COMPLETE CHART DATA with appropriate labels, datasets, and colors
 
                 DOCUMENT CONTENT ANALYSIS AND SEPARATE FINANCIAL DD & AUDITING:
-                - For each of ${companyName}'s documents, perform a DEEP ANALYSIS OF THE CONTENT rather than just assessing document quality
-                - SEPARATE FINANCIAL DUE DILIGENCE from AUDITING in your analysis:
-                  * FINANCIAL DUE DILIGENCE: Focus on investment worthiness, growth potential, financial health, and business viability
-                  * AUDITING: Focus on compliance, accuracy, fraud detection, and adherence to accounting standards
-                - For each document, extract key financial data points, trends, and insights that would be valuable for investment decisions
-                - Identify specific financial metrics, ratios, and indicators from the document content that reveal ${companyName}'s true financial position
-                - Analyze content for inconsistencies, errors, or suspicious patterns in ${companyName}'s financial data that would concern a professional auditor
-                - Identify red flags in the actual financial figures and calculations that might indicate misrepresentation or require further investigation
-                - Assess whether the financial data in the documents follows standard accounting practices and Indian accounting standards
-                - Note unusual transactions or accounting treatments in ${companyName}'s financial data that deviate from standard practices
-                - Evaluate whether the financial data provides sufficient information for comprehensive analysis and audit
-                - Identify gaps in financial information that would prevent a complete investment decision or audit opinion
-                - Assess the reliability of ${companyName}'s financial data based on internal consistency and industry benchmarks
-                - Evaluate consistency between different financial figures across documents provided by ${companyName}
-                - Note discrepancies between reported figures in different documents from ${companyName}
-                - Assess whether ${companyName}'s financial statements are prepared in accordance with applicable accounting standards
-                - Evaluate the adequacy of financial disclosures in ${companyName}'s statements
-                - For each content analysis finding, explain how it impacts investment decisions AND audit reliability separately
-                - When documents cover different time periods, analyze financial trends and growth patterns across these periods
+                - For each of ${companyName}'s documents, perform an EXTREMELY DETAILED ANALYSIS OF THE FINANCIAL CONTENT with specific figures and metrics
+                - SEPARATE FINANCIAL DUE DILIGENCE from AUDITING in your analysis with clear distinction:
+                  * FINANCIAL DUE DILIGENCE: Focus on investment worthiness, growth potential, financial health, and business viability with specific ROI calculations and valuation metrics
+                  * AUDITING: Focus on compliance, accuracy, fraud detection, and adherence to accounting standards with specific references to Indian accounting standards
+
+                - DOCUMENT-SPECIFIC FINANCIAL ANALYSIS REQUIREMENTS:
+                  * Balance Sheet: Extract and analyze specific asset values, liability amounts, equity position, debt structure, working capital, and key financial ratios
+                  * Income Statement: Extract and analyze revenue figures, expense breakdowns, profit margins, operating efficiency, and year-over-year growth rates
+                  * Cash Flow Statement: Extract and analyze operating cash flows, investing activities, financing activities, free cash flow, and cash conversion metrics
+                  * Cap Table: Extract and analyze ownership structure, equity dilution, valuation history, investor stakes, and capitalization metrics
+                  * Financial Projections: Extract and analyze growth forecasts, revenue projections, expense projections, and assess realism of assumptions
+                  * Tax Returns: Extract and analyze tax liabilities, effective tax rates, tax planning strategies, and compliance with tax regulations
+                  * Pitch Deck: Extract and analyze equity distribution, face value, and other ownership parameters
+                  * Other/Miscellaneous Documents: Extract any relevant financial information, especially related to shareholders, directors, business agreements, leave policies, provisions, and deferred tax assets
+
+                - DETAILED FINANCIAL CONTENT EXTRACTION:
+                  * Extract exact financial figures with proper currency notation (₹) and time periods
+                  * Calculate key financial ratios from the raw data and compare to industry benchmarks
+                  * Identify specific year-over-year or quarter-over-quarter growth rates with exact percentages
+                  * Extract specific business segments or revenue streams and their contribution percentages
+                  * Identify exact debt amounts, interest rates, and maturity schedules
+                  * Extract specific capital expenditure amounts and investment activities
+                  * Identify exact shareholder equity changes and dividend distributions
+                  * Extract specific tax payment amounts and compliance status
+
+                - FINANCIAL RED FLAGS AND INCONSISTENCIES:
+                  * Identify specific mathematical errors in calculations with exact figures
+                  * Flag unusual fluctuations in financial metrics with exact percentage changes
+                  * Identify specific inconsistencies between related financial statements with exact figures
+                  * Flag unusual accounting treatments with specific examples and amounts
+                  * Identify specific transactions that appear irregular with exact amounts
+                  * Flag any concerning financial ratios with exact values compared to industry norms
+                  * Identify specific disclosure inadequacies with references to required disclosures
+                  * Flag any concerning trends in key metrics with exact figures showing the trend
+
+                - DOCUMENT QUALITY AND RELIABILITY ASSESSMENT:
+                  * Assess data completeness with specific missing elements identified
+                  * Evaluate data consistency with specific examples of consistent/inconsistent figures
+                  * Assess adherence to accounting standards with specific standard references
+                  * Evaluate disclosure adequacy with specific missing disclosures identified
+                  * Assess internal controls based on evidence in financial reporting
+                  * Evaluate the reliability of projections based on historical accuracy
+
+                - COMPREHENSIVE CROSS-DOCUMENT ANALYSIS:
+                  * Compare specific figures across different documents to verify consistency
+                  * Analyze financial trends across multiple time periods with exact growth rates
+                  * Identify specific discrepancies between related documents with exact figures
+                  * Evaluate the overall financial story told across all documents
+                  * Assess whether the combined documents provide a complete financial picture
+                  * Identify specific information gaps across the document collection
+
+                - ADDITIONAL REQUIRED SECTIONS:
+                  * SHAREHOLDERS TABLE: Create a detailed shareholders table with the following information:
+                    - Name of each shareholder
+                    - Equity percentage held by each shareholder
+                    - Number of shares held by each shareholder
+                    - Face value of shares
+                    - Investment amount (if available)
+                    - Share class (if applicable)
+                    - Voting rights information
+                    - Analysis of the equity distribution
+                    - Recommendations related to shareholding structure
+
+                  * DIRECTORS TABLE: Create a detailed directors table with the following information:
+                    - Name of each director
+                    - Position/designation
+                    - Appointment date (if available)
+                    - Director Identification Number (DIN) if available
+                    - Shareholding percentage (if applicable)
+                    - Expertise/background
+                    - Other directorships (if available)
+                    - Analysis of the board composition
+                    - Recommendations related to board structure
+
+                  * KEY BUSINESS AGREEMENTS: Analyze and summarize key business agreements with:
+                    - Types of agreements
+                    - Parties involved
+                    - Effective dates and expiry dates
+                    - Key terms and conditions
+                    - Financial impact of agreements
+                    - Risks associated with agreements
+                    - Analysis of the agreements' impact on business
+                    - Recommendations related to business agreements
+
+                  * LEAVE POLICY ANALYSIS: Analyze the company's leave policy with:
+                    - Types of leave available
+                    - Entitlement for each leave type
+                    - Carry forward and encashment policies
+                    - Compliance status with labor laws
+                    - Financial implications of leave policy
+                    - Analysis of the leave policy
+                    - Recommendations for improvement
+
+                  * PROVISIONS & PREPAYMENTS: Analyze provisions and prepayments with:
+                    - Types of provisions made
+                    - Amounts allocated
+                    - Purpose of provisions
+                    - Accounting treatment
+                    - Adequacy assessment
+                    - Types of prepayments
+                    - Amortization schedules
+                    - Analysis of provisions and prepayments
+                    - Recommendations for improvement
+
+                  * DEFERRED TAX ASSETS (DTA): Analyze deferred tax assets with:
+                    - Types of deferred tax assets
+                    - Amounts recognized
+                    - Origin/source of DTAs
+                    - Expected utilization timeline
+                    - Recoverability assessment
+                    - Analysis of deferred tax position
+                    - Recommendations for tax planning
 
                 DOCUMENT CONTENT:
                 ${documentContent}
@@ -1530,6 +1885,9 @@ Created: ${formattedDate}
 
         // Validate and normalize ratio analysis status values
         this.validateAndNormalizeRatioAnalysis(parsedData);
+
+        // Validate and ensure proper structure for new sections
+        this.validateNewSections(parsedData);
 
         return parsedData;
       } catch (error) {

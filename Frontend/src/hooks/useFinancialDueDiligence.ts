@@ -77,6 +77,8 @@ export interface DocumentAnalysisItem {
   completeness: 'complete' | 'partial' | 'incomplete';
   keyInsights: string[];
   dataReliability?: 'high' | 'medium' | 'low';
+  financialHighlights?: string[];
+  redFlags?: string[];
   recommendations?: string[];
 }
 

@@ -2219,6 +2219,28 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                           </div>
                         )}
 
+                        {doc.financialHighlights && doc.financialHighlights.length > 0 && (
+                          <div className="mt-3 bg-green-50 p-2 rounded border border-green-100">
+                            <span className="text-xs font-medium text-green-700">Financial Highlights:</span>
+                            <ul className="list-disc pl-4 mt-1 space-y-1">
+                              {doc.financialHighlights.map((highlight, i) => (
+                                <li key={i} className="text-xs text-gray-600">{highlight}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {doc.redFlags && doc.redFlags.length > 0 && (
+                          <div className="mt-3 bg-red-50 p-2 rounded border border-red-100">
+                            <span className="text-xs font-medium text-red-700">Red Flags:</span>
+                            <ul className="list-disc pl-4 mt-1 space-y-1">
+                              {doc.redFlags.map((flag, i) => (
+                                <li key={i} className="text-xs text-gray-600">{flag}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
                         {doc.recommendations && doc.recommendations.length > 0 && (
                           <div className="mt-3 bg-blue-50 p-2 rounded border border-blue-100">
                             <span className="text-xs font-medium text-blue-700">Recommendations:</span>

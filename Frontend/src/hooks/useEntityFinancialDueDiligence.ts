@@ -85,6 +85,10 @@ export interface DocumentAnalysisItem {
   quality: 'good' | 'moderate' | 'poor';
   completeness: 'complete' | 'partial' | 'incomplete';
   keyInsights: string[];
+  dataReliability?: 'high' | 'medium' | 'low';
+  financialHighlights?: string[];
+  redFlags?: string[];
+  recommendations?: string[];
 }
 
 export interface MissingDocuments {

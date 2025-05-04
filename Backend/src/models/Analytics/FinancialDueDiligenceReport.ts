@@ -210,6 +210,8 @@ export interface IFinancialDueDiligenceReport extends Document {
       completeness: string; // Accept any string value for completeness
       keyInsights: string[];
       dataReliability?: string;
+      financialHighlights?: string[];
+      redFlags?: string[];
       recommendations?: string[];
     }[];
     missingDocuments: {
@@ -261,6 +263,114 @@ export interface IFinancialDueDiligenceReport extends Document {
     competitivePosition: string;
     strengths: string[];
     challenges: string[];
+  };
+
+  // Shareholders Table Section
+  shareholdersTable?: {
+    overview: string;
+    shareholders: {
+      name: string;
+      equityPercentage: number | string;
+      shareCount: number | string;
+      faceValue: number | string;
+      investmentAmount?: number | string;
+      shareClass?: string;
+      votingRights?: string;
+      notes?: string;
+    }[];
+    totalShares: number | string;
+    totalEquity: number | string;
+    analysis: string;
+    recommendations: string[];
+  };
+
+  // Directors Table Section
+  directorsTable?: {
+    overview: string;
+    directors: {
+      name: string;
+      position: string;
+      appointmentDate?: string;
+      din?: string; // Director Identification Number
+      shareholding?: number | string;
+      expertise?: string;
+      otherDirectorships?: string[];
+      notes?: string;
+    }[];
+    analysis: string;
+    recommendations: string[];
+  };
+
+  // Key Business Agreements Section
+  keyBusinessAgreements?: {
+    overview: string;
+    agreements: {
+      agreementType: string;
+      parties: string[];
+      effectiveDate?: string;
+      expiryDate?: string;
+      keyTerms: string[];
+      financialImpact: string;
+      risks: string[];
+      notes?: string;
+    }[];
+    analysis: string;
+    recommendations: string[];
+  };
+
+  // Leave Policy Section
+  leavePolicy?: {
+    overview: string;
+    policyDetails: {
+      leaveTypes: {
+        type: string;
+        entitlement: string;
+        carryForward?: string;
+        encashment?: string;
+        conditions?: string;
+      }[];
+      complianceStatus: string;
+      financialImplications: string;
+    };
+    analysis: string;
+    recommendations: string[];
+  };
+
+  // Provisions & Prepayments Section
+  provisionsAndPrepayments?: {
+    overview: string;
+    provisions: {
+      type: string;
+      amount: number | string;
+      purpose: string;
+      accountingTreatment: string;
+      adequacy: string;
+      notes?: string;
+    }[];
+    prepayments: {
+      type: string;
+      amount: number | string;
+      period: string;
+      amortizationSchedule?: string;
+      notes?: string;
+    }[];
+    analysis: string;
+    recommendations: string[];
+  };
+
+  // Deferred Tax Assets Section
+  deferredTaxAssets?: {
+    overview: string;
+    assets: {
+      type: string;
+      amount: number | string;
+      origin: string;
+      expectedUtilization: string;
+      recoverability: string;
+      notes?: string;
+    }[];
+    analysis: string;
+    recommendations: string[];
   };
 
   // Document Sources and Metadata
@@ -366,6 +476,8 @@ const DocumentAnalysisItemSchema = new Schema({
   completeness: { type: String, required: true }, // Accept any string value for completeness
   keyInsights: [String],
   dataReliability: { type: String },
+  financialHighlights: [String],
+  redFlags: [String],
   recommendations: [String]
 });
 
@@ -533,6 +645,114 @@ const FinancialDueDiligenceReportSchema: Schema = new Schema({
 
   // Industry Benchmarking Section
   industryBenchmarking: IndustryBenchmarkingSchema,
+
+  // Shareholders Table Section
+  shareholdersTable: {
+    overview: String,
+    shareholders: [{
+      name: String,
+      equityPercentage: Schema.Types.Mixed,
+      shareCount: Schema.Types.Mixed,
+      faceValue: Schema.Types.Mixed,
+      investmentAmount: Schema.Types.Mixed,
+      shareClass: String,
+      votingRights: String,
+      notes: String
+    }],
+    totalShares: Schema.Types.Mixed,
+    totalEquity: Schema.Types.Mixed,
+    analysis: String,
+    recommendations: [String]
+  },
+
+  // Directors Table Section
+  directorsTable: {
+    overview: String,
+    directors: [{
+      name: String,
+      position: String,
+      appointmentDate: String,
+      din: String,
+      shareholding: Schema.Types.Mixed,
+      expertise: String,
+      otherDirectorships: [String],
+      notes: String
+    }],
+    analysis: String,
+    recommendations: [String]
+  },
+
+  // Key Business Agreements Section
+  keyBusinessAgreements: {
+    overview: String,
+    agreements: [{
+      agreementType: String,
+      parties: [String],
+      effectiveDate: String,
+      expiryDate: String,
+      keyTerms: [String],
+      financialImpact: String,
+      risks: [String],
+      notes: String
+    }],
+    analysis: String,
+    recommendations: [String]
+  },
+
+  // Leave Policy Section
+  leavePolicy: {
+    overview: String,
+    policyDetails: {
+      leaveTypes: [{
+        type: String,
+        entitlement: String,
+        carryForward: String,
+        encashment: String,
+        conditions: String
+      }],
+      complianceStatus: String,
+      financialImplications: String
+    },
+    analysis: String,
+    recommendations: [String]
+  },
+
+  // Provisions & Prepayments Section
+  provisionsAndPrepayments: {
+    overview: String,
+    provisions: [{
+      type: String,
+      amount: Schema.Types.Mixed,
+      purpose: String,
+      accountingTreatment: String,
+      adequacy: String,
+      notes: String
+    }],
+    prepayments: [{
+      type: String,
+      amount: Schema.Types.Mixed,
+      period: String,
+      amortizationSchedule: String,
+      notes: String
+    }],
+    analysis: String,
+    recommendations: [String]
+  },
+
+  // Deferred Tax Assets Section
+  deferredTaxAssets: {
+    overview: String,
+    assets: [{
+      type: String,
+      amount: Schema.Types.Mixed,
+      origin: String,
+      expectedUtilization: String,
+      recoverability: String,
+      notes: String
+    }],
+    analysis: String,
+    recommendations: [String]
+  },
 
   // Document Sources and Metadata
   documentSources: [String],
