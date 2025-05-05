@@ -491,60 +491,52 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 console.log('Saving partial financial data to database');
             }
 
-            // Create a new financial due diligence report with all available data
-            const financialReport = new FinancialDueDiligenceReport({
+            // Check if there's an existing report for this entity (regardless of age)
+            // We'll update it instead of creating a new one to avoid duplicate reports
+            let financialReport = await FinancialDueDiligenceReport.findOne({
                 targetEntityId: entityId,
                 targetEntityType: entityType,
-                requestedById: req.user.userId,
-                companyName,
-                generatedBy: 'KarmicDD AI',
+                requestedById: req.user.userId
+            });
 
-                // Document tracking
-                availableDocuments,
-                missingDocumentTypes,
+            if (financialReport) {
+                console.log('Found existing report, updating it instead of creating a new one');
 
-                // Report calculation status
-                reportCalculated: reportCalculated,
-
-                // Executive Summary Section
-                executiveSummary: financialData.executiveSummary || {
+                // Update the existing report with new data
+                financialReport.companyName = companyName;
+                financialReport.availableDocuments = availableDocuments;
+                financialReport.missingDocumentTypes = missingDocumentTypes;
+                financialReport.reportCalculated = reportCalculated;
+                financialReport.executiveSummary = financialData.executiveSummary || {
                     headline: "Financial Due Diligence Report",
                     summary: financialData.summary || "Financial analysis of the provided documents.",
                     keyFindings: [],
                     recommendedActions: [],
                     keyMetrics: financialData.metrics || []
-                },
-
-                // Financial Analysis Section
-                financialAnalysis: financialData.financialAnalysis || {
+                };
+                financialReport.financialAnalysis = financialData.financialAnalysis || {
                     metrics: financialData.metrics || [],
                     trends: []
-                },
-
-                // Other sections
-                recommendations: financialData.recommendations || [],
-                riskFactors: financialData.riskFactors || [],
-                complianceItems: financialData.complianceItems || [],
-                financialStatements: financialData.financialStatements || {},
-                ratioAnalysis: processedRatioAnalysis,
-                taxCompliance: financialData.taxCompliance || {
+                };
+                financialReport.recommendations = financialData.recommendations || [];
+                financialReport.riskFactors = financialData.riskFactors || [];
+                financialReport.complianceItems = financialData.complianceItems || [];
+                financialReport.financialStatements = financialData.financialStatements || {};
+                financialReport.ratioAnalysis = processedRatioAnalysis;
+                financialReport.taxCompliance = financialData.taxCompliance || {
                     gst: { status: 'compliant', details: 'Not evaluated' },
                     incomeTax: { status: 'compliant', details: 'Not evaluated' },
                     tds: { status: 'compliant', details: 'Not evaluated' }
-                },
-
-                // Audit Findings
-                auditFindings: financialData.auditFindings || {
+                };
+                financialReport.auditFindings = financialData.auditFindings || {
                     findings: [],
                     overallAssessment: "No audit findings available."
-                },
-
-                // Document Analysis - new section
-                documentAnalysis: financialData.documentAnalysis || {
+                };
+                financialReport.documentAnalysis = financialData.documentAnalysis || {
                     availableDocuments: availableDocuments.map(doc => ({
                         documentType: doc.documentType,
                         quality: "moderate",
-                        completeness: "partial", // Using valid enum value: 'complete', 'partial', or 'incomplete'
+                        completeness: "partial",
                         keyInsights: ["Document was processed but detailed analysis not available"]
                     })),
                     missingDocuments: {
@@ -552,55 +544,154 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                         impact: "Missing documents may limit the completeness of the financial analysis.",
                         recommendations: ["Upload the missing documents to improve analysis quality."]
                     }
-                },
-
-                // Directors Table Section
-                directorsTable: financialData.directorsTable || {
+                };
+                financialReport.directorsTable = financialData.directorsTable || {
                     overview: "No directors information available in the provided documents.",
                     directors: [],
                     analysis: "Unable to analyze directors information due to lack of data.",
                     recommendations: ["Provide company incorporation documents or annual returns to analyze the board of directors."]
-                },
-
-                // Key Business Agreements Section
-                keyBusinessAgreements: financialData.keyBusinessAgreements || {
+                };
+                financialReport.keyBusinessAgreements = financialData.keyBusinessAgreements || {
                     overview: "No key business agreements information available in the provided documents.",
                     agreements: [],
                     analysis: "Unable to analyze key business agreements due to lack of data.",
                     recommendations: ["Provide contracts and business agreements for analysis."]
-                },
-
-                // Leave Policy Section
-                leavePolicy: financialData.leavePolicy || {
+                };
+                financialReport.leavePolicy = financialData.leavePolicy || {
                     overview: "No leave policy information available in the provided documents.",
                     policies: [],
                     analysis: "Unable to analyze leave policy due to lack of data.",
                     recommendations: ["Provide HR policy documents for analysis."]
-                },
-
-                // Provisions & Prepayments Section
-                provisionsAndPrepayments: financialData.provisionsAndPrepayments || {
+                };
+                financialReport.provisionsAndPrepayments = financialData.provisionsAndPrepayments || {
                     overview: "No provisions and prepayments information available in the provided documents.",
                     items: [],
                     analysis: "Unable to analyze provisions and prepayments due to lack of data.",
                     recommendations: ["Provide detailed balance sheet and notes to accounts for analysis."]
-                },
-
-                // Deferred Tax Assets Section
-                deferredTaxAssets: financialData.deferredTaxAssets || {
+                };
+                financialReport.deferredTaxAssets = financialData.deferredTaxAssets || {
                     overview: "No deferred tax assets information available in the provided documents.",
                     items: [],
                     analysis: "Unable to analyze deferred tax assets due to lack of data.",
                     recommendations: ["Provide tax computation documents and notes to accounts for analysis."]
-                },
+                };
+                financialReport.documentSources = documents.map(doc => doc._id ? doc._id.toString() : '');
+                financialReport.updatedAt = new Date();
+                financialReport.expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Expire after 30 days
+            } else {
+                console.log('No existing report found, creating a new one');
 
-                // Metadata
-                documentSources: documents.map(doc => doc._id ? doc._id.toString() : ''),
-                status: 'final',
-                createdAt: new Date(),
-                updatedAt: new Date(),
-                expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Expire after 30 days
-            });
+                // Create a new financial due diligence report with all available data
+                financialReport = new FinancialDueDiligenceReport({
+                    targetEntityId: entityId,
+                    targetEntityType: entityType,
+                    requestedById: req.user.userId,
+                    companyName,
+                    generatedBy: 'KarmicDD AI',
+
+                    // Document tracking
+                    availableDocuments,
+                    missingDocumentTypes,
+
+                    // Report calculation status
+                    reportCalculated: reportCalculated,
+
+                    // Executive Summary Section
+                    executiveSummary: financialData.executiveSummary || {
+                        headline: "Financial Due Diligence Report",
+                        summary: financialData.summary || "Financial analysis of the provided documents.",
+                        keyFindings: [],
+                        recommendedActions: [],
+                        keyMetrics: financialData.metrics || []
+                    },
+
+                    // Financial Analysis Section
+                    financialAnalysis: financialData.financialAnalysis || {
+                        metrics: financialData.metrics || [],
+                        trends: []
+                    },
+
+                    // Other sections
+                    recommendations: financialData.recommendations || [],
+                    riskFactors: financialData.riskFactors || [],
+                    complianceItems: financialData.complianceItems || [],
+                    financialStatements: financialData.financialStatements || {},
+                    ratioAnalysis: processedRatioAnalysis,
+                    taxCompliance: financialData.taxCompliance || {
+                        gst: { status: 'compliant', details: 'Not evaluated' },
+                        incomeTax: { status: 'compliant', details: 'Not evaluated' },
+                        tds: { status: 'compliant', details: 'Not evaluated' }
+                    },
+
+                    // Audit Findings
+                    auditFindings: financialData.auditFindings || {
+                        findings: [],
+                        overallAssessment: "No audit findings available."
+                    },
+
+                    // Document Analysis - new section
+                    documentAnalysis: financialData.documentAnalysis || {
+                        availableDocuments: availableDocuments.map(doc => ({
+                            documentType: doc.documentType,
+                            quality: "moderate",
+                            completeness: "partial", // Using valid enum value: 'complete', 'partial', or 'incomplete'
+                            keyInsights: ["Document was processed but detailed analysis not available"]
+                        })),
+                        missingDocuments: {
+                            list: missingDocumentTypes,
+                            impact: "Missing documents may limit the completeness of the financial analysis.",
+                            recommendations: ["Upload the missing documents to improve analysis quality."]
+                        }
+                    },
+
+                    // Directors Table Section
+                    directorsTable: financialData.directorsTable || {
+                        overview: "No directors information available in the provided documents.",
+                        directors: [],
+                        analysis: "Unable to analyze directors information due to lack of data.",
+                        recommendations: ["Provide company incorporation documents or annual returns to analyze the board of directors."]
+                    },
+
+                    // Key Business Agreements Section
+                    keyBusinessAgreements: financialData.keyBusinessAgreements || {
+                        overview: "No key business agreements information available in the provided documents.",
+                        agreements: [],
+                        analysis: "Unable to analyze key business agreements due to lack of data.",
+                        recommendations: ["Provide contracts and business agreements for analysis."]
+                    },
+
+                    // Leave Policy Section
+                    leavePolicy: financialData.leavePolicy || {
+                        overview: "No leave policy information available in the provided documents.",
+                        policies: [],
+                        analysis: "Unable to analyze leave policy due to lack of data.",
+                        recommendations: ["Provide HR policy documents for analysis."]
+                    },
+
+                    // Provisions & Prepayments Section
+                    provisionsAndPrepayments: financialData.provisionsAndPrepayments || {
+                        overview: "No provisions and prepayments information available in the provided documents.",
+                        items: [],
+                        analysis: "Unable to analyze provisions and prepayments due to lack of data.",
+                        recommendations: ["Provide detailed balance sheet and notes to accounts for analysis."]
+                    },
+
+                    // Deferred Tax Assets Section
+                    deferredTaxAssets: financialData.deferredTaxAssets || {
+                        overview: "No deferred tax assets information available in the provided documents.",
+                        items: [],
+                        analysis: "Unable to analyze deferred tax assets due to lack of data.",
+                        recommendations: ["Provide tax computation documents and notes to accounts for analysis."]
+                    },
+
+                    // Metadata
+                    documentSources: documents.map(doc => doc._id ? doc._id.toString() : ''),
+                    status: 'final',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Expire after 30 days
+                });
+            }
 
             await financialReport.save();
             console.log('Saved financial report to database');

@@ -15,6 +15,71 @@ import { cleanJsonResponse, safeJsonParse } from '../utils/jsonHelper';
 dotenv.config();
 
 /**
+ * Utility function to execute a Gemini API call with dynamic retry logic based on error response
+ * @param apiCallFn Function that makes the actual API call
+ * @param maxRetries Maximum number of retry attempts
+ * @param initialDelay Initial delay in milliseconds before the first retry if no retryDelay is provided
+ * @returns Promise with the API call result
+ */
+async function executeGeminiWithDynamicRetry<T>(
+  apiCallFn: () => Promise<T>,
+  maxRetries: number = 5,
+  initialDelay: number = 30000 // 30 seconds initial delay as preferred by user
+): Promise<T> {
+  let lastError: any = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // Attempt the API call
+      return await apiCallFn();
+    } catch (error: any) {
+      lastError = error;
+      console.error(`Gemini API call failed (attempt ${attempt + 1}/${maxRetries + 1}):`, error);
+
+      // Check if we've reached the maximum number of retries
+      if (attempt === maxRetries) {
+        console.error(`All ${maxRetries} retry attempts failed for Gemini API call`);
+        throw lastError;
+      }
+
+      // Extract retryDelay from error if available
+      let retryDelayMs = initialDelay;
+
+      // Check for retryDelay in error details
+      if (error && error.errorDetails) {
+        for (const detail of error.errorDetails) {
+          if (detail['@type'] === 'type.googleapis.com/google.rpc.RetryInfo' && detail.retryDelay) {
+            // Parse the retryDelay string (e.g., "25s") to milliseconds
+            const retryDelayStr = detail.retryDelay;
+            const secondsMatch = retryDelayStr.match(/(\d+)s/);
+            if (secondsMatch && secondsMatch[1]) {
+              const seconds = parseInt(secondsMatch[1], 10);
+              // Add 1 second to the retry delay as requested by user
+              retryDelayMs = (seconds + 1) * 1000;
+              console.log(`Using dynamic retry delay from API response: ${seconds}s + 1s = ${retryDelayMs / 1000}s`);
+            }
+          }
+        }
+      }
+
+      // For rate limit errors (429), use exponential backoff if no specific delay provided
+      if (error.status === 429 && retryDelayMs === initialDelay) {
+        retryDelayMs = initialDelay * Math.pow(2, attempt);
+        console.log(`Rate limit error (429) with no specific delay. Using exponential backoff: ${retryDelayMs / 1000}s`);
+      }
+
+      console.log(`Waiting ${retryDelayMs / 1000} seconds before retry attempt ${attempt + 2}...`);
+
+      // Wait before the next retry
+      await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+    }
+  }
+
+  // This should never be reached due to the throw in the loop, but TypeScript needs it
+  throw lastError || new Error('Unknown error occurred during API call retries');
+}
+
+/**
  * Interface for document extraction results that includes both raw text and AI-processed content
  */
 export interface DocumentExtractionResult {
@@ -39,19 +104,20 @@ if (!apiKey) {
 
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-pro-exp-03-25", // Updated from preview to exp as recommended
+  model: "gemini-2.5-flash-preview-04-17", // Updated from preview to exp as recommended by API error message
   generationConfig: {
     maxOutputTokens: 65536,
     temperature: 0.2,
+    responseMimeType: 'application/json'
   }
 });
 
 // Document extraction model - using gemini-2.0-flash as requested
 const documentExtractionModel = genAI.getGenerativeModel({
-  model: "gemini-2.0-flash", // Using gemini-2.0-flash as specified for document extraction
+  model: "gemini-2.0-flash", // Updated from preview to exp as recommended by API error message
   generationConfig: {
-    maxOutputTokens: 30000,
-    temperature: 0.5, // Very low temperature for more accurate extraction
+    maxOutputTokens: 65536,
+    temperature: 0.2, // Very low temperature for more accurate extraction
   }
 });
 
@@ -69,9 +135,10 @@ const pdfExtractAsync = promisify(pdfExtract.extract.bind(pdfExtract));
  */
 export class EnhancedDocumentProcessingService {
   /**
-   * Extract text content from a PDF file using traditional PDF extraction
+   * Extract text content from a PDF file using enhanced traditional PDF extraction
+   * This method is optimized for better handling of structured data like tables and financial information
    * @param filePath Path to the PDF file
-   * @returns Extracted text content
+   * @returns Extracted text content with improved structure preservation
    */
   async extractPdfText(filePath: string): Promise<string> {
     try {
@@ -81,21 +148,163 @@ export class EnhancedDocumentProcessingService {
         return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
       }
 
-      const options: PDFExtractOptions = {};
+      // Enhanced options for better text extraction
+      const options: PDFExtractOptions = {
+        // Use more aggressive content extraction
+        normalizeWhitespace: false,  // Preserve original whitespace for better table detection
+        disableCombineTextItems: true // Don't combine text items to preserve layout
+      };
+
       const data = await pdfExtractAsync(filePath, options);
 
-      // Combine all page content
+      // Enhanced text extraction with better structure preservation
       let textContent = '';
+      let currentPage = 0;
+
       if (data && typeof data === 'object' && 'pages' in data && Array.isArray(data.pages)) {
-        data.pages.forEach((page: any) => {
+        // First pass: analyze the document structure to detect tables and columns
+        const tableRegions: Array<{ page: number, x1: number, y1: number, x2: number, y2: number }> = [];
+
+        // Detect potential table regions by looking for grid-like text arrangements
+        data.pages.forEach((page: any, pageIndex: number) => {
           if (page && typeof page === 'object' && 'content' in page && Array.isArray(page.content)) {
+            // Group text items by their y-position (rows)
+            const rowGroups: { [key: string]: Array<any> } = {};
+
             page.content.forEach((item: any) => {
-              textContent += item.str + ' ';
+              // Round y position to nearest 2 points to group items in roughly the same row
+              const yKey = Math.round(item.y / 2) * 2;
+              if (!rowGroups[yKey]) {
+                rowGroups[yKey] = [];
+              }
+              rowGroups[yKey].push(item);
             });
+
+            // Look for rows with multiple items that might be table cells
+            const tableRows = Object.values(rowGroups).filter(row => row.length >= 3);
+
+            // If we have multiple rows with similar structure, it's likely a table
+            if (tableRows.length >= 3) {
+              // Find the bounds of the potential table
+              let minX = Number.MAX_VALUE;
+              let minY = Number.MAX_VALUE;
+              let maxX = 0;
+              let maxY = 0;
+
+              tableRows.forEach(row => {
+                row.forEach((item: any) => {
+                  minX = Math.min(minX, item.x);
+                  minY = Math.min(minY, item.y);
+                  maxX = Math.max(maxX, item.x + item.width);
+                  maxY = Math.max(maxY, item.y + item.height);
+                });
+              });
+
+              // Add this region as a potential table
+              tableRegions.push({
+                page: pageIndex,
+                x1: minX,
+                y1: minY,
+                x2: maxX,
+                y2: maxY
+              });
+            }
           }
-          textContent += '\n\n';
+        });
+
+        // Second pass: extract text with awareness of document structure
+        data.pages.forEach((page: any, pageIndex: number) => {
+          currentPage = pageIndex + 1;
+          textContent += `--- Page ${currentPage} ---\n\n`;
+
+          if (page && typeof page === 'object' && 'content' in page && Array.isArray(page.content)) {
+            // Check if this page contains any detected tables
+            const tablesOnThisPage = tableRegions.filter(region => region.page === pageIndex);
+
+            if (tablesOnThisPage.length > 0) {
+              // Process page with table awareness
+              // Group text items by their y-position (rows)
+              const rowGroups: { [key: string]: Array<any> } = {};
+
+              page.content.forEach((item: any) => {
+                // Check if this item is within any table region
+                const isInTable = tablesOnThisPage.some(table =>
+                  item.x >= table.x1 && item.x <= table.x2 &&
+                  item.y >= table.y1 && item.y <= table.y2
+                );
+
+                if (isInTable) {
+                  // For table content, group precisely by y-coordinate for accurate rows
+                  const yKey = Math.round(item.y * 10) / 10; // More precise grouping for tables
+                  if (!rowGroups[yKey]) {
+                    rowGroups[yKey] = [];
+                  }
+                  rowGroups[yKey].push(item);
+                } else {
+                  // For non-table content, use standard extraction
+                  textContent += item.str + ' ';
+                }
+              });
+
+              // Sort rows by y-position (top to bottom)
+              const sortedYKeys = Object.keys(rowGroups).map(Number).sort((a, b) => a - b);
+
+              // Process each row
+              if (sortedYKeys.length > 0) {
+                textContent += '\n\n';
+
+                sortedYKeys.forEach(yKey => {
+                  const row = rowGroups[yKey];
+
+                  // Sort items in the row by x-position (left to right)
+                  row.sort((a: any, b: any) => a.x - b.x);
+
+                  // Create a table-like row with proper spacing
+                  const rowText = row.map((item: any) => item.str.trim()).join(' | ');
+                  textContent += rowText + '\n';
+                });
+
+                textContent += '\n';
+              }
+            } else {
+              // Standard text extraction for pages without tables
+              // Group text by paragraphs based on y-position
+              const paragraphs: { [key: string]: Array<any> } = {};
+
+              page.content.forEach((item: any) => {
+                // Group by paragraph (items within ~10 points vertically)
+                const yKey = Math.floor(item.y / 10) * 10;
+                if (!paragraphs[yKey]) {
+                  paragraphs[yKey] = [];
+                }
+                paragraphs[yKey].push(item);
+              });
+
+              // Sort paragraphs by y-position
+              const sortedYKeys = Object.keys(paragraphs).map(Number).sort((a, b) => a - b);
+
+              // Process each paragraph
+              sortedYKeys.forEach(yKey => {
+                const paragraph = paragraphs[yKey];
+
+                // Sort items in the paragraph by x-position
+                paragraph.sort((a: any, b: any) => a.x - b.x);
+
+                // Create a paragraph with proper spacing
+                const paragraphText = paragraph.map((item: any) => item.str.trim()).join(' ');
+                textContent += paragraphText + '\n\n';
+              });
+            }
+          }
         });
       }
+
+      // Clean up the extracted text
+      // Remove excessive whitespace but preserve paragraph breaks
+      textContent = textContent
+        .replace(/\n{3,}/g, '\n\n')  // Replace 3+ newlines with 2
+        .replace(/[ \t]+/g, ' ')     // Replace multiple spaces/tabs with a single space
+        .trim();                     // Trim leading/trailing whitespace
 
       return textContent || '[No text content extracted from PDF]';
     } catch (error) {
@@ -191,11 +400,13 @@ export class EnhancedDocumentProcessingService {
       For graphs, include both a description and the underlying data in a structured format.
       `;
 
-      // Call Gemini with the PDF content
-      const result = await documentExtractionModel.generateContent([
-        prompt,
-        { inlineData: { mimeType: 'application/pdf', data: fileBuffer.toString('base64') } }
-      ]);
+      // Call Gemini with the PDF content using dynamic retry logic
+      const result = await executeGeminiWithDynamicRetry(async () => {
+        return await documentExtractionModel.generateContent([
+          prompt,
+          { inlineData: { mimeType: 'application/pdf', data: fileBuffer.toString('base64') } }
+        ]);
+      });
 
       const response = result.response;
       const extractedText = response.text();
@@ -316,10 +527,10 @@ export class EnhancedDocumentProcessingService {
   }
 
   /**
-   * Extract text and data from an Excel file
+   * Extract text and data from an Excel file with enhanced financial data handling
    * @param filePath Path to the Excel file
    * @param metadata Optional metadata to provide context for extraction
-   * @returns Extracted data as a string
+   * @returns Extracted data as a string with improved structure preservation
    */
   async extractExcelData(filePath: string, metadata?: {
     documentType?: string;
@@ -385,10 +596,12 @@ export class EnhancedDocumentProcessingService {
         Return the extracted content as plain text with tabs separating columns and newlines separating rows, maintaining the exact structure of the original spreadsheet.
         `;
 
-        const result = await documentExtractionModel.generateContent([
-          prompt,
-          { inlineData: { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', data: fileBuffer.toString('base64') } }
-        ]);
+        const result = await executeGeminiWithDynamicRetry(async () => {
+          return await documentExtractionModel.generateContent([
+            prompt,
+            { inlineData: { mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', data: fileBuffer.toString('base64') } }
+          ]);
+        });
 
         const response = result.response;
         const extractedText = response.text();
@@ -404,7 +617,7 @@ export class EnhancedDocumentProcessingService {
         // Continue to fallback method
       }
 
-      // Fallback to ExcelJS with improved extraction
+      // Enhanced fallback to ExcelJS with improved financial data extraction
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(filePath);
       let result = '';
@@ -424,65 +637,376 @@ export class EnhancedDocumentProcessingService {
         result += '\n';
       }
 
-      // Process each sheet with improved formatting
+      // First pass: analyze all sheets to identify financial data patterns
+      const financialSheets: string[] = [];
+      const potentialHeaderRows: { [sheet: string]: number[] } = {};
+      const potentialFinancialColumns: { [sheet: string]: number[] } = {};
+
+      workbook.eachSheet((worksheet, _sheetId) => {
+        const sheetName = worksheet.name.toLowerCase();
+
+        // Check if sheet name suggests financial data
+        if (
+          sheetName.includes('financ') ||
+          sheetName.includes('balance') ||
+          sheetName.includes('income') ||
+          sheetName.includes('cash flow') ||
+          sheetName.includes('p&l') ||
+          sheetName.includes('profit') ||
+          sheetName.includes('loss') ||
+          sheetName.includes('statement') ||
+          sheetName.includes('budget') ||
+          sheetName.includes('forecast') ||
+          sheetName.includes('revenue') ||
+          sheetName.includes('expense')
+        ) {
+          financialSheets.push(worksheet.name);
+        }
+
+        // Identify potential header rows (rows with mostly text cells)
+        const headerRows: number[] = [];
+
+        worksheet.eachRow((row, rowNumber) => {
+          let textCellCount = 0;
+          let totalCellCount = 0;
+
+          row.eachCell(cell => {
+            totalCellCount++;
+            if (cell.type === ExcelJS.ValueType.String || cell.font?.bold) {
+              textCellCount++;
+            }
+          });
+
+          // If more than 70% of cells are text or the first cell is bold, likely a header
+          if (totalCellCount > 0 && (textCellCount / totalCellCount > 0.7 || row.getCell(1).font?.bold)) {
+            headerRows.push(rowNumber);
+          }
+        });
+
+        potentialHeaderRows[worksheet.name] = headerRows;
+
+        // Identify potential financial columns (columns with mostly numeric cells)
+        const financialColumns: number[] = [];
+        const columnCounts: { [col: number]: { total: number, numeric: number } } = {};
+
+        worksheet.eachRow((row, _rowNumber) => {
+          row.eachCell((cell, colNumber) => {
+            if (!columnCounts[colNumber]) {
+              columnCounts[colNumber] = { total: 0, numeric: 0 };
+            }
+
+            columnCounts[colNumber].total++;
+
+            if (
+              cell.type === ExcelJS.ValueType.Number ||
+              (cell.type === ExcelJS.ValueType.Formula && typeof cell.value === 'number')
+            ) {
+              columnCounts[colNumber].numeric++;
+            }
+          });
+        });
+
+        // Columns with more than 60% numeric cells are likely financial data columns
+        Object.entries(columnCounts).forEach(([colNumber, counts]) => {
+          if (counts.total > 0 && counts.numeric / counts.total > 0.6) {
+            financialColumns.push(parseInt(colNumber));
+          }
+        });
+
+        potentialFinancialColumns[worksheet.name] = financialColumns;
+      });
+
+      // Process each sheet with enhanced financial data awareness
       workbook.eachSheet((worksheet, _sheetId) => {
         const sheetName = worksheet.name;
-        result += `=== SHEET: ${sheetName} ===\n\n`;
+        const isFinancialSheet = financialSheets.includes(sheetName);
+        const headerRows = potentialHeaderRows[sheetName] || [];
+        const financialColumns = potentialFinancialColumns[sheetName] || [];
+
+        result += `=== SHEET: ${sheetName} ===\n`;
+        if (isFinancialSheet) {
+          result += `[FINANCIAL DATA SHEET]\n`;
+        }
+        result += '\n';
+
+        // Get merged cells to handle them properly
+        const mergedCells = (worksheet.model as any).mergeCells || {};
+        const mergedCellsMap = new Map();
+
+        // Convert merged cells to a more usable format
+        Object.keys(mergedCells).forEach(key => {
+          const range = key.split(':');
+          if (range.length === 2) {
+            const [start, end] = range;
+
+            // Convert Excel cell references (e.g., 'A1') to row/column indices
+            const startMatch = start.match(/([A-Z]+)(\d+)/);
+            const endMatch = end.match(/([A-Z]+)(\d+)/);
+
+            if (startMatch && endMatch) {
+              const startCol = this.columnLetterToNumber(startMatch[1]);
+              const startRow = parseInt(startMatch[2]);
+              const endCol = this.columnLetterToNumber(endMatch[1]);
+              const endRow = parseInt(endMatch[2]);
+
+              // Store the merged cell info
+              for (let row = startRow; row <= endRow; row++) {
+                for (let col = startCol; col <= endCol; col++) {
+                  if (row === startRow && col === startCol) {
+                    // This is the master cell
+                    mergedCellsMap.set(`${row},${col}`, { isMaster: true, startRow, startCol, endRow, endCol });
+                  } else {
+                    // This is a merged cell that should be skipped
+                    mergedCellsMap.set(`${row},${col}`, { isMaster: false, masterRow: startRow, masterCol: startCol });
+                  }
+                }
+              }
+            }
+          }
+        });
 
         // Get column widths for better formatting
         const columnWidths: { [key: number]: number } = {};
+        const maxCellsInRow: number = worksheet.actualColumnCount || 0;
 
         // First pass to determine column widths
         worksheet.eachRow((row, _rowNumber) => {
           row.eachCell((cell, colNumber) => {
-            const value = cell.value?.toString() || '';
-            if (!columnWidths[colNumber] || value.length > columnWidths[colNumber]) {
-              columnWidths[colNumber] = Math.min(value.length, 30); // Cap at 30 chars
+            // Check if this is part of a merged cell
+            const mergedInfo = mergedCellsMap.get(`${row.number},${colNumber}`);
+
+            if (mergedInfo && !mergedInfo.isMaster) {
+              // Skip non-master cells in merged ranges
+              return;
             }
-          });
-        });
 
-        // Process each row with improved formatting
-        worksheet.eachRow((row, rowNumber) => {
-          const rowValues: string[] = [];
+            let value = '';
 
-          // Check if this might be a header row
-          const isHeader = rowNumber === 1 || row.getCell(1).font?.bold;
-
-          row.eachCell((cell, colNumber) => {
-            let value = cell.value?.toString() || '';
-
-            // Format based on cell type
-            if (cell.type === ExcelJS.ValueType.Number) {
+            // Enhanced value formatting for financial data
+            if (cell.type === ExcelJS.ValueType.Number ||
+              (cell.type === ExcelJS.ValueType.Formula && typeof cell.value === 'number')) {
               // Format numbers with appropriate precision
               const numValue = cell.value as number;
-              value = numValue.toFixed(2);
+
+              // Check if this might be a currency value
+              if (financialColumns.includes(colNumber)) {
+                // Format with commas for thousands and 2 decimal places
+                value = numValue.toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                });
+              } else {
+                // Regular number formatting
+                value = numValue.toString();
+                // Add decimal places only if needed
+                if (Math.floor(numValue) !== numValue) {
+                  value = numValue.toFixed(2);
+                }
+              }
             } else if (cell.type === ExcelJS.ValueType.Date) {
               // Format dates consistently
               const dateValue = cell.value as Date;
               value = dateValue.toISOString().split('T')[0];
+            } else {
+              // String or other value types
+              value = cell.value?.toString() || '';
             }
 
-            // Pad or truncate to column width
-            if (value.length > columnWidths[colNumber]) {
-              value = value.substring(0, columnWidths[colNumber] - 3) + '...';
+            // Handle merged cells - use wider width for master cells
+            if (mergedInfo && mergedInfo.isMaster) {
+              const { startCol, endCol } = mergedInfo;
+              const mergeWidth = (endCol - startCol + 1) * 15; // Estimate width based on merged columns
+              if (!columnWidths[colNumber] || mergeWidth > columnWidths[colNumber]) {
+                columnWidths[colNumber] = Math.min(mergeWidth, 50); // Cap at 50 chars
+              }
             } else {
-              value = value.padEnd(columnWidths[colNumber]);
+              // Regular cell width calculation
+              if (!columnWidths[colNumber] || value.length > columnWidths[colNumber]) {
+                columnWidths[colNumber] = Math.min(value.length, 30); // Cap at 30 chars
+              }
+            }
+          });
+        });
+
+        // Create a table-like structure with proper column alignment
+        const columnSeparator = ' | ';
+
+        // Process each row with enhanced formatting
+        worksheet.eachRow((row, rowNumber) => {
+          // Skip empty rows
+          if (row.cellCount === 0) {
+            result += '\n';
+            return;
+          }
+
+          const rowValues: string[] = [];
+          const isHeader = headerRows.includes(rowNumber);
+
+          // Fill in empty cells up to the maximum column count for proper alignment
+          for (let colNumber = 1; colNumber <= maxCellsInRow; colNumber++) {
+            // Check if this is part of a merged cell
+            const mergedInfo = mergedCellsMap.get(`${rowNumber},${colNumber}`);
+
+            if (mergedInfo && !mergedInfo.isMaster) {
+              // Skip non-master cells in merged ranges
+              rowValues.push(''); // Add empty value to maintain column alignment
+              continue;
+            }
+
+            const cell = row.getCell(colNumber);
+            let value = '';
+
+            // Enhanced value formatting for financial data
+            if (cell.type === ExcelJS.ValueType.Number ||
+              (cell.type === ExcelJS.ValueType.Formula && typeof cell.value === 'number')) {
+              // Format numbers with appropriate precision
+              const numValue = cell.value as number;
+
+              // Check if this might be a currency value
+              if (financialColumns.includes(colNumber)) {
+                // Format with commas for thousands and 2 decimal places
+                value = numValue.toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                });
+              } else {
+                // Regular number formatting
+                value = numValue.toString();
+                // Add decimal places only if needed
+                if (Math.floor(numValue) !== numValue) {
+                  value = numValue.toFixed(2);
+                }
+              }
+            } else if (cell.type === ExcelJS.ValueType.Date) {
+              // Format dates consistently
+              const dateValue = cell.value as Date;
+              value = dateValue.toISOString().split('T')[0];
+            } else if (cell.type === ExcelJS.ValueType.Formula) {
+              // Handle formula results
+              if (typeof cell.value === 'string') {
+                value = cell.value;
+              } else if (typeof cell.value === 'number') {
+                if (financialColumns.includes(colNumber)) {
+                  value = (cell.value as number).toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  });
+                } else {
+                  value = (cell.value as number).toString();
+                  if (Math.floor(cell.value as number) !== (cell.value as number)) {
+                    value = (cell.value as number).toFixed(2);
+                  }
+                }
+              } else if (cell.value instanceof Date) {
+                value = (cell.value as Date).toISOString().split('T')[0];
+              } else {
+                value = cell.value?.toString() || '';
+              }
+            } else {
+              // String or other value types
+              value = cell.value?.toString() || '';
+            }
+
+            // Handle merged cells - span the value across multiple columns
+            if (mergedInfo && mergedInfo.isMaster) {
+              const { startCol, endCol } = mergedInfo;
+              const mergeWidth = endCol - startCol;
+
+              // Make the value span across the merged columns
+              if (value.length > 0) {
+                // Center the text in the merged cell
+                const totalWidth = mergeWidth * 15; // Approximate width
+                const padding = Math.max(0, totalWidth - value.length) / 2;
+                value = ' '.repeat(Math.floor(padding)) + value;
+              }
+            }
+
+            // Format the value for display
+            // Pad or truncate to column width
+            const colWidth = columnWidths[colNumber] || 10;
+            if (value.length > colWidth) {
+              value = value.substring(0, colWidth - 3) + '...';
+            } else {
+              // Right-align numbers, left-align text
+              if (financialColumns.includes(colNumber) && !isHeader) {
+                value = value.padStart(colWidth);
+              } else {
+                value = value.padEnd(colWidth);
+              }
             }
 
             rowValues.push(value);
-          });
+          }
 
+          // Add the row to the result
           if (rowValues.length > 0) {
             // Add separator line after headers
             if (isHeader) {
-              result += rowValues.join(' | ') + '\n';
-              result += rowValues.map(() => '-'.repeat(columnWidths[1] || 10)).join('-+-') + '\n';
+              // Make header text bold by adding asterisks
+              const boldRowValues = rowValues.map(val => val.trim() ? `${val}` : val);
+              result += boldRowValues.join(columnSeparator) + '\n';
+
+              // Add separator line
+              const separatorLine = rowValues.map((_, i) => '-'.repeat(columnWidths[i + 1] || 10));
+              result += separatorLine.join('-+-') + '\n';
             } else {
-              result += rowValues.join(' | ') + '\n';
+              result += rowValues.join(columnSeparator) + '\n';
             }
           }
         });
+
+        // Add extra information for financial sheets
+        if (isFinancialSheet) {
+          result += '\n[FINANCIAL DATA SUMMARY]\n';
+
+          // Identify key financial metrics if possible
+          const metrics: string[] = [];
+
+          // Look for common financial terms in the sheet
+          worksheet.eachRow((row, _rowNumber) => {
+            row.eachCell((cell, colNumber) => {
+              if (cell.type === ExcelJS.ValueType.String) {
+                const cellText = cell.value?.toString().toLowerCase() || '';
+
+                // Check for common financial terms
+                if (
+                  cellText.includes('revenue') ||
+                  cellText.includes('income') ||
+                  cellText.includes('profit') ||
+                  cellText.includes('ebitda') ||
+                  cellText.includes('net income') ||
+                  cellText.includes('total assets') ||
+                  cellText.includes('total liabilities') ||
+                  cellText.includes('equity') ||
+                  cellText.includes('cash flow') ||
+                  cellText.includes('balance')
+                ) {
+                  // Get the value from the next cell if it exists and is a number
+                  const valueCell = row.getCell(colNumber + 1);
+                  if (valueCell && (valueCell.type === ExcelJS.ValueType.Number ||
+                    (valueCell.type === ExcelJS.ValueType.Formula && typeof valueCell.value === 'number'))) {
+                    const value = valueCell.value as number;
+                    metrics.push(`${cell.value}: ${value.toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    })}`);
+                  } else {
+                    metrics.push(`${cell.value}: [Value not found]`);
+                  }
+                }
+              }
+            });
+          });
+
+          if (metrics.length > 0) {
+            result += 'Key Financial Metrics Detected:\n';
+            metrics.forEach(metric => {
+              result += `- ${metric}\n`;
+            });
+          } else {
+            result += 'No specific financial metrics automatically detected.\n';
+          }
+        }
 
         result += '\n\n';
       });
@@ -496,11 +1020,33 @@ export class EnhancedDocumentProcessingService {
   }
 
   /**
-   * Extract data from a CSV file
-   * @param filePath Path to the CSV file
-   * @returns Extracted data as a string
+   * Helper method to convert Excel column letters to column numbers
+   * @param columnLetters Column letters (e.g., 'A', 'BC')
+   * @returns Column number (1-based)
    */
-  async extractCsvData(filePath: string): Promise<string> {
+  private columnLetterToNumber(columnLetters: string): number {
+    let result = 0;
+    const letters = columnLetters.toUpperCase();
+
+    for (let i = 0; i < letters.length; i++) {
+      result = result * 26 + (letters.charCodeAt(i) - 64);
+    }
+
+    return result;
+  }
+
+  /**
+   * Extract data from a CSV file with enhanced structure preservation
+   * @param filePath Path to the CSV file
+   * @param metadata Optional metadata to provide context for extraction
+   * @returns Extracted data as a string with improved structure preservation
+   */
+  async extractCsvData(filePath: string, metadata?: {
+    documentType?: string;
+    name?: string;
+    timePeriod?: string;
+    description?: string;
+  }): Promise<string> {
     try {
       // First check if the file exists
       if (!fs.existsSync(filePath)) {
@@ -509,15 +1055,224 @@ export class EnhancedDocumentProcessingService {
       }
 
       const content = await readFileAsync(filePath, 'utf8');
-      const lines = content.split('\n');
 
-      // Process CSV data
-      let result = '';
-      lines.forEach(line => {
-        if (line.trim()) {
-          result += line + '\n';
+      // Detect the delimiter (comma, semicolon, tab)
+      const firstLine = content.split('\n')[0];
+      let delimiter = ','; // Default delimiter
+
+      // Check for common delimiters and choose the one that appears most frequently
+      const delimiterCounts = {
+        ',': (firstLine.match(/,/g) || []).length,
+        ';': (firstLine.match(/;/g) || []).length,
+        '\t': (firstLine.match(/\t/g) || []).length,
+        '|': (firstLine.match(/\|/g) || []).length
+      };
+
+      // Find the delimiter with the highest count
+      let maxCount = 0;
+      Object.entries(delimiterCounts).forEach(([delim, count]) => {
+        if (count > maxCount) {
+          maxCount = count;
+          delimiter = delim;
         }
       });
+
+      // Split the content into lines
+      const lines = content.split('\n');
+
+      // Check if this might be a financial CSV
+      const isFinancialData = this.detectFinancialData(lines, delimiter);
+
+      // Parse the CSV data
+      const parsedData: string[][] = [];
+      lines.forEach(line => {
+        if (line.trim()) {
+          // Handle quoted values correctly
+          const row: string[] = [];
+          let inQuotes = false;
+          let currentValue = '';
+
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+
+            if (char === '"' && (i === 0 || line[i - 1] !== '\\')) {
+              // Toggle quote state
+              inQuotes = !inQuotes;
+            } else if (char === delimiter && !inQuotes) {
+              // End of field
+              row.push(currentValue);
+              currentValue = '';
+            } else {
+              // Add character to current field
+              currentValue += char;
+            }
+          }
+
+          // Add the last field
+          row.push(currentValue);
+
+          // Remove quotes from values
+          const cleanedRow = row.map(value => {
+            if (value.startsWith('"') && value.endsWith('"')) {
+              return value.substring(1, value.length - 1);
+            }
+            return value;
+          });
+
+          parsedData.push(cleanedRow);
+        }
+      });
+
+      // Determine column widths for better formatting
+      const columnWidths: number[] = [];
+      parsedData.forEach(row => {
+        row.forEach((value, colIndex) => {
+          if (!columnWidths[colIndex] || value.length > columnWidths[colIndex]) {
+            columnWidths[colIndex] = Math.min(value.length, 30); // Cap at 30 chars
+          }
+        });
+      });
+
+      // Format the data as a table
+      let result = '';
+
+      // Add metadata header if available
+      if (metadata) {
+        result += '=== DOCUMENT INFORMATION ===\n';
+        if (metadata.name) result += `Filename: ${metadata.name}\n`;
+        if (metadata.documentType) {
+          const formattedType = metadata.documentType.replace('financial_', '').replace(/_/g, ' ');
+          result += `Type: ${formattedType}\n`;
+        }
+        if (metadata.timePeriod) result += `Time Period: ${metadata.timePeriod}\n`;
+        if (metadata.description && metadata.description !== 'No description') {
+          result += `Description: ${metadata.description}\n`;
+        }
+        result += '\n';
+      }
+
+      if (isFinancialData) {
+        result += '[FINANCIAL DATA DETECTED - ALL DATA WILL BE INCLUDED]\n\n';
+      }
+
+      // Process the header row
+      if (parsedData.length > 0) {
+        const headerRow = parsedData[0];
+        const formattedHeader = headerRow.map((value, colIndex) => {
+          // Pad or truncate to column width
+          if (value.length > columnWidths[colIndex]) {
+            return value.substring(0, columnWidths[colIndex] - 3) + '...';
+          } else {
+            return value.padEnd(columnWidths[colIndex]);
+          }
+        });
+
+        result += formattedHeader.join(' | ') + '\n';
+
+        // Add separator line
+        const separatorLine = headerRow.map((_, colIndex) => '-'.repeat(columnWidths[colIndex]));
+        result += separatorLine.join('-+-') + '\n';
+
+        // Process data rows
+        for (let i = 1; i < parsedData.length; i++) {
+          const row = parsedData[i];
+
+          // Skip empty rows
+          if (row.every(cell => cell.trim() === '')) {
+            continue;
+          }
+
+          const formattedRow = row.map((value, colIndex) => {
+            // Format numbers with commas for thousands if this is financial data
+            if (isFinancialData && this.isNumeric(value)) {
+              const numValue = parseFloat(value);
+
+              // Format with commas for thousands and 2 decimal places if needed
+              if (Math.floor(numValue) !== numValue) {
+                value = numValue.toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                });
+              } else {
+                value = numValue.toLocaleString('en-US');
+              }
+            }
+
+            // Pad or truncate to column width
+            if (value.length > columnWidths[colIndex]) {
+              return value.substring(0, columnWidths[colIndex] - 3) + '...';
+            } else {
+              // Right-align numbers, left-align text
+              if (this.isNumeric(value) && isFinancialData) {
+                return value.padStart(columnWidths[colIndex]);
+              } else {
+                return value.padEnd(columnWidths[colIndex]);
+              }
+            }
+          });
+
+          result += formattedRow.join(' | ') + '\n';
+        }
+      }
+
+      // Add data summary for all columns, regardless of whether it's financial data
+      if (parsedData.length > 0) {
+        result += '\n[DATA SUMMARY - ALL COLUMNS]\n';
+
+        // Include all columns in the summary
+        const headerRow = parsedData[0];
+        const allColumns: number[] = [];
+
+        // Include all columns in the analysis
+        for (let colIndex = 0; colIndex < headerRow.length; colIndex++) {
+          allColumns.push(colIndex);
+        }
+
+        // Extract metrics for all columns
+        if (allColumns.length > 0) {
+          result += 'Column Metrics:\n';
+
+          allColumns.forEach(colIndex => {
+            const header = headerRow[colIndex];
+
+            // Calculate sum and average for this column if it contains numeric values
+            let sum = 0;
+            let count = 0;
+            let hasNumericValues = false;
+
+            for (let i = 1; i < parsedData.length; i++) {
+              const value = parsedData[i][colIndex];
+              if (this.isNumeric(value)) {
+                sum += parseFloat(value);
+                count++;
+                hasNumericValues = true;
+              }
+            }
+
+            if (hasNumericValues && count > 0) {
+              const average = sum / count;
+              result += `- ${header}: Sum = ${sum.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}, Average = ${average.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}\n`;
+            } else {
+              // For non-numeric columns, provide a count of unique values
+              const uniqueValues = new Set();
+              for (let i = 1; i < parsedData.length; i++) {
+                if (parsedData[i][colIndex] && parsedData[i][colIndex].trim()) {
+                  uniqueValues.add(parsedData[i][colIndex]);
+                }
+              }
+              result += `- ${header}: ${uniqueValues.size} unique values\n`;
+            }
+          });
+        } else {
+          result += 'No columns detected for analysis.\n';
+        }
+      }
 
       return result || '[No data extracted from CSV file]';
     } catch (error) {
@@ -526,6 +1281,65 @@ export class EnhancedDocumentProcessingService {
       return `[Error processing CSV file: ${error instanceof Error ? error.message : 'Unknown error'}]`;
     }
   }
+
+  /**
+   * Helper method to detect if a CSV file contains financial data
+   * @param lines Array of CSV lines
+   * @param delimiter CSV delimiter
+   * @returns True if financial data is detected
+   */
+  private detectFinancialData(lines: string[], delimiter: string): boolean {
+    // Check if the header row contains financial terms
+    if (lines.length === 0) {
+      return false;
+    }
+
+    const headerRow = lines[0].toLowerCase();
+    const financialTerms = [
+      'amount', 'value', 'price', 'cost', 'revenue', 'income', 'expense',
+      'profit', 'loss', 'total', 'balance', 'asset', 'liability', 'equity',
+      'cash', 'flow', 'tax', 'interest', 'dividend', 'payment', 'receipt',
+      'budget', 'forecast', 'actual', 'variance', 'fiscal', 'quarter', 'year'
+    ];
+
+    // Check if any financial terms appear in the header
+    if (financialTerms.some(term => headerRow.includes(term))) {
+      return true;
+    }
+
+    // Check if there are multiple numeric columns
+    if (lines.length > 1) {
+      const secondRow = lines[1].split(delimiter);
+      let numericColumnCount = 0;
+
+      secondRow.forEach(value => {
+        if (this.isNumeric(value)) {
+          numericColumnCount++;
+        }
+      });
+
+      // If more than 30% of columns are numeric, likely financial data
+      if (numericColumnCount > 0 && numericColumnCount / secondRow.length > 0.3) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Helper method to check if a string is numeric
+   * @param value String value to check
+   * @returns True if the string is numeric
+   */
+  private isNumeric(value: string): boolean {
+    // Remove commas and currency symbols
+    const cleanedValue = value.replace(/[$,£€]/g, '').trim();
+    // Check if it's a valid number
+    return !isNaN(parseFloat(cleanedValue)) && isFinite(Number(cleanedValue));
+  }
+
+  // detectFinancialContent method removed as it was not essential
 
   /**
    * Extract text from a PowerPoint file using traditional methods (placeholder)
@@ -591,10 +1405,18 @@ export class EnhancedDocumentProcessingService {
       }
 
       // Enhanced prompt for PowerPoint extraction with better handling of tables and graphs
+      // Check if this might be a financial presentation
+      const isFinancialPresentation =
+        metadata?.documentType?.includes('financial_') ||
+        metadata?.name?.toLowerCase().includes('financ') ||
+        metadata?.description?.toLowerCase().includes('financ');
+
+      // Enhanced prompt with special handling for financial presentations
       const prompt = `
       Extract all text content from this PowerPoint presentation with maximum accuracy and completeness.
       ${documentTypeInfo}${timePeriodInfo}${descriptionInfo}
       This presentation requires precise extraction of all information, including tables and graphs.
+      ${isFinancialPresentation ? 'This appears to be a FINANCIAL PRESENTATION, so pay special attention to financial data, tables, and charts.' : ''}
 
       CRITICAL EXTRACTION INSTRUCTIONS:
       1. Extract ABSOLUTELY ALL text content from the presentation, including:
@@ -619,29 +1441,58 @@ export class EnhancedDocumentProcessingService {
          - Include column headers and maintain their relationship to data
          - Ensure all cells, including empty ones, are properly represented
          - For financial tables, ensure all numbers, calculations, and totals are precisely captured
+         - Format financial numbers with proper decimal places and thousands separators
 
       4. FOR GRAPHS AND CHARTS - EXTREMELY IMPORTANT:
          - Extract and describe all graphs and charts in detail
          - Include all data points, labels, legends, and axes information
-         - For bar charts: list all categories and their corresponding values
-         - For line graphs: list all data points with their x and y coordinates
-         - For pie charts: list all segments with their labels and percentage values
+         - For bar charts: list all categories and their corresponding values in a table format
+         - For line graphs: list all data points with their x and y coordinates in a table format
+         - For pie charts: list all segments with their labels and percentage values in a table format
          - Include any trend lines, annotations, or other visual elements
          - Format the extracted graph data in a structured way (tables if appropriate)
+         - For financial charts, ensure all values are precisely captured with proper formatting
 
       5. Include ALL numbers, dates, currencies, percentages, and special characters exactly as they appear
       6. If you can't read certain parts, indicate with [unreadable text] but try to infer content from context
       7. Pay special attention to financial data, ensuring all numbers, calculations, and financial terms are captured with 100% accuracy
+      8. For financial presentations, identify and highlight key financial metrics, KPIs, and performance indicators
+
+      ${isFinancialPresentation ? `
+      ADDITIONAL FINANCIAL DATA EXTRACTION INSTRUCTIONS:
+      1. For financial tables, ensure proper alignment of numbers (right-aligned)
+      2. Preserve currency symbols and formatting (e.g., $1,234.56)
+      3. Clearly indicate negative numbers with proper formatting (e.g., -$1,234.56 or ($1,234.56))
+      4. For balance sheets, clearly separate assets, liabilities, and equity sections
+      5. For income statements, clearly separate revenue, expenses, and profit/loss sections
+      6. For cash flow statements, clearly separate operating, investing, and financing activities
+      7. Identify and highlight key financial metrics such as:
+         - Revenue growth
+         - Profit margins
+         - EBITDA
+         - Return on investment
+         - Debt-to-equity ratio
+         - Current ratio
+         - Quick ratio
+         - Asset turnover
+         - Inventory turnover
+         - Accounts receivable turnover
+      8. Preserve any financial footnotes or explanatory notes
+      9. Identify any financial projections or forecasts and clearly label them as such
+      10. Preserve any financial ratios or calculations
+      ` : ''}
 
       Return the extracted content as plain text with formatting preserved through spacing and structure.
-      For tables, use a clear tabular format.
-      For graphs, include both a description and the underlying data in a structured format.
+      For tables, use a clear tabular format with column separators (|).
+      For graphs, include both a description and the underlying data in a structured table format.
       `;
 
-      const result = await documentExtractionModel.generateContent([
-        prompt,
-        { inlineData: { mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', data: fileBuffer.toString('base64') } }
-      ]);
+      const result = await executeGeminiWithDynamicRetry(async () => {
+        return await documentExtractionModel.generateContent([
+          prompt,
+          { inlineData: { mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', data: fileBuffer.toString('base64') } }
+        ]);
+      });
 
       const response = result.response;
       const extractedText = response.text();
@@ -697,7 +1548,7 @@ export class EnhancedDocumentProcessingService {
         };
       }
 
-      // Extract text using both methods in parallel
+      // Extract text using both methods in parallel with enhanced metadata handling
       const [rawText, aiProcessedText] = await Promise.all([
         this.extractPptTextTraditional(filePath),
         this.extractPptTextWithGemini(filePath, metadata)
@@ -849,10 +1700,12 @@ export class EnhancedDocumentProcessingService {
         Return the extracted content as plain text with formatting preserved through spacing and structure.
         `;
 
-        const result = await documentExtractionModel.generateContent([
-          prompt,
-          { inlineData: { mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', data: fileBuffer.toString('base64') } }
-        ]);
+        const result = await executeGeminiWithDynamicRetry(async () => {
+          return await documentExtractionModel.generateContent([
+            prompt,
+            { inlineData: { mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', data: fileBuffer.toString('base64') } }
+          ]);
+        });
 
         const response = result.response;
         const extractedText = response.text();
@@ -868,7 +1721,7 @@ export class EnhancedDocumentProcessingService {
         // Continue to fallback method
       }
 
-      // Fallback to mammoth with improved options
+      // Enhanced fallback to mammoth with improved options for financial documents
       const options = {
         path: filePath,
         styleMap: [
@@ -880,10 +1733,276 @@ export class EnhancedDocumentProcessingService {
           "r[style-name='Emphasis'] => em",
           "table => table",
           "tr => tr",
-          "td => td"
-        ]
+          "td => td",
+          // Additional mappings for financial documents
+          "p[style-name='Title'] => h1:fresh",
+          "p[style-name='Subtitle'] => h2:fresh",
+          "p[style-name='TOC Heading'] => h2:fresh",
+          "p[style-name='List Paragraph'] => ul > li:fresh",
+          // Preserve numbering
+          "p[style-name='List Number'] => ol > li:fresh",
+          // Financial document specific styles
+          "p[style-name='Balance Sheet'] => div.financial-statement:fresh",
+          "p[style-name='Income Statement'] => div.financial-statement:fresh",
+          "p[style-name='Cash Flow'] => div.financial-statement:fresh",
+          "p[style-name='Financial Data'] => div.financial-data:fresh"
+        ],
+        includeDefaultStyleMap: true,
+        preserveEmptyParagraphs: true,
+        // Skip image conversion for plain text extraction
+        preserveImageSize: true
       };
 
+      // First try to extract with HTML to better preserve tables
+      try {
+        const htmlResult = await mammoth.convertToHtml(options);
+        const htmlContent = htmlResult.value;
+
+        // Convert HTML to plain text while preserving table structure
+        let plainText = '';
+
+        // Process the HTML content
+        let inTable = false;
+        let inTableRow = false;
+        let inTableCell = false;
+        let currentTableRow: string[] = [];
+        let tableRows: string[][] = [];
+        let columnWidths: number[] = [];
+        let currentText = '';
+        let inHeading = false;
+
+        // Simple HTML parsing to extract structured text
+        for (let i = 0; i < htmlContent.length; i++) {
+          // Check for table start
+          if (htmlContent.substring(i, i + 7) === '<table>') {
+            if (currentText.trim()) {
+              plainText += currentText.trim() + '\n\n';
+              currentText = '';
+            }
+            inTable = true;
+            tableRows = [];
+            columnWidths = [];
+            i += 6; // Skip the tag
+            continue;
+          }
+
+          // Check for table end
+          if (inTable && htmlContent.substring(i, i + 8) === '</table>') {
+            // Format the table
+            if (tableRows.length > 0) {
+              // Calculate column widths
+              tableRows.forEach(row => {
+                row.forEach((cell, colIndex) => {
+                  const cellLength = cell.length;
+                  if (!columnWidths[colIndex] || cellLength > columnWidths[colIndex]) {
+                    columnWidths[colIndex] = Math.min(cellLength, 30); // Cap at 30 chars
+                  }
+                });
+              });
+
+              // Format the table with proper alignment
+              tableRows.forEach((row, rowIndex) => {
+                const formattedRow = row.map((cell, colIndex) => {
+                  // Pad or truncate to column width
+                  if (cell.length > columnWidths[colIndex]) {
+                    return cell.substring(0, columnWidths[colIndex] - 3) + '...';
+                  } else {
+                    // Right-align numbers, left-align text
+                    if (this.isNumeric(cell)) {
+                      return cell.padStart(columnWidths[colIndex]);
+                    } else {
+                      return cell.padEnd(columnWidths[colIndex]);
+                    }
+                  }
+                });
+
+                plainText += formattedRow.join(' | ') + '\n';
+
+                // Add separator line after header row
+                if (rowIndex === 0) {
+                  const separatorLine = row.map((_, colIndex) => '-'.repeat(columnWidths[colIndex]));
+                  plainText += separatorLine.join('-+-') + '\n';
+                }
+              });
+
+              plainText += '\n';
+            }
+
+            inTable = false;
+            i += 7; // Skip the tag
+            continue;
+          }
+
+          // Check for table row start
+          if (inTable && htmlContent.substring(i, i + 4) === '<tr>') {
+            inTableRow = true;
+            currentTableRow = [];
+            i += 3; // Skip the tag
+            continue;
+          }
+
+          // Check for table row end
+          if (inTableRow && htmlContent.substring(i, i + 5) === '</tr>') {
+            inTableRow = false;
+            tableRows.push(currentTableRow);
+            i += 4; // Skip the tag
+            continue;
+          }
+
+          // Check for table cell start
+          if (inTableRow && (htmlContent.substring(i, i + 4) === '<td>' || htmlContent.substring(i, i + 4) === '<th>')) {
+            inTableCell = true;
+            currentText = '';
+            i += 3; // Skip the tag
+            continue;
+          }
+
+          // Check for table cell end
+          if (inTableCell && (htmlContent.substring(i, i + 5) === '</td>' || htmlContent.substring(i, i + 5) === '</th>')) {
+            inTableCell = false;
+            currentTableRow.push(currentText.trim());
+            i += 4; // Skip the tag
+            continue;
+          }
+
+          // Check for heading start
+          if (htmlContent.substring(i, i + 3) === '<h1') {
+            inHeading = true;
+            if (currentText.trim()) {
+              plainText += currentText.trim() + '\n\n';
+              currentText = '';
+            }
+            // Skip to the end of the tag
+            while (i < htmlContent.length && htmlContent[i] !== '>') i++;
+            continue;
+          }
+
+          if (htmlContent.substring(i, i + 3) === '<h2') {
+            inHeading = true;
+            if (currentText.trim()) {
+              plainText += currentText.trim() + '\n\n';
+              currentText = '';
+            }
+            // Skip to the end of the tag
+            while (i < htmlContent.length && htmlContent[i] !== '>') i++;
+            continue;
+          }
+
+          if (htmlContent.substring(i, i + 3) === '<h3') {
+            inHeading = true;
+            if (currentText.trim()) {
+              plainText += currentText.trim() + '\n\n';
+              currentText = '';
+            }
+            // Skip to the end of the tag
+            while (i < htmlContent.length && htmlContent[i] !== '>') i++;
+            continue;
+          }
+
+          // Check for heading end
+          if (inHeading && htmlContent.substring(i, i + 4) === '</h1') {
+            inHeading = false;
+            plainText += '\n' + currentText.trim().toUpperCase() + '\n';
+            plainText += '='.repeat(currentText.trim().length) + '\n\n';
+            currentText = '';
+            // Skip to the end of the tag
+            while (i < htmlContent.length && htmlContent[i] !== '>') i++;
+            continue;
+          }
+
+          if (inHeading && htmlContent.substring(i, i + 4) === '</h2') {
+            inHeading = false;
+            plainText += '\n' + currentText.trim() + '\n';
+            plainText += '-'.repeat(currentText.trim().length) + '\n\n';
+            currentText = '';
+            // Skip to the end of the tag
+            while (i < htmlContent.length && htmlContent[i] !== '>') i++;
+            continue;
+          }
+
+          if (inHeading && htmlContent.substring(i, i + 4) === '</h3') {
+            inHeading = false;
+            plainText += '\n' + currentText.trim() + '\n\n';
+            currentText = '';
+            // Skip to the end of the tag
+            while (i < htmlContent.length && htmlContent[i] !== '>') i++;
+            continue;
+          }
+
+          // Check for paragraph break
+          if (htmlContent.substring(i, i + 4) === '</p>' || htmlContent.substring(i, i + 5) === '</div') {
+            if (!inTable && !inTableRow && !inTableCell) {
+              plainText += currentText.trim() + '\n\n';
+              currentText = '';
+            }
+            // Skip to the end of the tag
+            while (i < htmlContent.length && htmlContent[i] !== '>') i++;
+            continue;
+          }
+
+          // Check for list item
+          if (htmlContent.substring(i, i + 5) === '</li>') {
+            if (!inTable && !inTableRow && !inTableCell) {
+              plainText += '- ' + currentText.trim() + '\n';
+              currentText = '';
+            }
+            // Skip to the end of the tag
+            while (i < htmlContent.length && htmlContent[i] !== '>') i++;
+            continue;
+          }
+
+          // Skip other HTML tags
+          if (htmlContent[i] === '<') {
+            while (i < htmlContent.length && htmlContent[i] !== '>') i++;
+            continue;
+          }
+
+          // Add character to current text
+          if (inTableCell || inHeading || (!inTable && !inTableRow)) {
+            currentText += htmlContent[i];
+          }
+        }
+
+        // Add any remaining text
+        if (currentText.trim()) {
+          plainText += currentText.trim() + '\n';
+        }
+
+        // Clean up the text
+        plainText = plainText
+          .replace(/\n{3,}/g, '\n\n')  // Replace 3+ newlines with 2
+          .replace(/&nbsp;/g, ' ')     // Replace HTML non-breaking spaces
+          .replace(/&lt;/g, '<')       // Replace HTML entities
+          .replace(/&gt;/g, '>')
+          .replace(/&amp;/g, '&')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .trim();
+
+        // Add metadata header if available
+        let finalText = '';
+        if (metadata) {
+          finalText += '=== DOCUMENT INFORMATION ===\n';
+          if (metadata.name) finalText += `Filename: ${metadata.name}\n`;
+          if (metadata.documentType) {
+            const formattedType = metadata.documentType.replace('financial_', '').replace(/_/g, ' ');
+            finalText += `Type: ${formattedType}\n`;
+          }
+          if (metadata.timePeriod) finalText += `Time Period: ${metadata.timePeriod}\n`;
+          if (metadata.description && metadata.description !== 'No description') {
+            finalText += `Description: ${metadata.description}\n`;
+          }
+          finalText += '\n=== DOCUMENT CONTENT ===\n\n';
+        }
+
+        finalText += plainText;
+        return finalText;
+      } catch (htmlError) {
+        console.error('Error extracting Word document with HTML conversion:', htmlError);
+        // Fall back to raw text extraction
+      }
+
+      // Fallback to raw text extraction if HTML conversion fails
       const result = await mammoth.extractRawText(options);
 
       // Add metadata header if available
@@ -944,9 +2063,15 @@ export class EnhancedDocumentProcessingService {
   /**
    * Extract text from an image using Gemini AI
    * @param filePath Path to the image file
+   * @param metadata Optional metadata to provide context for extraction
    * @returns Extracted text content
    */
-  async extractImageTextWithGemini(filePath: string): Promise<string> {
+  async extractImageTextWithGemini(filePath: string, metadata?: {
+    documentType?: string;
+    name?: string;
+    timePeriod?: string;
+    description?: string;
+  }): Promise<string> {
     try {
       // First check if the file exists
       if (!fs.existsSync(filePath)) {
@@ -968,26 +2093,95 @@ export class EnhancedDocumentProcessingService {
         mimeType = 'image/bmp';
       }
 
-      // Create a prompt for Gemini to extract text from the image
+      // Check if this might be a financial image based on the file path or metadata
+      const isFinancialImage = filePath.toLowerCase().includes('financ') ||
+        filePath.toLowerCase().includes('report') ||
+        filePath.toLowerCase().includes('statement') ||
+        filePath.toLowerCase().includes('balance') ||
+        filePath.toLowerCase().includes('income') ||
+        filePath.toLowerCase().includes('cash flow') ||
+        metadata?.documentType?.includes('financial_') ||
+        metadata?.name?.toLowerCase().includes('financ') ||
+        metadata?.description?.toLowerCase().includes('financ');
+
+      // Format document type for display in prompt
+      let documentTypeInfo = '';
+      if (metadata?.documentType) {
+        const formattedType = metadata.documentType.replace('financial_', '').replace(/_/g, ' ');
+        documentTypeInfo = `Document Type: ${formattedType}\n`;
+      }
+
+      // Add time period if available
+      let timePeriodInfo = '';
+      if (metadata?.timePeriod) {
+        timePeriodInfo = `Time Period: ${metadata.timePeriod}\n`;
+      }
+
+      // Add description if available
+      let descriptionInfo = '';
+      if (metadata?.description && metadata.description !== 'No description') {
+        descriptionInfo = `Description: ${metadata.description}\n`;
+      }
+
+      // Create an enhanced prompt for Gemini to extract text from the image with better handling of financial content
       const prompt = `
-      Extract all text content from this image using OCR.
+      Extract all text content from this image using OCR with maximum accuracy and completeness.
+      ${documentTypeInfo}${timePeriodInfo}${descriptionInfo}
+      ${isFinancialImage ? 'This appears to be a FINANCIAL IMAGE, so pay special attention to financial data, tables, and charts.' : ''}
 
-      IMPORTANT INSTRUCTIONS:
-      1. Extract ALL text visible in the image, including small text and text in any orientation
+      CRITICAL EXTRACTION INSTRUCTIONS:
+      1. Extract ABSOLUTELY ALL text visible in the image, including small text and text in any orientation
       2. Maintain the original formatting as much as possible
-      3. For tables, preserve the table structure and format them as tab-separated values
-      4. Include all numbers, dates, and special characters
-      5. Preserve paragraph breaks and section divisions
-      6. If you can't read certain parts, indicate with [unreadable text]
-      7. If the image contains charts or graphs, describe them briefly and extract any visible text
+      3. For tables:
+         - Preserve the exact table structure with proper column alignment
+         - Maintain header rows and column relationships
+         - Format tables using a clear tabular format with column separators (|)
+         - Include column headers and maintain their relationship to data
+         - Ensure all cells, including empty ones, are properly represented
+         ${isFinancialImage ? '- For financial tables, ensure all numbers, calculations, and totals are precisely captured' : ''}
+         ${isFinancialImage ? '- Format financial numbers with proper decimal places and thousands separators' : ''}
+      4. For charts and graphs:
+         - Extract and describe all graphs and charts in detail
+         - Include all data points, labels, legends, and axes information
+         - For bar charts: list all categories and their corresponding values in a table format
+         - For line graphs: list all data points with their x and y coordinates in a table format
+         - For pie charts: list all segments with their labels and percentage values in a table format
+         ${isFinancialImage ? '- For financial charts, ensure all values are precisely captured with proper formatting' : ''}
+      5. Include ALL numbers, dates, currencies, percentages, and special characters exactly as they appear
+      6. Preserve paragraph breaks and section divisions
+      7. If you can't read certain parts, indicate with [unreadable text] but try to infer from context
+      ${isFinancialImage ? '8. Pay special attention to financial data, ensuring all numbers, calculations, and financial terms are captured with 100% accuracy' : ''}
 
-      Return the extracted content as plain text.
+      ${isFinancialImage ? `
+      ADDITIONAL FINANCIAL DATA EXTRACTION INSTRUCTIONS:
+      1. For financial tables, ensure proper alignment of numbers (right-aligned)
+      2. Preserve currency symbols and formatting (e.g., $1,234.56)
+      3. Clearly indicate negative numbers with proper formatting (e.g., -$1,234.56 or ($1,234.56))
+      4. For balance sheets, clearly separate assets, liabilities, and equity sections
+      5. For income statements, clearly separate revenue, expenses, and profit/loss sections
+      6. For cash flow statements, clearly separate operating, investing, and financing activities
+      7. Identify and highlight key financial metrics such as:
+         - Revenue growth
+         - Profit margins
+         - EBITDA
+         - Return on investment
+         - Debt-to-equity ratio
+         - Current ratio
+         - Quick ratio
+      8. Preserve any financial footnotes or explanatory notes
+      ` : ''}
+
+      Return the extracted content as plain text with formatting preserved through spacing and structure.
+      For tables, use a clear tabular format with column separators (|).
+      For graphs, include both a description and the underlying data in a structured table format.
       `;
 
-      const result = await documentExtractionModel.generateContent([
-        prompt,
-        { inlineData: { mimeType, data: fileBuffer.toString('base64') } }
-      ]);
+      const result = await executeGeminiWithDynamicRetry(async () => {
+        return await documentExtractionModel.generateContent([
+          prompt,
+          { inlineData: { mimeType, data: fileBuffer.toString('base64') } }
+        ]);
+      });
 
       const response = result.response;
       const extractedText = response.text();
@@ -1003,9 +2197,15 @@ export class EnhancedDocumentProcessingService {
   /**
    * Extract text from an image using both Tesseract OCR and Gemini AI
    * @param filePath Path to the image file
+   * @param metadata Optional metadata to provide context for extraction
    * @returns DocumentExtractionResult containing both raw and AI-processed text
    */
-  async extractImageTextWithBothMethods(filePath: string): Promise<DocumentExtractionResult> {
+  async extractImageTextWithBothMethods(filePath: string, metadata?: {
+    documentType?: string;
+    name?: string;
+    timePeriod?: string;
+    description?: string;
+  }): Promise<DocumentExtractionResult> {
     const fileName = path.basename(filePath);
     const fileExtension = path.extname(filePath).toLowerCase();
     const fileType = fileExtension.substring(1);
@@ -1030,10 +2230,10 @@ export class EnhancedDocumentProcessingService {
         };
       }
 
-      // Extract text using both methods in parallel
+      // Extract text using both methods in parallel with enhanced metadata handling
       const [rawText, aiProcessedText] = await Promise.all([
         this.extractImageTextWithTesseract(filePath),
-        this.extractImageTextWithGemini(filePath)
+        this.extractImageTextWithGemini(filePath, metadata)
       ]);
 
       // Determine which text to use as the combined result
@@ -1062,7 +2262,11 @@ export class EnhancedDocumentProcessingService {
           fileType,
           fileName,
           extractionTime: endTime,
-          processingTimeMs: processingTime
+          processingTimeMs: processingTime,
+          documentType: metadata?.documentType,
+          timePeriod: metadata?.timePeriod,
+          description: metadata?.description,
+          extractionQuality: extractionMethod === 'gemini' ? 'high' : 'standard'
         }
       };
     } catch (error) {
@@ -1078,7 +2282,10 @@ export class EnhancedDocumentProcessingService {
           fileType,
           fileName,
           extractionTime: new Date(),
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
+          documentType: metadata?.documentType,
+          timePeriod: metadata?.timePeriod,
+          description: metadata?.description
         }
       };
     }
@@ -1087,11 +2294,17 @@ export class EnhancedDocumentProcessingService {
   /**
    * Extract text from an image using OCR (legacy method for backward compatibility)
    * @param filePath Path to the image file
+   * @param metadata Optional metadata to provide context for extraction
    * @returns Extracted text content
    */
-  async extractImageText(filePath: string): Promise<string> {
+  async extractImageText(filePath: string, metadata?: {
+    documentType?: string;
+    name?: string;
+    timePeriod?: string;
+    description?: string;
+  }): Promise<string> {
     try {
-      const result = await this.extractImageTextWithBothMethods(filePath);
+      const result = await this.extractImageTextWithBothMethods(filePath, metadata);
       return result.combinedText;
     } catch (error) {
       console.error('Error in legacy extractImageText method:', error);
@@ -1190,14 +2403,15 @@ export class EnhancedDocumentProcessingService {
         case '.gif':
         case '.bmp':
           if (returnBothExtractions) {
-            result = await this.extractImageTextWithBothMethods(absolutePath);
+            result = await this.extractImageTextWithBothMethods(absolutePath, metadata);
           } else {
-            result = await this.extractImageText(absolutePath);
+            // For backward compatibility, we still use the legacy method for single extraction
+            result = await this.extractImageText(absolutePath, metadata);
           }
           break;
         case '.ppt':
         case '.pptx':
-          // Always use both extraction methods for PowerPoint files
+          // Always use both extraction methods for PowerPoint files with enhanced metadata handling
           const pptResult = await this.extractPptTextWithBothMethods(absolutePath, metadata);
 
           if (returnBothExtractions) {
@@ -1230,7 +2444,7 @@ export class EnhancedDocumentProcessingService {
           }
           break;
         case '.csv':
-          result = await this.extractCsvData(absolutePath);
+          result = await this.extractCsvData(absolutePath, metadata);
           if (returnBothExtractions) {
             result = {
               rawText: result,
@@ -1240,7 +2454,11 @@ export class EnhancedDocumentProcessingService {
               metadata: {
                 fileType: 'csv',
                 fileName: path.basename(absolutePath),
-                extractionTime: new Date()
+                extractionTime: new Date(),
+                documentType: metadata?.documentType,
+                timePeriod: metadata?.timePeriod,
+                description: metadata?.description,
+                extractionQuality: 'high'
               }
             };
           }
@@ -3442,22 +4660,26 @@ export class EnhancedDocumentProcessingService {
             ` : '';
 
       prompt = `
-
                 FOLLOW THE GIVEN INSTRUCTIONS STRICTLY.
 
+                CRITICAL INSTRUCTION FOR CHARTS AND TRENDS: ALL CHARTS MUST INCLUDE MULTIPLE DATA POINTS (AT LEAST 2-3 YEARS OR PERIODS).
+                NEVER CREATE CHARTS WITH ONLY ONE DATA POINT. IF DOCUMENTS FROM MULTIPLE YEARS ARE AVAILABLE (CHECK TIME PERIOD METADATA),
+                USE ALL AVAILABLE YEARS IN CHARTS. IF ONLY SINGLE-YEAR DOCUMENTS ARE AVAILABLE, BREAK DOWN THE DATA INTO QUARTERS OR MONTHS.
+
                 WHILE GENERATING GRAPHS, CHARTS, AND VISUALIZATIONS, USE COLOR-CODED METRICS AND GRAPHS. GIVE OUT MAXIMUM DATA,
-                ACCURATE AND MAXIMUM DATA FOR CHARTS.
+                ACCURATE AND MAXIMUM DATA FOR CHARTS. ENSURE ALL TREND CHARTS SHOW ACTUAL TRENDS OVER MULTIPLE TIME PERIODS.
 
                 *** IMPORTANT: THIS IS A REPORT THAT SEPARATES FINANCIAL DUE DILIGENCE FROM FORMAL FINANCIAL AUDITING. YOUR ANALYSIS MUST MEET PROFESSIONAL STANDARDS THAT COULD REPLACE THE WORK OF LAWYERS AND CHARTERED ACCOUNTANTS. ***
                 WRITE HIGH IMPACT AND ACTIONABLE POINTS AND FINDINGS. DO NOT USE GENERIC OR VAGUE LANGUAGE. WRITE IN A FORMAL, PROFESSIONAL TONE APPROPRIATE FOR A FINANCIAL REPORT.
                 THE POINTS MUST BE ACTIONABLE AND SPECIFIC TO ${companyName}. DO NOT USE GENERIC STATEMENTS OR VAGUE LANGUAGE.
                 WRITE AS MUCH AS YOU CAN. DO NOT USE SHORT OR VAGUE RESPONSES. BE DETAILED AND THOROUGH. WRITE VERY DETAILED AND THOROUGH RESPONSES.
                 GIVE MORE GRAPHS, CHARTS, AND VISUALIZATIONS. USE COLOR-CODED METRICS AND GRAPHS. MAKE IT VISUALLY APPEALING.
-                EACH SECTION SHOULD HAVE MAXIMUM DATA.
+
+                SEND MAX DATA FOR CHARTS, AND VALUES INSIDE CHARTS
 
                 *** CRITICAL INSTRUCTION: SEPARATE FINANCIAL DUE DILIGENCE FROM AUDITING ***
                 You are a specialized financial analyst and auditor with expertise in Indian company standards and regulations. Your task is to perform TWO DISTINCT ANALYSES for ${companyName}:
-                KEEP THE TOTAL RESPONSE LENGTH UNDER 60,000 TOKENS.
+                KEEP THE TOTAL RESPONSE LENGTH UNDER 60,000 TOKENS. DO NOT EXCEED 60,000 TOKENS. DO NOT BREAK THE FORMAT
 
                 1. FINANCIAL DUE DILIGENCE: Focus on investment worthiness, growth potential, financial health, and business viability
                    - Analyze financial performance, market position, and growth trajectory
@@ -3532,13 +4754,18 @@ export class EnhancedDocumentProcessingService {
                 - If a document is partially readable or has quality issues, extract what you can and note the limitations with appropriate audit qualifications
 
                 DOCUMENT METADATA ANALYSIS GUIDELINES:
-                - Use the Time Period metadata to properly sequence and analyze financial data across time periods
-                - For documents covering different time periods, perform trend analysis and highlight significant changes
-                - When multiple documents of the same type exist, prioritize the most recent ones while noting historical trends
+                - CRITICAL: CAREFULLY ANALYZE THE TIME PERIOD METADATA FOR EACH DOCUMENT to identify documents from different years/periods
+                - EXTREMELY IMPORTANT: USE TIME PERIOD METADATA TO CREATE MULTI-YEAR TREND DATA for all financial metrics and charts
+                - For documents covering different time periods (e.g., 2021, 2022, 2023), ALWAYS perform trend analysis across ALL available periods
+                - When documents have the same type but different time periods (e.g., Balance Sheets from 2021, 2022, 2023), USE ALL OF THEM to create trend data
+                - EXTRACT SPECIFIC FINANCIAL FIGURES FROM EACH TIME PERIOD to populate trend charts with actual multi-year data
+                - If documents have quarterly or monthly breakdowns, USE THESE TO CREATE MORE DETAILED TREND CHARTS with multiple data points
+                - When multiple documents of the same type exist, use ALL of them for historical trend analysis, not just the most recent ones
                 - Use the Description metadata to understand the context and purpose of each document
                 - If documents have different time periods, clearly indicate this in your analysis (e.g., "Based on Q1 2023 balance sheet...")
                 - For documents with quality issues (as noted in metadata or content), acknowledge these limitations in your analysis
                 - When analyzing financial projections, clearly state the time period they cover and assess their reasonableness
+                - ENSURE THAT ALL TREND CHARTS INCLUDE DATA FROM ALL AVAILABLE TIME PERIODS identified in the document metadata
 
                 FOLLOW THE RESPONSE FORMAT STRICTLY:
                 DO NOT DEVIATE FROM THE RESPONSE FORMAT.
@@ -3550,7 +4777,7 @@ export class EnhancedDocumentProcessingService {
 
                 FOLLOW THIS VERY VERY STRICTLY DO NOT CHANGE ANYTHING, BE VERY STRICT ABOUT THE STRUCTURE.
                 DO NOT ADD ANYTHING ELSE. DO NOT EXPLAIN OR JUSTIFY YOUR ANSWERS.
-
+                DO NOT BREAK THE FORMAT
                 RESPONSE FORMAT: Return ONLY valid JSON with this exact structure:
                 {
                   "reportCalculated": true or false, // IMPORTANT: Set to true if you were able to extract meaningful financial data, false otherwise
@@ -3636,10 +4863,7 @@ export class EnhancedDocumentProcessingService {
                             {
                               "label": "Dataset label",
                               "data": [value1, value2, value3], // Numeric values for each period
-                              "backgroundColor": ["#4CAF50", "#FFC107", "#F44336"] // Suggested colors
-                            }
-                          ]
-                        }
+                              "backgroundColor": ["#4CAF50", "#FFC107", "#F44336"], // Suggested colors
                               "borderColor": "#2196F3", // Suggested color for line charts
                               "backgroundColor": "rgba(33, 150, 243, 0.2)" // Suggested background color with transparency
                             }
@@ -4254,7 +5478,10 @@ export class EnhancedDocumentProcessingService {
                 - Provide detailed recommendations for improving financial governance
                 - Evaluate financial health, profitability, liquidity, and solvency with industry benchmarks
                 - Assess growth potential and investment opportunities with projected returns
-                - Include historical data and trends wherever possible to show performance over time
+                - CRITICAL: Include historical data and trends from ALL AVAILABLE TIME PERIODS to show performance over time
+                - ALWAYS use multi-year/multi-period data in trend charts - NEVER create charts with only one data point
+                - If documents from multiple years are available, use ALL years in trend analysis (not just the most recent)
+                - If only single-year documents are available, break down data into quarters or months to show trends
                 - Provide industry benchmarking to show how the company compares to peers
                 - Include growth projections based on historical performance and industry trends
                 - Include a detailed analysis of available documents in the documentAnalysis section
@@ -4294,17 +5521,19 @@ export class EnhancedDocumentProcessingService {
                 TREND ANALYSIS GUIDELINES:
                 - GENERATE AT LEAST 6-8 DIFFERENT FINANCIAL TREND GRAPHS covering various aspects of financial performance
                 - EACH TREND MUST INCLUDE CHART DATA with appropriate visualization type (line, bar, etc.)
-                - Include the following ESSENTIAL FINANCIAL TRENDS (with monthly or quarterly data points):
-                  * Revenue Growth Trend
-                  * EBITDA/Profit Margin Trend
-                  * Cash Flow Trend
-                  * Burn Rate Trend
-                  * Customer Acquisition Cost (CAC) Trend
-                  * Lifetime Value (LTV) Trend
-                  * Debt-to-Equity Ratio Trend
-                  * Working Capital Trend
-                  * Accounts Receivable/Payable Trend
-                  * Operational Efficiency Metrics Trend
+                - CRITICAL: EVERY TREND CHART MUST HAVE MULTIPLE DATA POINTS (AT LEAST 2-3 YEARS/PERIODS) TO SHOW ACTUAL TRENDS
+                - EXTREMELY IMPORTANT: USE THE TIME PERIOD METADATA FROM DOCUMENTS TO IDENTIFY DIFFERENT YEARS/PERIODS
+                - If documents from multiple years/periods are available (check the Time Period metadata field), USE ALL AVAILABLE YEARS in charts
+                - If only single-year documents are available, BREAK DOWN THE DATA INTO QUARTERS OR MONTHS to show trends within that year
+                - Include the following ESSENTIAL FINANCIAL TRENDS (with multiple years, or quarterly/monthly data points):
+                  * Revenue Growth Trend (MUST show multiple periods - at least 2-3 years or quarters)
+                  * EBITDA/Profit Margin Trend (MUST show multiple periods - at least 2-3 years or quarters)
+                  * Cash Flow Trend (MUST show multiple periods - at least 2-3 years or quarters)
+                  * Burn Rate Trend (MUST show multiple periods - at least 2-3 years or quarters)
+                  * Debt-to-Equity Ratio Trend (MUST show multiple periods - at least 2-3 years or quarters)
+                  * Working Capital Trend (MUST show multiple periods - at least 2-3 years or quarters)
+                  * Accounts Receivable/Payable Trend (MUST show multiple periods - at least 2-3 years or quarters)
+                  * Operational Efficiency Metrics Trend (MUST show multiple periods - at least 2-3 years or quarters)
                 - Use any appropriate term to describe trends (increasing, decreasing, stable, improving, deteriorating, etc.)
                 - Be consistent in your terminology within each section
                 - For financial metrics, use terms like "increasing", "decreasing", "stable", "volatile", "improving", "deteriorating"
@@ -4316,6 +5545,7 @@ export class EnhancedDocumentProcessingService {
                 - Explain potential causes for significant trends observed in ${companyName}'s financial statements
                 - Provide forward-looking implications of current trends for ${companyName}'s future performance
                 - ENSURE EACH TREND HAS COMPLETE CHART DATA with appropriate labels, datasets, and colors
+                - CRITICAL: EVEN IF ONLY ONE DOCUMENT IS AVAILABLE FOR A SPECIFIC TYPE, EXTRACT MULTIPLE DATA POINTS FROM IT (e.g., monthly/quarterly figures within that document)
 
                 DOCUMENT CONTENT ANALYSIS AND SEPARATE FINANCIAL DD & AUDITING:
                 - For each of ${companyName}'s documents, perform an EXTREMELY DETAILED ANALYSIS OF THE FINANCIAL CONTENT with specific figures and metrics
@@ -4425,57 +5655,18 @@ export class EnhancedDocumentProcessingService {
                 ${documentContent}
                 `;
 
-      // Call Gemini API with retry logic
-      console.log('Calling Gemini API for financial analysis with retry logic...');
+      // Call Gemini API with dynamic retry logic
+      console.log('Calling Gemini API for financial analysis with dynamic retry logic...');
 
-      // Implement retry logic with exponential backoff
-      const MAX_RETRIES = 3;
-      const INITIAL_RETRY_DELAY = 5000; // 5 seconds
-
-      let retryCount = 0;
       let text = '';
-      let result;
+      const result = await executeGeminiWithDynamicRetry(async () => {
+        return await model.generateContent(prompt);
+      });
 
-      while (retryCount <= MAX_RETRIES) {
-        try {
-          // If this is a retry, wait with exponential backoff
-          if (retryCount > 0) {
-            const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount - 1);
-            console.log(`Retry attempt ${retryCount}/${MAX_RETRIES}. Waiting ${delay / 1000} seconds before retrying...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-          }
+      const response = result.response;
+      text = response.text();
 
-          result = await model.generateContent(prompt);
-          const response = result.response;
-          text = response.text();
-
-          // If we got here, the call was successful
-          console.log('Successfully received response from Gemini API');
-          break;
-        } catch (error) {
-          retryCount++;
-
-          // Check if this is a rate limit error
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          const isRateLimitError =
-            errorMessage.includes('429') ||
-            errorMessage.includes('Too Many Requests') ||
-            errorMessage.includes('rate limit') ||
-            errorMessage.includes('quota');
-
-          if (isRateLimitError && retryCount <= MAX_RETRIES) {
-            console.warn(`Rate limit error encountered. Will retry (${retryCount}/${MAX_RETRIES})...`);
-            // Continue to next iteration which will wait and retry
-          } else if (retryCount > MAX_RETRIES) {
-            console.error('Maximum retry attempts reached. Giving up.');
-            throw error;
-          } else {
-            // Not a rate limit error or we've exceeded max retries
-            console.error('Error calling Gemini API:', error);
-            throw error;
-          }
-        }
-      }
+      console.log('Successfully received response from Gemini API');
 
       // Parse the JSON response
       try {
