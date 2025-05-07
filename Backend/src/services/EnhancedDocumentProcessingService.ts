@@ -105,7 +105,7 @@ if (!apiKey) {
 
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash-preview-04-17", // Updated from preview to exp as recommended by API error message
+  model: "gemini-2.5-pro-exp-03-25", // Updated from preview to exp as recommended by API error message
   generationConfig: {
     maxOutputTokens: 65536,
     temperature: 0.2,
@@ -114,6 +114,7 @@ const model = genAI.getGenerativeModel({
     topP: 0.95,
   }
 });
+
 
 // Document extraction model - using gemini-2.0-flash as requested
 const documentExtractionModel = genAI.getGenerativeModel({

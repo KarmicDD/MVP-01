@@ -1,7 +1,12 @@
 export const FIN_DD_PROMPT = (companyName: string, startupContext: string, investorContext: string, missingDocumentsContext: string, documentContent: string, structure: string): string => {
   return `
-    FOLLOW THE GIVEN INSTRUCTIONS STRICTLY. DO NOT REPEAT DATA IN THE REPORT.
-
+                You are a specialized financial analyst and investment advisor with expertise in Indian company standards and regulations.
+                YOU HAVE TO MAKE A VERY DETAILED, THOROUGH, AND PROFESSIONAL REPORT FOR ${companyName} BASED ON THE DOCUMENTS PROVIDED.
+                WRITE A LOT, TELL EVERYTHING AND IT MSUT BE LIKE AN ADVISORY REPORT FOR INVESTORS. WITH ACTUAL INSGIHTS AND RECOMMENDATIONS.
+                THIS REPORT MUST BE SUITABLE FOR INVESTORS, REGULATORS, AND STAKEHOLDERS.
+                BUT MAIN FOCUS IS ON CREATING A DETAILED, EXHAUSTIVE, REPROT WHICH CLEARLY SEPARATES FINANCIAL DUE DILIGENCE FROM AUDIT FINDINGS. 
+                AND TELLS EVERYTHING ABOUT THE COMPANY, ITS FINANCIAL HEALTH, AND ITS INVESTMENT POTENTIAL.
+                You are tasked with analyzing the financial documents of ${companyName} to provide a comprehensive report for investors.
                 CRITICAL INSTRUCTION FOR CHARTS AND TRENDS:
                 - ALL CHARTS MUST INCLUDE MULTIPLE DATA POINTS (AT LEAST 2-3 YEARS OR PERIODS).
                 - NEVER CREATE CHARTS WITH ONLY ONE DATA POINT.
