@@ -10,6 +10,7 @@ import mammoth from 'mammoth';
 import { createWorker } from 'tesseract.js';
 import { Document } from 'mongoose';
 import { cleanJsonResponse, safeJsonParse } from '../utils/jsonHelper';
+import { FIN_DD_PROMPT, structure } from './document-processing/prompt';
 
 // Load environment variables
 dotenv.config();
@@ -108,13 +109,15 @@ const model = genAI.getGenerativeModel({
   generationConfig: {
     maxOutputTokens: 65536,
     temperature: 0.2,
-    responseMimeType: 'application/json'
+    responseMimeType: 'application/json',
+    topK: 1,
+    topP: 0.95,
   }
 });
 
 // Document extraction model - using gemini-2.0-flash as requested
 const documentExtractionModel = genAI.getGenerativeModel({
-  model: "gemini-2.0-flash", // Updated from preview to exp as recommended by API error message
+  model: "gemini-2.5-flash-preview-04-17", // Updated from preview to exp as recommended by API error message
   generationConfig: {
     maxOutputTokens: 65536,
     temperature: 0.2, // Very low temperature for more accurate extraction
@@ -421,6 +424,253 @@ export class EnhancedDocumentProcessingService {
       console.error('Error extracting PDF text with Gemini:', error);
       // Return a placeholder message instead of throwing an error
       return `[Error processing PDF with Gemini: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+    }
+  }
+
+  /**
+   * Extract text content from multiple PDF files using Gemini AI in a single batch request
+   * This method sends multiple PDFs to Gemini together to reduce API calls
+   * @param filePaths Array of PDF file paths
+   * @param metadataArray Array of metadata objects corresponding to each PDF
+   * @returns Array of extracted text content with preserved formatting
+   */
+  async extractPdfTextWithGeminiBatch(
+    filePaths: string[],
+    metadataArray: Array<{
+      documentType?: string;
+      name?: string;
+      timePeriod?: string;
+      description?: string;
+    }>
+  ): Promise<string[]> {
+    try {
+      // Validate input arrays
+      if (filePaths.length !== metadataArray.length) {
+        throw new Error('File paths array and metadata array must have the same length');
+      }
+
+      if (filePaths.length === 0) {
+        return [];
+      }
+
+      // Check if all files exist and read them as buffers
+      const fileBuffers: Buffer[] = [];
+      const validIndices: number[] = [];
+      const errorResults: string[] = new Array(filePaths.length).fill('');
+
+      for (let i = 0; i < filePaths.length; i++) {
+        const filePath = filePaths[i];
+        if (!fs.existsSync(filePath)) {
+          console.error(`PDF file not found: ${filePath}`);
+          errorResults[i] = `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
+        } else {
+          try {
+            const buffer = await readFileAsync(filePath);
+            fileBuffers.push(buffer);
+            validIndices.push(i);
+          } catch (error) {
+            console.error(`Error reading file ${filePath}:`, error);
+            errorResults[i] = `[Error reading file: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+          }
+        }
+      }
+
+      // If no valid files, return error messages
+      if (validIndices.length === 0) {
+        return errorResults;
+      }
+
+      // Create document sections for the prompt
+      const documentSections = validIndices.map((index, i) => {
+        const metadata = metadataArray[index];
+
+        // Format document type for display in prompt
+        let documentTypeInfo = '';
+        if (metadata?.documentType) {
+          const formattedType = metadata.documentType.replace('financial_', '').replace(/_/g, ' ');
+          documentTypeInfo = `Document Type: ${formattedType}\n`;
+        }
+
+        // Add time period if available
+        let timePeriodInfo = '';
+        if (metadata?.timePeriod) {
+          timePeriodInfo = `Time Period: ${metadata.timePeriod}\n`;
+        }
+
+        // Add description if available
+        let descriptionInfo = '';
+        if (metadata?.description && metadata.description !== 'No description') {
+          descriptionInfo = `Description: ${metadata.description}\n`;
+        }
+
+        // Add filename
+        let filenameInfo = '';
+        if (metadata?.name) {
+          filenameInfo = `Filename: ${metadata.name}\n`;
+        }
+
+        return `DOCUMENT ${i + 1}:
+${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
+      }).join('\n\n');
+
+      // Create an enhanced context-aware prompt for Gemini to extract text from multiple PDFs
+      const prompt = `
+      You will be processing ${validIndices.length} PDF documents in this batch. Extract all text content from each PDF document with maximum accuracy and completeness.
+
+      DOCUMENT INFORMATION:
+      ${documentSections}
+
+      CRITICAL EXTRACTION INSTRUCTIONS:
+      1. Process each document separately and return the results in a clearly structured format
+      2. For each document, extract ABSOLUTELY ALL text content, including headers, footers, footnotes, and any text in images or charts
+      3. Maintain the original formatting with exact preservation of:
+         - Table structures (preserve rows, columns, and cell alignment)
+         - Section headings and hierarchical structure
+         - Paragraph breaks and indentation
+         - Bullet points and numbered lists
+         - Mathematical formulas and equations
+
+      4. FOR TABLES - EXTREMELY IMPORTANT:
+         - Preserve the exact table structure with proper column alignment
+         - Maintain header rows and column relationships
+         - Format tables using a clear tabular format with column separators (| or tabs)
+         - Include column headers and maintain their relationship to data
+         - Ensure all cells, including empty ones, are properly represented
+         - For financial tables, ensure all numbers, calculations, and totals are precisely captured
+
+      5. FOR GRAPHS AND CHARTS - EXTREMELY IMPORTANT:
+         - Extract and describe all graphs and charts in detail
+         - Include all data points, labels, legends, and axes information
+         - For bar charts: list all categories and their corresponding values
+         - For line graphs: list all data points with their x and y coordinates
+         - For pie charts: list all segments with their labels and percentage values
+         - Include any trend lines, annotations, or other visual elements
+         - Format the extracted graph data in a structured way (tables if appropriate)
+
+      6. Include ALL numbers, dates, currencies, percentages, and special characters exactly as they appear
+      7. Preserve ALL paragraph breaks, section divisions, and page structure
+      8. If there are multiple pages, indicate page breaks with "--- Page X ---"
+      9. If you can't read certain parts, indicate with [unreadable text] but try to infer content from context
+      10. Pay special attention to financial data, ensuring all numbers, calculations, and financial terms are captured with 100% accuracy
+      11. Preserve any headers, footers, watermarks, and marginalia that may contain important information
+
+      RESPONSE FORMAT:
+      For each document, start with "===== DOCUMENT X =====" (where X is the document number starting from 1),
+      followed by the extracted text for that document, then end with "===== END OF DOCUMENT X =====".
+
+      Example:
+      ===== DOCUMENT 1 =====
+      [All extracted text from document 1]
+      ===== END OF DOCUMENT 1 =====
+
+      ===== DOCUMENT 2 =====
+      [All extracted text from document 2]
+      ===== END OF DOCUMENT 2 =====
+
+      And so on for each document.
+
+      DO NOT return the content as JSON or any other structured format. Just plain text with the document separators.
+      `;
+
+      // Prepare the content parts for Gemini
+      const contentParts: any[] = [prompt];
+
+      // Add each PDF as inline data
+      for (let i = 0; i < validIndices.length; i++) {
+        contentParts.push({
+          inlineData: {
+            mimeType: 'application/pdf',
+            data: fileBuffers[i].toString('base64')
+          }
+        });
+      }
+
+      // Call Gemini with the batch of PDFs using dynamic retry logic
+      const result = await executeGeminiWithDynamicRetry(async () => {
+        return await documentExtractionModel.generateContent(contentParts);
+      });
+
+      const response = result.response;
+      const responseText = response.text();
+
+      if (!responseText || responseText.trim().length === 0) {
+        console.warn(`Gemini returned empty or null text for PDF batch`);
+        // Fill in error messages for valid indices
+        validIndices.forEach(index => {
+          errorResults[index] = '[No text content extracted from PDF using Gemini]';
+        });
+        return errorResults;
+      }
+
+      try {
+        // Parse the text based on document markers
+        const documentTexts: string[] = [];
+
+        // Use regex to extract content between document markers
+        const regex = /===== DOCUMENT (\d+) =====([\s\S]*?)===== END OF DOCUMENT \1 =====/g;
+        let match;
+
+        while ((match = regex.exec(responseText)) !== null) {
+          const documentNumber = parseInt(match[1], 10);
+          const documentContent = match[2].trim();
+
+          // Store the document content at the correct index (document numbers are 1-based)
+          documentTexts[documentNumber - 1] = documentContent;
+        }
+
+        // If we didn't find any documents with the expected format, try a simpler approach
+        if (documentTexts.length === 0) {
+          // Split by document markers without requiring the end markers
+          const simpleSplit = responseText.split(/===== DOCUMENT \d+ =====/);
+
+          // Skip the first split which is empty or contains preamble
+          for (let i = 1; i <= validIndices.length && i < simpleSplit.length; i++) {
+            let content = simpleSplit[i].trim();
+
+            // Remove end marker if present
+            const endMarkerIndex = content.lastIndexOf('===== END OF DOCUMENT');
+            if (endMarkerIndex > 0) {
+              content = content.substring(0, endMarkerIndex).trim();
+            }
+
+            documentTexts[i - 1] = content;
+          }
+        }
+
+        // If we still don't have any documents, try an even simpler approach
+        if (documentTexts.length === 0) {
+          // Just split the text into roughly equal parts
+          const totalLength = responseText.length;
+          const partSize = Math.ceil(totalLength / validIndices.length);
+
+          for (let i = 0; i < validIndices.length; i++) {
+            const start = i * partSize;
+            const end = Math.min(start + partSize, totalLength);
+            documentTexts[i] = responseText.substring(start, end).trim();
+          }
+        }
+
+        // Map the results back to the original indices
+        for (let i = 0; i < documentTexts.length && i < validIndices.length; i++) {
+          const originalIndex = validIndices[i];
+          errorResults[originalIndex] = documentTexts[i] || '[Empty text returned from Gemini]';
+        }
+      } catch (parseError) {
+        console.error('Error parsing Gemini response:', parseError);
+        // If parsing fails, use the entire response for the first document and error messages for the rest
+        if (validIndices.length > 0) {
+          errorResults[validIndices[0]] = responseText;
+          for (let i = 1; i < validIndices.length; i++) {
+            errorResults[validIndices[i]] = `[Error parsing batch response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}]`;
+          }
+        }
+      }
+
+      return errorResults;
+    } catch (error) {
+      console.error('Error extracting PDF text with Gemini batch:', error);
+      // Return error messages for all documents
+      return filePaths.map(() => `[Error processing PDF batch with Gemini: ${error instanceof Error ? error.message : 'Unknown error'}]`);
     }
   }
 
@@ -2653,27 +2903,6 @@ export class EnhancedDocumentProcessingService {
       }
     }));
 
-    // We'll process each document individually to avoid rate limits
-    console.log(`Will process ${traditionalResults.length} PDF documents individually to avoid rate limits`);
-
-    // Create a batch of documents to send to Gemini
-    const batchDocuments = traditionalResults.map((result, index) => {
-      const { doc } = result;
-      return {
-        index,
-        metadata: {
-          documentType: doc.documentType,
-          name: doc.originalName,
-          timePeriod: doc.timePeriod || 'Not specified',
-          description: doc.description || 'No description'
-        }
-      };
-    });
-
-    // Add the batch information to the prompt (not used directly, but kept for reference)
-    // We'll process documents individually instead of in a batch to avoid rate limits
-    console.log(`Prepared batch prompt for ${batchDocuments.length} documents, but will process individually to avoid rate limits`);
-
     // Process PDFs in smaller batches if there are many
     const BATCH_SIZE = 3; // Process 3 PDFs at a time to avoid token limits
     const batches = [];
@@ -2690,8 +2919,34 @@ export class EnhancedDocumentProcessingService {
       console.log(`Processing PDF batch ${batchIndex + 1} of ${batches.length} with ${batch.length} documents...`);
 
       try {
-        // Process each document in the batch individually to avoid rate limits
-        for (const result of batch) {
+        // Prepare file paths and metadata arrays for batch processing
+        const filePaths: string[] = [];
+        const metadataArray: Array<{
+          documentType?: string;
+          name?: string;
+          timePeriod?: string;
+          description?: string;
+        }> = [];
+
+        // Collect file paths and metadata for this batch
+        batch.forEach(result => {
+          const { doc } = result;
+          filePaths.push(doc.filePath);
+          metadataArray.push({
+            documentType: doc.documentType,
+            name: doc.originalName,
+            timePeriod: doc.timePeriod || 'Not specified',
+            description: doc.description || 'No description'
+          });
+        });
+
+        // Process the batch of PDFs together with Gemini
+        console.log(`Sending batch of ${batch.length} PDFs to Gemini together...`);
+        const aiProcessedTexts = await this.extractPdfTextWithGeminiBatch(filePaths, metadataArray);
+        console.log(`Successfully processed batch of ${batch.length} PDFs with Gemini`);
+
+        // Process each document in the batch with its corresponding AI-processed text
+        batch.forEach((result, index) => {
           const { doc, rawText } = result;
           const {
             documentType,
@@ -2700,31 +2955,17 @@ export class EnhancedDocumentProcessingService {
             timePeriod
           } = doc;
 
-          // Create metadata object
-          const metadata = {
-            documentType,
-            name: originalName,
-            timePeriod,
-            description
-          };
-
-          // Process with Gemini individually
-          let aiProcessedText;
-          try {
-            aiProcessedText = await this.extractPdfTextWithGemini(doc.filePath, metadata);
-            console.log(`Successfully processed PDF with Gemini: ${originalName}`);
-          } catch (error) {
-            console.error(`Error processing PDF with Gemini: ${originalName}`, error);
-            aiProcessedText = `[Error processing with Gemini: ${error instanceof Error ? error.message : 'Unknown error'}]`;
-          }
+          // Get the AI-processed text for this document
+          const aiProcessedText = aiProcessedTexts[index];
 
           // Determine which text to use as the combined result
+          // Prefer AI-processed text if it's available and not an error message
           let combinedText = aiProcessedText;
           let extractionMethod = 'gemini';
 
           if (
             !aiProcessedText ||
-            aiProcessedText.includes('[Error processing PDF with Gemini:') ||
+            aiProcessedText.includes('[Error processing PDF') ||
             aiProcessedText.includes('[No text content extracted from PDF using Gemini]')
           ) {
             combinedText = rawText;
@@ -2752,7 +2993,7 @@ export class EnhancedDocumentProcessingService {
 
           // Add content with document name and metadata
           contentByType[documentType].push(documentData);
-        }
+        });
       } catch (error) {
         console.error(`Error processing PDF batch ${batchIndex + 1}:`, error);
 
@@ -3440,6 +3681,183 @@ export class EnhancedDocumentProcessingService {
    * @param data The parsed data from Gemini API
    */
   validateNewSections(data: any): void {
+    // Validate totalCompanyScore
+    if (data && data.totalCompanyScore) {
+      console.log('Validating totalCompanyScore...');
+
+      // Ensure score is a number
+      if (typeof data.totalCompanyScore.score !== 'number') {
+        console.log(`Invalid totalCompanyScore.score: ${data.totalCompanyScore.score}. Converting to number.`);
+        data.totalCompanyScore.score = parseInt(data.totalCompanyScore.score) || 50;
+      }
+
+      // Ensure rating is a string
+      if (!data.totalCompanyScore.rating || typeof data.totalCompanyScore.rating !== 'string') {
+        console.log(`Missing or invalid totalCompanyScore.rating. Setting default.`);
+        data.totalCompanyScore.rating = 'Moderate';
+      }
+
+      // Ensure description is a string
+      if (!data.totalCompanyScore.description || typeof data.totalCompanyScore.description !== 'string') {
+        console.log(`Missing or invalid totalCompanyScore.description. Setting default.`);
+        data.totalCompanyScore.description = 'Financial health assessment based on available documents.';
+      }
+    }
+
+    // Validate investmentDecision
+    if (data && data.investmentDecision) {
+      console.log('Validating investmentDecision...');
+
+      // Ensure recommendation is a valid string
+      const validRecommendations = ['Invest', 'Consider with Conditions', 'Do Not Invest'];
+      if (!data.investmentDecision.recommendation ||
+        !validRecommendations.includes(data.investmentDecision.recommendation)) {
+        console.log(`Invalid investmentDecision.recommendation: ${data.investmentDecision.recommendation}. Setting default.`);
+        data.investmentDecision.recommendation = 'Consider with Conditions';
+      }
+
+      // Ensure successProbability is a number between 0 and 100
+      if (typeof data.investmentDecision.successProbability !== 'number' ||
+        data.investmentDecision.successProbability < 0 ||
+        data.investmentDecision.successProbability > 100) {
+        console.log(`Invalid investmentDecision.successProbability: ${data.investmentDecision.successProbability}. Setting default.`);
+        data.investmentDecision.successProbability = 50;
+      }
+
+      // Ensure justification is a string
+      if (!data.investmentDecision.justification || typeof data.investmentDecision.justification !== 'string') {
+        console.log(`Missing or invalid investmentDecision.justification. Setting default.`);
+        data.investmentDecision.justification = 'Investment decision based on financial analysis of available documents.';
+      }
+
+      // Ensure keyConsiderations is an array
+      if (!data.investmentDecision.keyConsiderations || !Array.isArray(data.investmentDecision.keyConsiderations)) {
+        console.log(`Missing or invalid investmentDecision.keyConsiderations. Setting default.`);
+        data.investmentDecision.keyConsiderations = ['Financial performance', 'Market potential', 'Risk assessment'];
+      }
+
+      // Ensure suggestedTerms is an array
+      if (!data.investmentDecision.suggestedTerms || !Array.isArray(data.investmentDecision.suggestedTerms)) {
+        console.log(`Missing or invalid investmentDecision.suggestedTerms. Setting default.`);
+        data.investmentDecision.suggestedTerms = [];
+      }
+    }
+
+    // Validate compatibilityAnalysis
+    if (data && data.compatibilityAnalysis) {
+      console.log('Validating compatibilityAnalysis...');
+
+      // Ensure overallMatch is a valid string
+      const validMatches = ['Strong Match', 'Moderate Match', 'Weak Match'];
+      if (!data.compatibilityAnalysis.overallMatch ||
+        !validMatches.includes(data.compatibilityAnalysis.overallMatch)) {
+        console.log(`Invalid compatibilityAnalysis.overallMatch: ${data.compatibilityAnalysis.overallMatch}. Setting default.`);
+        data.compatibilityAnalysis.overallMatch = 'Moderate Match';
+      }
+
+      // Ensure overallScore is a number between 0 and 100
+      if (typeof data.compatibilityAnalysis.overallScore !== 'number' ||
+        data.compatibilityAnalysis.overallScore < 0 ||
+        data.compatibilityAnalysis.overallScore > 100) {
+        console.log(`Invalid compatibilityAnalysis.overallScore: ${data.compatibilityAnalysis.overallScore}. Setting default.`);
+        data.compatibilityAnalysis.overallScore = 50;
+      }
+
+      // Ensure dimensions is an array
+      if (!data.compatibilityAnalysis.dimensions || !Array.isArray(data.compatibilityAnalysis.dimensions)) {
+        console.log(`Missing or invalid compatibilityAnalysis.dimensions. Setting default.`);
+        data.compatibilityAnalysis.dimensions = [];
+      } else {
+        // Validate each dimension
+        data.compatibilityAnalysis.dimensions.forEach((dimension: any, index: number) => {
+          if (!dimension.name) {
+            console.log(`Missing name for dimension at index ${index}. Adding placeholder.`);
+            dimension.name = `Dimension ${index + 1}`;
+          }
+
+          if (typeof dimension.score !== 'number' || dimension.score < 0 || dimension.score > 100) {
+            console.log(`Invalid score for dimension ${dimension.name}. Setting default.`);
+            dimension.score = 50;
+          }
+
+          if (!dimension.description || typeof dimension.description !== 'string') {
+            console.log(`Missing or invalid description for dimension ${dimension.name}. Setting default.`);
+            dimension.description = `Assessment of ${dimension.name.toLowerCase()}.`;
+          }
+
+          const validStatuses = ['excellent', 'good', 'moderate', 'poor'];
+          if (!dimension.status || !validStatuses.includes(dimension.status)) {
+            console.log(`Invalid status for dimension ${dimension.name}. Setting default.`);
+            dimension.status = 'moderate';
+          }
+        });
+      }
+
+      // Ensure keyInvestmentStrengths is an array
+      if (!data.compatibilityAnalysis.keyInvestmentStrengths || !Array.isArray(data.compatibilityAnalysis.keyInvestmentStrengths)) {
+        console.log(`Missing or invalid compatibilityAnalysis.keyInvestmentStrengths. Setting default.`);
+        data.compatibilityAnalysis.keyInvestmentStrengths = [];
+      }
+
+      // Ensure keyInvestmentChallenges is an array
+      if (!data.compatibilityAnalysis.keyInvestmentChallenges || !Array.isArray(data.compatibilityAnalysis.keyInvestmentChallenges)) {
+        console.log(`Missing or invalid compatibilityAnalysis.keyInvestmentChallenges. Setting default.`);
+        data.compatibilityAnalysis.keyInvestmentChallenges = [];
+      }
+
+      // Ensure investmentRecommendations is an array
+      if (!data.compatibilityAnalysis.investmentRecommendations || !Array.isArray(data.compatibilityAnalysis.investmentRecommendations)) {
+        console.log(`Missing or invalid compatibilityAnalysis.investmentRecommendations. Setting default.`);
+        data.compatibilityAnalysis.investmentRecommendations = [];
+      }
+    }
+
+    // Validate scoringBreakdown
+    if (data && data.scoringBreakdown) {
+      console.log('Validating scoringBreakdown...');
+
+      // Ensure overview is a string
+      if (!data.scoringBreakdown.overview || typeof data.scoringBreakdown.overview !== 'string') {
+        console.log(`Missing or invalid scoringBreakdown.overview. Setting default.`);
+        data.scoringBreakdown.overview = 'Scoring breakdown across key operational and financial dimensions.';
+      }
+
+      // Ensure categories is an array
+      if (!data.scoringBreakdown.categories || !Array.isArray(data.scoringBreakdown.categories)) {
+        console.log(`Missing or invalid scoringBreakdown.categories. Setting default.`);
+        data.scoringBreakdown.categories = [];
+      } else {
+        // Validate each category
+        data.scoringBreakdown.categories.forEach((category: any, index: number) => {
+          if (!category.name) {
+            console.log(`Missing name for category at index ${index}. Adding placeholder.`);
+            category.name = `Category ${index + 1}`;
+          }
+
+          if (typeof category.score !== 'number' || category.score < 0 || category.score > 100) {
+            console.log(`Invalid score for category ${category.name}. Setting default.`);
+            category.score = 50;
+          }
+
+          if (!category.description || typeof category.description !== 'string') {
+            console.log(`Missing or invalid description for category ${category.name}. Setting default.`);
+            category.description = `Assessment of ${category.name.toLowerCase()}.`;
+          }
+
+          const validStatuses = ['excellent', 'good', 'moderate', 'poor'];
+          if (!category.status || !validStatuses.includes(category.status)) {
+            console.log(`Invalid status for category ${category.name}. Setting default.`);
+            category.status = 'moderate';
+          }
+
+          if (!category.keyPoints || !Array.isArray(category.keyPoints)) {
+            console.log(`Missing or invalid keyPoints for category ${category.name}. Setting default.`);
+            category.keyPoints = [];
+          }
+        });
+      }
+    }
+
     // Validate shareholders table
     if (data && data.shareholdersTable) {
       console.log('Validating shareholders table...');
@@ -4619,9 +5037,6 @@ export class EnhancedDocumentProcessingService {
         console.log('Enhanced document processing complete, sending to Gemini for financial analysis');
       }
 
-      // Create a prompt for Gemini based on the report type
-      let prompt = '';
-
       // Prepare context information
       const startupContext = startupInfo ? `
                 STARTUP INFORMATION:
@@ -4659,1014 +5074,37 @@ export class EnhancedDocumentProcessingService {
                 Portfolio: ${Array.isArray(investorInfo.portfolio) ? investorInfo.portfolio.join(', ') : (investorInfo.portfolio || 'Not specified')}
             ` : '';
 
-      prompt = `
-                FOLLOW THE GIVEN INSTRUCTIONS STRICTLY.
-
-                CRITICAL INSTRUCTION FOR CHARTS AND TRENDS: ALL CHARTS MUST INCLUDE MULTIPLE DATA POINTS (AT LEAST 2-3 YEARS OR PERIODS).
-                NEVER CREATE CHARTS WITH ONLY ONE DATA POINT. IF DOCUMENTS FROM MULTIPLE YEARS ARE AVAILABLE (CHECK TIME PERIOD METADATA),
-                USE ALL AVAILABLE YEARS IN CHARTS. IF ONLY SINGLE-YEAR DOCUMENTS ARE AVAILABLE, BREAK DOWN THE DATA INTO QUARTERS OR MONTHS.
-
-                WHILE GENERATING GRAPHS, CHARTS, AND VISUALIZATIONS, USE COLOR-CODED METRICS AND GRAPHS. GIVE OUT MAXIMUM DATA,
-                ACCURATE AND MAXIMUM DATA FOR CHARTS. ENSURE ALL TREND CHARTS SHOW ACTUAL TRENDS OVER MULTIPLE TIME PERIODS.
-
-                *** IMPORTANT: THIS IS A REPORT THAT SEPARATES FINANCIAL DUE DILIGENCE FROM FORMAL FINANCIAL AUDITING. YOUR ANALYSIS MUST MEET PROFESSIONAL STANDARDS THAT COULD REPLACE THE WORK OF LAWYERS AND CHARTERED ACCOUNTANTS. ***
-                WRITE HIGH IMPACT AND ACTIONABLE POINTS AND FINDINGS. DO NOT USE GENERIC OR VAGUE LANGUAGE. WRITE IN A FORMAL, PROFESSIONAL TONE APPROPRIATE FOR A FINANCIAL REPORT.
-                THE POINTS MUST BE ACTIONABLE AND SPECIFIC TO ${companyName}. DO NOT USE GENERIC STATEMENTS OR VAGUE LANGUAGE.
-                WRITE AS MUCH AS YOU CAN. DO NOT USE SHORT OR VAGUE RESPONSES. BE DETAILED AND THOROUGH. WRITE VERY DETAILED AND THOROUGH RESPONSES.
-                GIVE MORE GRAPHS, CHARTS, AND VISUALIZATIONS. USE COLOR-CODED METRICS AND GRAPHS. MAKE IT VISUALLY APPEALING.
-
-                SEND MAX DATA FOR CHARTS, AND VALUES INSIDE CHARTS
-
-                *** CRITICAL INSTRUCTION: SEPARATE FINANCIAL DUE DILIGENCE FROM AUDITING ***
-                You are a specialized financial analyst and auditor with expertise in Indian company standards and regulations. Your task is to perform TWO DISTINCT ANALYSES for ${companyName}:
-                KEEP THE TOTAL RESPONSE LENGTH UNDER 60,000 TOKENS. DO NOT EXCEED 60,000 TOKENS. DO NOT BREAK THE FORMAT
-
-                1. FINANCIAL DUE DILIGENCE: Focus on investment worthiness, growth potential, financial health, and business viability
-                   - Analyze financial performance, market position, and growth trajectory
-                   - Evaluate investment potential and risks
-                   - Assess business model sustainability and competitive advantages
-                   - Provide insights relevant for investors making investment decisions
-
-                2. FORMAL FINANCIAL AUDITING: Focus on compliance, accuracy, fraud detection, and adherence to accounting standards
-                   - Verify compliance with accounting standards and regulatory requirements
-                   - Identify potential fraud risks or accounting irregularities
-                   - Assess internal controls and financial reporting processes
-                   - Provide insights relevant for regulatory compliance and financial accuracy
-
-                Do not use generic or vague language. Write in a formal, professional tone appropriate for a financial report.
-                Focus on providing clear, actionable insights and recommendations based on the financial documents provided. Your analysis should be thorough, detailed, and presented in a visually appealing format with color-coded metrics and graphical data.
-                WRITE AS MUCH AS YOU CAN. BE VERY DETAILED AND THOROUGH. WRITE VERY DETAILED AND THOROUGH RESPONSES. EVERY SECTION SHOULD HAVE MAXIMUM DATA.
-                DO NOT USE SHORT OR VAGUE RESPONSES. WRITE AS MUCH AS YOU CAN. BE DETAILED AND THOROUGH. WRITE VERY DETAILED AND THOROUGH RESPONSES.
-                HAVE AS MANY GRAPHS, CHARTS, AND VISUALIZATIONS AS POSSIBLE. USE COLOR-CODED METRICS AND GRAPHS. MAKE IT VISUALLY APPEALING.
-                ACT LIKE YOU ARE A FINANCIAL ANALYST AND AUDITOR. AND BE PROFESSIONAL.
-                TASK: Analyze the following financial documents for ${companyName} and provide a comprehensive, professional report that CLEARLY SEPARATES financial due diligence analysis from audit findings. Your analysis should be thorough, detailed, and presented in a visually appealing format with color-coded metrics and graphical data. Include data visualizations and charts wherever possible.
-
-                IMPORTANT REPORT STYLE GUIDELINES:
-                1. Write in a formal, professional tone appropriate for a financial audit report
-                2. Be specific and precise about ${companyName}'s financial situation - avoid generic statements
-                3. Frame findings as clear, actionable insights about ${companyName} specifically (e.g., "${companyName} shows deficiencies in cash flow management" rather than "There are cash flow issues")
-                4. Use plain language that is easy to understand while maintaining professional standards
-                5. For each deficiency or issue identified, clearly state:
-                   - The specific problem at ${companyName}
-                   - The potential impact on ${companyName}'s financial health
-                   - Concrete recommendations tailored to ${companyName}'s situation
-                6. Highlight both strengths and weaknesses specific to ${companyName}'s financial position
-                7. Make all metrics, ratios, and findings directly relevant to ${companyName}'s industry and business model
-                8. Present information as if you are a third-party auditor conducting this analysis for a client interested in ${companyName}
-
-                ${startupContext}
-                ${investorContext}
-                ${missingDocumentsContext}
-
-                IMPORTANT DOCUMENT ORGANIZATION:
-                The document content is organized by document type. Each document type section begins with a header in the format "=== Document Type ===" (e.g., "=== Balance Sheet ===").
-                Within each section, individual documents are marked with "--- Document: filename ---".
-
-                Each document includes a metadata section with the following information:
-                - Filename: The original name of the document
-                - Type: The type of document (e.g., balance sheet, income statement)
-                - Description: A description of the document provided by the user
-                - Time Period: The time period covered by the document (e.g., Q1 2023, FY 2022)
-                - File Format: The format of the document (e.g., PDF, XLSX)
-                - Size: The size of the document in MB
-                - Created: The date the document was created or uploaded
-
-                Pay special attention to these document type headers and metadata to correctly identify which documents are available.
-                For example, if you see a "=== Balance Sheet ===" section, you should NOT report balance sheet as missing.
-
-                USE THE METADATA IN YOUR ANALYSIS:
-                - Pay special attention to the Time Period field to understand the timeframe of each document
-                - Use the Description field to gain additional context about each document
-                - Consider the File Format and Size when assessing document quality
-                - If multiple documents of the same type exist, use the Time Period to identify the most recent or relevant ones
-
-                DOCUMENT TYPE HANDLING GUIDELINES:
-                - For each document type, extract all relevant financial information with the precision of a professional auditor
-                - Balance Sheet: Extract assets, liabilities, equity, and calculate key ratios; verify asset valuation methods and liability recognition
-                - Income Statement: Extract revenue, expenses, profits, and calculate profitability ratios; verify revenue recognition policies and expense categorization
-                - Cash Flow Statement: Extract operating, investing, and financing cash flows; verify cash flow classification and reconciliation with other statements
-                - Tax Documents: Extract GST, income tax, and TDS compliance information; verify tax calculation methods and compliance with latest tax regulations
-                - Bank Statements: Extract cash position, major transactions, and cash flow patterns; verify reconciliation with accounting records
-                - Financial Projections: Extract growth forecasts and assess reasonableness; verify assumptions and methodologies
-                - Audit Reports: Extract key findings, compliance issues, and recommendations; verify implementation of previous audit recommendations
-                - Cap Table: Analyze ownership structure, equity distribution, and valuation implications
-                - If a document appears to be in a non-standard format, make your best effort to extract relevant information using professional judgment
-                - If a document is partially readable or has quality issues, extract what you can and note the limitations with appropriate audit qualifications
-
-                DOCUMENT METADATA ANALYSIS GUIDELINES:
-                - CRITICAL: CAREFULLY ANALYZE THE TIME PERIOD METADATA FOR EACH DOCUMENT to identify documents from different years/periods
-                - EXTREMELY IMPORTANT: USE TIME PERIOD METADATA TO CREATE MULTI-YEAR TREND DATA for all financial metrics and charts
-                - For documents covering different time periods (e.g., 2021, 2022, 2023), ALWAYS perform trend analysis across ALL available periods
-                - When documents have the same type but different time periods (e.g., Balance Sheets from 2021, 2022, 2023), USE ALL OF THEM to create trend data
-                - EXTRACT SPECIFIC FINANCIAL FIGURES FROM EACH TIME PERIOD to populate trend charts with actual multi-year data
-                - If documents have quarterly or monthly breakdowns, USE THESE TO CREATE MORE DETAILED TREND CHARTS with multiple data points
-                - When multiple documents of the same type exist, use ALL of them for historical trend analysis, not just the most recent ones
-                - Use the Description metadata to understand the context and purpose of each document
-                - If documents have different time periods, clearly indicate this in your analysis (e.g., "Based on Q1 2023 balance sheet...")
-                - For documents with quality issues (as noted in metadata or content), acknowledge these limitations in your analysis
-                - When analyzing financial projections, clearly state the time period they cover and assess their reasonableness
-                - ENSURE THAT ALL TREND CHARTS INCLUDE DATA FROM ALL AVAILABLE TIME PERIODS identified in the document metadata
-
-                FOLLOW THE RESPONSE FORMAT STRICTLY:
-                DO NOT DEVIATE FROM THE RESPONSE FORMAT.
-                ALWAYS RETURN VALID JSON. WITH CORRECT FORMAT.
-                DO NOT INCLUDE ANY EXPLANATIONS OR MARKDOWN FORMATTING.
-                FOLLOW THE STRUCTURE AS IT IS.
-                DO NOT ADD OR REMOVE ANY FIELDS.
-                DO NOT CHANGE THE FIELD NAMES OR TYPES.
-
-                FOLLOW THIS VERY VERY STRICTLY DO NOT CHANGE ANYTHING, BE VERY STRICT ABOUT THE STRUCTURE.
-                DO NOT ADD ANYTHING ELSE. DO NOT EXPLAIN OR JUSTIFY YOUR ANSWERS.
-                DO NOT BREAK THE FORMAT
-                RESPONSE FORMAT: Return ONLY valid JSON with this exact structure:
-                {
-                  "reportCalculated": true or false, // IMPORTANT: Set to true if you were able to extract meaningful financial data, false otherwise
-                  "reportType": "Financial Due Diligence and Audit Report", // Always include this exact title
-                  "executiveSummary": {
-                    "headline": "Brief headline summarizing the financial health",
-                    "summary": "Detailed summary of financial analysis and audit findings",
-                    "keyFindings": ["Key finding 1", "Key finding 2", "Key finding 3", "Key finding 4", "Key finding 5"],
-                    "recommendedActions": ["Action 1", "Action 2", "Action 3", "Action 4", "Action 5"],
-                    "keyMetrics": [
-                      {
-                        "name": "Key metric name",
-                        "value": "Metric value",
-                        "status": "good" or "warning" or "critical",
-                        "description": "Brief description of the metric",
-                        "trend": "Any trend description (e.g., increasing, decreasing, stable, improving, deteriorating, N/A)",
-                        "percentChange": "Percentage change from previous period (e.g., +15%)",
-                        "chartData": {
-                          "type": "line" or "bar" or "pie", // Type of chart that would best represent this data
-                          "labels": ["Period 1", "Period 2", "Period 3"], // Time periods or categories
-                          "datasets": [
-                            {
-                              "label": "Dataset label",
-                              "data": [value1, value2, value3], // Numeric values for each period
-                              "backgroundColor": ["#4CAF50", "#FFC107", "#F44336"] // Suggested colors (green, yellow, red)
-                            }
-                          ]
-                        }
-                      }
-                    ],
-                    "dueDiligenceSummary": {
-                      "investmentWorthiness": "high" or "medium" or "low",
-                      "statement": "Summary statement about investment worthiness",
-                      "keyStrengths": ["Strength 1", "Strength 2"],
-                      "keyRisks": ["Risk 1", "Risk 2"]
-                    },
-                    "auditOpinion": {
-                      "type": "unqualified" or "qualified" or "adverse" or "disclaimer", // Professional audit opinion type
-                      "statement": "Professional audit opinion statement",
-                      "qualifications": ["Qualification 1", "Qualification 2"] // Only if qualified, adverse, or disclaimer
-                    }
-                  },
-                  "financialAnalysis": {
-                    "overview": "Comprehensive overview of the financial analysis",
-                    "metrics": [
-                      {
-                        "name": "Metric name",
-                        "value": "Metric value",
-                        "status": "good" or "warning" or "critical",
-                        "description": "Brief description of the metric",
-                        "trend": "Any trend description (e.g., increasing, decreasing, stable, improving, deteriorating, N/A)",
-                        "percentChange": "Percentage change from previous period (e.g., +15%)",
-                        "industryComparison": "above_average" or "average" or "below_average" or "N/A",
-                        "industryValue": "Industry average value",
-                        "chartData": {
-                          "type": "line" or "bar" or "pie", // Type of chart that would best represent this data
-                          "labels": ["Period 1", "Period 2", "Period 3"], // Time periods or categories
-                          "datasets": [
-                            {
-                              "label": "Dataset label",
-                              "data": [value1, value2, value3], // Numeric values for each period
-                              "backgroundColor": ["#4CAF50", "#FFC107", "#F44336"] // Suggested colors (green, yellow, red)
-                            }
-                          ]
-                        }
-                      }
-                    ],
-                    "trends": [
-                      {
-                        "name": "Trend name",
-                        "description": "Description of the trend",
-                        "trend": "Any trend description (e.g., increasing, decreasing, stable, improving, deteriorating)",
-                        "impact": "positive" or "negative" or "neutral",
-                        "data": [
-                          {"period": "Period 1 (e.g., Q1 2023)", "value": numeric value or "N/A"},
-                          {"period": "Period 2 (e.g., Q2 2023)", "value": numeric value or "N/A"},
-                          {"period": "Period 3 (e.g., Q3 2023)", "value": numeric value or "N/A"}
-                        ],
-                        "chartData": {
-                          "type": "line" or "bar" or "pie", // Type of chart that would best represent this data
-                          "labels": ["Period 1", "Period 2", "Period 3"], // Time periods or categories
-                          "datasets": [
-                            {
-                              "label": "Dataset label",
-                              "data": [value1, value2, value3], // Numeric values for each period
-                              "backgroundColor": ["#4CAF50", "#FFC107", "#F44336"], // Suggested colors
-                              "borderColor": "#2196F3", // Suggested color for line charts
-                              "backgroundColor": "rgba(33, 150, 243, 0.2)" // Suggested background color with transparency
-                            }
-                          ]
-                        }
-                      }
-                    ],
-                    "growthProjections": [
-                      {
-                        "metric": "Metric name (e.g., Revenue, Profit)",
-                        "currentValue": numeric value or "N/A",
-                        "projectedValue": numeric value or "N/A",
-                        "timeframe": "Timeframe (e.g., 1 year, 3 years)",
-                        "cagr": "Compound Annual Growth Rate (e.g., 12.5%)",
-                        "confidence": "high" or "medium" or "low",
-                        "chartData": {
-                          "type": "bar" or "line", // Type of chart that would best represent this projection
-                          "labels": ["Current", "Year 1", "Year 2", "Year 3"], // Projection periods
-                          "datasets": [
-                            {
-                              "label": "Projected Growth",
-                              "data": [currentValue, year1Value, year2Value, year3Value], // Numeric values for each period
-                              "backgroundColor": ["#9C27B0", "#9C27B0", "#9C27B0", "#9C27B0"] // Suggested color for projections
-                            }
-                          ]
-                        }
-                      }
-                    ],
-                    "financialHealthScore": {
-                      "score": numeric value between 0 and 100,
-                      "rating": "Excellent" or "Good" or "Fair" or "Poor" or "Critical",
-                      "description": "Description of the financial health score",
-                      "components": [
-                        {
-                          "category": "Category name (e.g., Liquidity, Profitability)",
-                          "score": numeric value between 0 and 100,
-                          "weight": numeric value between 0 and 1 (sum of all weights should be 1)
-                        }
-                      ],
-                      "chartData": {
-                        "type": "radar", // Radar chart for financial health components
-                        "labels": ["Liquidity", "Profitability", "Solvency", "Efficiency", "Growth"],
-                        "datasets": [
-                          {
-                            "label": "Company Score",
-                            "data": [score1, score2, score3, score4, score5], // Scores for each component
-                            "backgroundColor": "rgba(33, 150, 243, 0.2)",
-                            "borderColor": "#2196F3"
-                          },
-                          {
-                            "label": "Industry Average",
-                            "data": [avg1, avg2, avg3, avg4, avg5], // Industry average scores
-                            "backgroundColor": "rgba(156, 39, 176, 0.2)",
-                            "borderColor": "#9C27B0"
-                          }
-                        ]
-                      }
-                    }
-                  },
-                  "recommendations": [
-                    "Recommendation 1",
-                    "Recommendation 2",
-                    "Recommendation 3",
-                    "Recommendation 4",
-                    "Recommendation 5"
-                  ],
-                  "riskFactors": [
-                    {
-                      "category": "Risk category",
-                      "level": "high" or "medium" or "low",
-                      "description": "Description of risk",
-                      "impact": "Potential impact",
-                      "mitigationStrategy": "Suggested mitigation strategy",
-                      "timeHorizon": "short_term" or "medium_term" or "long_term"
-                    }
-                  ],
-                  "complianceItems": [
-                    {
-                      "requirement": "Compliance requirement",
-                      "status": "compliant" or "partial" or "non-compliant", // IMPORTANT: Only these three values are allowed - do NOT use "unknown" or any other value
-                      "details": "Details about compliance status",
-                      "severity": "high" or "medium" or "low",
-                      "recommendation": "Recommendation to address compliance issue",
-                      "deadline": "Suggested deadline for compliance (if applicable)",
-                      "regulatoryBody": "Relevant regulatory body (e.g., SEBI, MCA)"
-                    }
-                  ],
-                  "financialStatements": {
-                    "balanceSheet": {
-                      "assets": {...},
-                      "liabilities": {...},
-                      "equity": {...},
-                      "yearOverYearChange": {
-                        "assets": "Percentage change",
-                        "liabilities": "Percentage change",
-                        "equity": "Percentage change"
-                      }
-                    },
-                    "incomeStatement": {
-                      "revenue": numeric value or "N/A",
-                      "costOfGoodsSold": numeric value or "N/A",
-                      "grossProfit": numeric value or "N/A",
-                      "operatingExpenses": numeric value or "N/A",
-                      "operatingIncome": numeric value or "N/A",
-                      "netIncome": numeric value or "N/A",
-                      "yearOverYearChange": {
-                        "revenue": "Percentage change",
-                        "grossProfit": "Percentage change",
-                        "netIncome": "Percentage change"
-                      }
-                    },
-                    "cashFlow": {
-                      "operatingActivities": numeric value or "N/A",
-                      "investingActivities": numeric value or "N/A",
-                      "financingActivities": numeric value or "N/A",
-                      "netCashFlow": numeric value or "N/A",
-                      "yearOverYearChange": {
-                        "operatingActivities": "Percentage change",
-                        "netCashFlow": "Percentage change"
-                      }
-                    }
-                  },
-                  "ratioAnalysis": {
-                    "overview": "Overview of the ratio analysis with key insights",
-                    "liquidityRatios": [
-                      {
-                        "name": "Ratio name",
-                        "value": numeric value or "N/A",
-                        "formula": "Formula used to calculate the ratio",
-                        "industry_average": numeric value or "N/A",
-                        "description": "Description of ratio",
-                        "interpretation": "Professional interpretation of the ratio value",
-                        "status": "good" or "warning" or "critical",
-                        "trend": "Any trend description (e.g., improving, stable, deteriorating, increasing, decreasing)",
-                        "historicalData": [
-                          {"period": "Period 1", "value": numeric value or "N/A"},
-                          {"period": "Period 2", "value": numeric value or "N/A"}
-                        ],
-                        "chartData": {
-                          "type": "line", // Type of chart that would best represent this ratio
-                          "labels": ["Period 1", "Period 2", "Period 3"], // Time periods
-                          "datasets": [
-                            {
-                              "label": "Company Ratio",
-                              "data": [value1, value2, value3], // Numeric values for each period
-                              "borderColor": "#2196F3",
-                              "backgroundColor": "rgba(33, 150, 243, 0.2)"
-                            },
-                            {
-                              "label": "Industry Average",
-                              "data": [avg1, avg2, avg3], // Industry average values
-                              "borderColor": "#9C27B0",
-                              "backgroundColor": "rgba(156, 39, 176, 0.2)",
-                              "borderDash": [5, 5] // Dashed line for industry average
-                            }
-                          ]
-                        }
-                      }
-                    ],
-                    "profitabilityRatios": [
-                      {
-                        "name": "Ratio name",
-                        "value": numeric value or "N/A",
-                        "formula": "Formula used to calculate the ratio",
-                        "industry_average": numeric value or "N/A",
-                        "description": "Description of ratio",
-                        "interpretation": "Professional interpretation of the ratio value",
-                        "status": "good" or "warning" or "critical",
-                        "trend": "Any trend description (e.g., improving, stable, deteriorating, increasing, decreasing)",
-                        "historicalData": [
-                          {"period": "Period 1", "value": numeric value or "N/A"},
-                          {"period": "Period 2", "value": numeric value or "N/A"}
-                        ],
-                        "chartData": {
-                          "type": "line", // Type of chart that would best represent this ratio
-                          "labels": ["Period 1", "Period 2", "Period 3"], // Time periods
-                          "datasets": [
-                            {
-                              "label": "Company Ratio",
-                              "data": [value1, value2, value3], // Numeric values for each period
-                              "borderColor": "#4CAF50",
-                              "backgroundColor": "rgba(76, 175, 80, 0.2)"
-                            },
-                            {
-                              "label": "Industry Average",
-                              "data": [avg1, avg2, avg3], // Industry average values
-                              "borderColor": "#9C27B0",
-                              "backgroundColor": "rgba(156, 39, 176, 0.2)",
-                              "borderDash": [5, 5] // Dashed line for industry average
-                            }
-                          ]
-                        }
-                      }
-                    ],
-                    "solvencyRatios": [
-                      {
-                        "name": "Ratio name",
-                        "value": numeric value or "N/A",
-                        "formula": "Formula used to calculate the ratio",
-                        "industry_average": numeric value or "N/A",
-                        "description": "Description of ratio",
-                        "interpretation": "Professional interpretation of the ratio value",
-                        "status": "good" or "warning" or "critical",
-                        "trend": "Any trend description (e.g., improving, stable, deteriorating, increasing, decreasing)",
-                        "historicalData": [
-                          {"period": "Period 1", "value": numeric value or "N/A"},
-                          {"period": "Period 2", "value": numeric value or "N/A"}
-                        ],
-                        "chartData": {
-                          "type": "line", // Type of chart that would best represent this ratio
-                          "labels": ["Period 1", "Period 2", "Period 3"], // Time periods
-                          "datasets": [
-                            {
-                              "label": "Company Ratio",
-                              "data": [value1, value2, value3], // Numeric values for each period
-                              "borderColor": "#FF9800",
-                              "backgroundColor": "rgba(255, 152, 0, 0.2)"
-                            },
-                            {
-                              "label": "Industry Average",
-                              "data": [avg1, avg2, avg3], // Industry average values
-                              "borderColor": "#9C27B0",
-                              "backgroundColor": "rgba(156, 39, 176, 0.2)",
-                              "borderDash": [5, 5] // Dashed line for industry average
-                            }
-                          ]
-                        }
-                      }
-                    ],
-                    "efficiencyRatios": [
-                      {
-                        "name": "Ratio name",
-                        "value": numeric value or "N/A",
-                        "formula": "Formula used to calculate the ratio",
-                        "industry_average": numeric value or "N/A",
-                        "description": "Description of ratio",
-                        "interpretation": "Professional interpretation of the ratio value",
-                        "status": "good" or "warning" or "critical",
-                        "trend": "Any trend description (e.g., improving, stable, deteriorating, increasing, decreasing)",
-                        "historicalData": [
-                          {"period": "Period 1", "value": numeric value or "N/A"},
-                          {"period": "Period 2", "value": numeric value or "N/A"}
-                        ],
-                        "chartData": {
-                          "type": "line", // Type of chart that would best represent this ratio
-                          "labels": ["Period 1", "Period 2", "Period 3"], // Time periods
-                          "datasets": [
-                            {
-                              "label": "Company Ratio",
-                              "data": [value1, value2, value3], // Numeric values for each period
-                              "borderColor": "#9C27B0",
-                              "backgroundColor": "rgba(156, 39, 176, 0.2)"
-                            },
-                            {
-                              "label": "Industry Average",
-                              "data": [avg1, avg2, avg3], // Industry average values
-                              "borderColor": "#607D8B",
-                              "backgroundColor": "rgba(96, 125, 139, 0.2)",
-                              "borderDash": [5, 5] // Dashed line for industry average
-                            }
-                          ]
-                        }
-                      }
-                    ],
-                    "ratioComparisonChart": {
-                      "type": "radar", // Radar chart for comparing all ratio categories
-                      "labels": ["Liquidity", "Profitability", "Solvency", "Efficiency"],
-                      "datasets": [
-                        {
-                          "label": "Company Performance",
-                          "data": [liquidityScore, profitabilityScore, solvencyScore, efficiencyScore], // Normalized scores (0-100)
-                          "backgroundColor": "rgba(33, 150, 243, 0.2)",
-                          "borderColor": "#2196F3"
-                        },
-                        {
-                          "label": "Industry Average",
-                          "data": [industryLiquidityScore, industryProfitabilityScore, industrySolvencyScore, industryEfficiencyScore], // Industry average scores
-                          "backgroundColor": "rgba(156, 39, 176, 0.2)",
-                          "borderColor": "#9C27B0"
-                        }
-                      ]
-                    }
-                  },
-                  "taxCompliance": {
-                    "gst": {
-                      "status": "compliant" or "partial" or "non-compliant", // IMPORTANT: Only these three values are allowed - do NOT use "unknown" or any other value
-                      "details": "Details about GST compliance",
-                      "filingHistory": [
-                        {"period": "Period", "status": "filed" or "pending" or "overdue", "dueDate": "Due date"}
-                      ],
-                      "recommendations": ["Recommendation 1", "Recommendation 2"]
-                    },
-                    "incomeTax": {
-                      "status": "compliant" or "partial" or "non-compliant", // IMPORTANT: Only these three values are allowed - do NOT use "unknown" or any other value
-                      "details": "Details about income tax compliance",
-                      "filingHistory": [
-                        {"period": "Period", "status": "filed" or "pending" or "overdue", "dueDate": "Due date"}
-                      ],
-                      "recommendations": ["Recommendation 1", "Recommendation 2"]
-                    },
-                    "tds": {
-                      "status": "compliant" or "partial" or "non-compliant", // IMPORTANT: Only these three values are allowed - do NOT use "unknown" or any other value
-                      "details": "Details about TDS compliance",
-                      "filingHistory": [
-                        {"period": "Period", "status": "filed" or "pending" or "overdue", "dueDate": "Due date"}
-                      ],
-                      "recommendations": ["Recommendation 1", "Recommendation 2"]
-                    }
-                  },
-                  "auditFindings": {
-                    "auditScope": "Description of the scope of the audit",
-                    "auditMethodology": "Description of the audit methodology used",
-                    "auditStandards": ["Relevant Indian Accounting Standard 1", "Relevant Indian Accounting Standard 2"],
-                    "findings": [
-                      {
-                        "area": "Area of finding",
-                        "severity": "high" or "medium" or "low",
-                        "description": "Description of finding",
-                        "recommendation": "Recommendation to address finding",
-                        "impact": "Financial or operational impact",
-                        "timelineToResolve": "Suggested timeline to resolve",
-                        "regulatoryImplications": "Potential regulatory implications",
-                        "financialImpact": numeric value or "Not quantifiable",
-                        "status": "new" or "recurring" or "resolved"
-                      }
-                    ],
-                    "overallAssessment": "Overall assessment of audit findings",
-                    "complianceScore": "Score out of 100",
-                    "keyStrengths": ["Strength 1", "Strength 2"],
-                    "keyWeaknesses": ["Weakness 1", "Weakness 2"],
-                    "materialWeaknesses": [
-                      {
-                        "area": "Area with material weakness",
-                        "description": "Description of the material weakness",
-                        "impact": "Impact on financial reporting",
-                        "remediation": "Recommended remediation steps"
-                      }
-                    ],
-                    "internalControlAssessment": {
-                      "overview": "Overview of internal control assessment",
-                      "controlEnvironment": "Assessment of control environment",
-                      "riskAssessment": "Assessment of risk assessment processes",
-                      "controlActivities": "Assessment of control activities",
-                      "informationAndCommunication": "Assessment of information and communication systems",
-                      "monitoring": "Assessment of monitoring activities",
-                      "significantDeficiencies": [
-                        {
-                          "area": "Area with significant deficiency",
-                          "description": "Description of the deficiency",
-                          "impact": "Impact on financial reporting",
-                          "recommendation": "Recommendation to address the deficiency"
-                        }
-                      ]
-                    },
-                    "findingsByCategory": {
-                      "type": "pie", // Pie chart for findings by category
-                      "labels": ["Financial Reporting", "Regulatory Compliance", "Operational", "IT Controls", "Governance"],
-                      "datasets": [
-                        {
-                          "data": [count1, count2, count3, count4, count5], // Count of findings in each category
-                          "backgroundColor": ["#F44336", "#FF9800", "#FFEB3B", "#4CAF50", "#2196F3"]
-                        }
-                      ]
-                    },
-                    "findingsBySeverity": {
-                      "type": "bar", // Bar chart for findings by severity
-                      "labels": ["High", "Medium", "Low"],
-                      "datasets": [
-                        {
-                          "label": "Number of Findings",
-                          "data": [highCount, mediumCount, lowCount], // Count of findings by severity
-                          "backgroundColor": ["#F44336", "#FF9800", "#4CAF50"]
-                        }
-                      ]
-                    }
-                  },
-                  "documentAnalysis": {
-                    "availableDocuments": [
-                      {
-                        "documentType": "Document type name",
-                        "quality": "good" or "moderate" or "poor",
-                        "completeness": "complete" or "partial" or "incomplete",
-                        "keyInsights": ["Detailed financial insight 1 about specific numbers/metrics in this document", "Detailed financial insight 2 about specific numbers/metrics in this document"],
-                        "dataReliability": "high" or "medium" or "low" or "N/A",
-                        "financialHighlights": ["Key financial figure 1: value with context", "Key financial figure 2: value with context"],
-                        "redFlags": ["Specific financial concern 1 with details", "Specific financial concern 2 with details"],
-                        "recommendations": ["Specific recommendation for improving financial data quality"]
-                      }
-                    ],
-                    "missingDocuments": {
-                      "list": ["Document type 1", "Document type 2"],
-                      "impact": "Detailed description of how missing documents impact specific financial analysis areas",
-                      "recommendations": ["Specific recommendation for obtaining missing financial documents"],
-                      "priorityLevel": "high" or "medium" or "low"
-                    }
-                  },
-                  "documentContentAnalysis": {
-                    "overview": "Comprehensive overview of the financial content analysis findings across all documents",
-                    "dueDiligenceFindings": {
-                      "summary": "Detailed summary of financial due diligence findings with specific metrics and figures from document content",
-                      "keyInsights": ["Specific financial insight with exact figures and time periods", "Detailed analysis of financial performance with exact metrics"],
-                      "investmentImplications": ["Specific investment implication with financial reasoning and data points", "Detailed ROI/valuation analysis with supporting figures"],
-                      "growthIndicators": ["Specific growth metric with exact figures and comparison to industry standards", "Detailed trend analysis with percentage changes over time"],
-                      "riskFactors": ["Specific financial risk with quantified potential impact", "Detailed analysis of financial vulnerability with supporting data"]
-                    },
-                    "auditFindings": {
-                      "summary": "Detailed summary of audit findings with specific accounting issues identified in the documents",
-                      "complianceIssues": ["Specific compliance issue with exact regulatory requirement and financial impact", "Detailed analysis of compliance gap with recommended remediation"],
-                      "accountingConcerns": ["Specific accounting concern with exact figures and GAAP/Ind AS reference", "Detailed analysis of accounting treatment with financial impact"],
-                      "internalControlWeaknesses": ["Specific internal control weakness with financial process affected and risk quantification", "Detailed control gap analysis with recommended improvements"],
-                      "fraudRiskIndicators": ["Specific fraud risk indicator with exact suspicious patterns/transactions", "Detailed analysis of potential fraud risk with financial impact"]
-                    },
-                    "documentSpecificAnalysis": [
-                      {
-                        "documentType": "Document type name",
-                        "contentSummary": "Detailed summary of the document's financial content with time period and key figures",
-                        "dueDiligenceInsights": ["Specific financial insight from this document with exact figures and implications", "Detailed analysis of financial performance metrics from this document"],
-                        "auditInsights": ["Specific audit insight from this document with accounting standards reference", "Detailed analysis of financial reporting quality from this document"],
-                        "keyFinancialData": ["Specific financial figure: exact value with context and trend", "Key ratio: exact value with industry comparison and interpretation"],
-                        "inconsistencies": ["Specific inconsistency between figures with exact values and locations", "Detailed analysis of data discrepancy with potential causes"],
-                        "recommendations": ["Specific recommendation based on document content with expected financial impact", "Detailed improvement suggestion with implementation steps"]
-                      }
-                    ]
-                  },
-                  "industryBenchmarking": {
-                    "overview": "Overview of industry benchmarking",
-                    "industryContext": "Description of the industry context and trends",
-                    "peerComparison": "Analysis of how the company compares to direct peers",
-                    "metrics": [
-                      {
-                        "name": "Metric name",
-                        "companyValue": numeric value or "N/A",
-                        "industryAverage": numeric value or "N/A",
-                        "percentile": "Percentile within industry (e.g., 75th)",
-                        "status": "above_average" or "average" or "below_average" or "N/A",
-                        "interpretation": "Professional interpretation of the company's position",
-                        "chartData": {
-                          "type": "bar", // Bar chart for company vs industry comparison
-                          "labels": ["Company", "Industry Average", "Top Quartile", "Bottom Quartile"],
-                          "datasets": [
-                            {
-                              "label": "Metric Values",
-                              "data": [companyValue, industryAvg, topQuartile, bottomQuartile], // Values for comparison
-                              "backgroundColor": ["#2196F3", "#9C27B0", "#4CAF50", "#F44336"]
-                            }
-                          ]
-                        }
-                      }
-                    ],
-                    "competitivePosition": "Description of competitive position",
-                    "marketShareAnalysis": "Analysis of the company's market share and positioning",
-                    "strengths": ["Strength 1", "Strength 2"],
-                    "challenges": ["Challenge 1", "Challenge 2"],
-                    "opportunities": ["Opportunity 1", "Opportunity 2"],
-                    "threats": ["Threat 1", "Threat 2"],
-                    "industryOutlook": "Outlook for the industry over the next 1-3 years",
-                    "benchmarkingCharts": {
-                      "financialPerformance": {
-                        "type": "radar", // Radar chart for financial performance benchmarking
-                        "labels": ["Revenue Growth", "Profit Margin", "ROI", "Cash Flow", "Debt Ratio"],
-                        "datasets": [
-                          {
-                            "label": "Company",
-                            "data": [companyScore1, companyScore2, companyScore3, companyScore4, companyScore5], // Normalized scores (0-100)
-                            "backgroundColor": "rgba(33, 150, 243, 0.2)",
-                            "borderColor": "#2196F3"
-                          },
-                          {
-                            "label": "Industry Average",
-                            "data": [industryScore1, industryScore2, industryScore3, industryScore4, industryScore5], // Industry average scores
-                            "backgroundColor": "rgba(156, 39, 176, 0.2)",
-                            "borderColor": "#9C27B0"
-                          },
-                          {
-                            "label": "Top Performers",
-                            "data": [topScore1, topScore2, topScore3, topScore4, topScore5], // Top performers scores
-                            "backgroundColor": "rgba(76, 175, 80, 0.2)",
-                            "borderColor": "#4CAF50"
-                          }
-                        ]
-                      },
-                      "operationalEfficiency": {
-                        "type": "radar", // Radar chart for operational efficiency benchmarking
-                        "labels": ["Asset Turnover", "Inventory Turnover", "Receivables Turnover", "Employee Productivity", "Operating Cycle"],
-                        "datasets": [
-                          {
-                            "label": "Company",
-                            "data": [companyScore1, companyScore2, companyScore3, companyScore4, companyScore5], // Normalized scores (0-100)
-                            "backgroundColor": "rgba(33, 150, 243, 0.2)",
-                            "borderColor": "#2196F3"
-                          },
-                          {
-                            "label": "Industry Average",
-                            "data": [industryScore1, industryScore2, industryScore3, industryScore4, industryScore5], // Industry average scores
-                            "backgroundColor": "rgba(156, 39, 176, 0.2)",
-                            "borderColor": "#9C27B0"
-                          }
-                        ]
-                      }
-                    }
-                  },
-
-                  "shareholdersTable": {
-                    "overview": "Overview of the company's shareholding structure",
-                    "shareholders": [
-                      {
-                        "name": "Shareholder name",
-                        "equityPercentage": "Percentage value (e.g., 25%)",
-                        "shareCount": "Number of shares",
-                        "faceValue": "Face value per share",
-                        "investmentAmount": "Total investment amount",
-                        "shareClass": "Share class (e.g., Equity, Preference)"
-                      }
-                    ],
-                    "totalShares": "Total number of shares",
-                    "totalEquity": "Total equity percentage (should be 100%)",
-                    "analysis": "Detailed analysis of the shareholding structure",
-                    "recommendations": ["Recommendation 1", "Recommendation 2"]
-                  },
-                  "directorsTable": {
-                    "overview": "Overview of the company's board of directors",
-                    "directors": [
-                      {
-                        "name": "Director name",
-                        "position": "Position/designation",
-                        "appointmentDate": "Date of appointment",
-                        "din": "Director Identification Number",
-                        "shareholding": "Shareholding percentage or count",
-                        "expertise": "Area of expertise/background"
-                      }
-                    ],
-                    "analysis": "Detailed analysis of the board composition",
-                    "recommendations": ["Recommendation 1", "Recommendation 2"]
-                  },
-                  "keyBusinessAgreements": {
-                    "overview": "Overview of key business agreements",
-                    "agreements": [
-                      {
-                        "type": "Type of agreement",
-                        "parties": "Parties involved",
-                        "date": "Effective date",
-                        "duration": "Duration of agreement",
-                        "value": "Financial value",
-                        "keyTerms": "Key terms and conditions"
-                      }
-                    ],
-                    "analysis": "Detailed analysis of the business agreements",
-                    "recommendations": ["Recommendation 1", "Recommendation 2"]
-                  },
-                  "leavePolicy": {
-                    "overview": "Overview of the company's leave policy",
-                    "policies": [
-                      {
-                        "type": "Type of leave",
-                        "daysAllowed": "Number of days allowed",
-                        "eligibility": "Eligibility criteria",
-                        "carryForward": true or false,
-                        "encashment": true or false
-                      }
-                    ],
-                    "analysis": "Detailed analysis of the leave policy",
-                    "recommendations": ["Recommendation 1", "Recommendation 2"]
-                  },
-                  "provisionsAndPrepayments": {
-                    "overview": "Overview of provisions and prepayments",
-                    "items": [
-                      {
-                        "name": "Item name",
-                        "type": "Type (Provision or Prepayment)",
-                        "amount": "Amount value",
-                        "period": "Period covered",
-                        "status": "adequate" or "inadequate" or "uncertain",
-                        "notes": "Additional notes"
-                      }
-                    ],
-                    "analysis": "Detailed analysis of provisions and prepayments",
-                    "recommendations": ["Recommendation 1", "Recommendation 2"]
-                  },
-                  "deferredTaxAssets": {
-                    "overview": "Overview of deferred tax assets",
-                    "items": [
-                      {
-                        "name": "Asset name",
-                        "amount": "Amount value",
-                        "origin": "Origin/source",
-                        "expectedUtilization": "Expected utilization timeline",
-                        "riskLevel": "low" or "medium" or "high"
-                      }
-                    ],
-                    "analysis": "Detailed analysis of deferred tax position",
-                    "recommendations": ["Recommendation 1", "Recommendation 2"]
-                  }
-                }
-
-                COMPREHENSIVE DUE DILIGENCE AND AUDIT GUIDELINES:
-                - *** CRITICAL: This report MUST meet professional standards that could replace the work of lawyers and chartered accountants ***
-                - Set "reportCalculated" to true ONLY if you were able to extract meaningful financial data and generate a useful report
-                - Set "reportCalculated" to false if you cannot extract sufficient financial information from the documents
-                - Even if reportCalculated is false, still provide as much analysis as possible with the available data
-                - NEVER leave the report empty - always provide some analysis even if limited
-                - *** IMPORTANT: For ALL compliance status fields, ONLY use "compliant", "partial", or "non-compliant" values - NEVER use "unknown" or any other values ***
-                - Include a formal audit opinion section that follows professional auditing standards
-                - Provide a professional, detailed executive summary with key findings and recommended actions
-                - Focus on key financial indicators, trends, and growth metrics with color-coded status indicators
-                - Include data visualizations and charts for all key metrics and trends
-                - Identify strengths, weaknesses, and areas for improvement with specific, actionable recommendations
-                - Evaluate compliance with Indian accounting standards and regulations in detail
-                - Assess internal controls and financial reporting processes with specific findings
-                - Identify potential fraud risks and irregularities with severity ratings
-                - Verify accuracy and completeness of financial statements with detailed analysis
-                - Evaluate tax compliance (GST, Income Tax, TDS) with specific recommendations
-                - Provide detailed recommendations for improving financial governance
-                - Evaluate financial health, profitability, liquidity, and solvency with industry benchmarks
-                - Assess growth potential and investment opportunities with projected returns
-                - CRITICAL: Include historical data and trends from ALL AVAILABLE TIME PERIODS to show performance over time
-                - ALWAYS use multi-year/multi-period data in trend charts - NEVER create charts with only one data point
-                - If documents from multiple years are available, use ALL years in trend analysis (not just the most recent)
-                - If only single-year documents are available, break down data into quarters or months to show trends
-                - Provide industry benchmarking to show how the company compares to peers
-                - Include growth projections based on historical performance and industry trends
-                - Include a detailed analysis of available documents in the documentAnalysis section
-                - For each available document, go beyond assessing quality and completeness - analyze the actual financial content
-                - Extract specific financial figures, metrics, ratios, and trends from each document
-                - Identify key financial highlights that reveal the company's true financial position
-                - Flag any concerning financial indicators or red flags found in the document content
-                - Provide specific insights about what the financial data in each document reveals about the company
-                - For missing documents, explain specifically how this impacts particular financial analysis areas
-                - Ensure all metrics have appropriate status indicators (good/warning/critical)
-                - Include percentage changes and trends for all key metrics
-                - Provide detailed ratio analysis with industry comparisons
-                - Include specific, actionable recommendations for improvement
-                - Ensure all table sections (shareholdersTable, directorsTable, keyBusinessAgreements, leavePolicy, provisionsAndPrepayments, deferredTaxAssets) are properly populated
-                - Include a financial health score with detailed breakdown of components is
-                - Provide a SWOT analysis (Strengths, Weaknesses, Opportunities, Threats)
-                - Include radar charts comparing company performance to industry benchmarks
-                - Provide trend analysis with line charts showing historical performance
-                - Include bar charts comparing key metrics to industry averages
-                - Provide pie charts showing breakdowns of key financial components
-                - Include a formal audit findings section with material weaknesses and significant deficiencies
-                - Provide a detailed internal control assessment following professional auditing standards
-                - Include a formal audit methodology section describing the approach used
-
-                ENTITY-SPECIFIC REPORTING GUIDELINES:
-                - Always refer to ${companyName} by name throughout the report
-                - For each finding, clearly state: "${companyName} exhibits [specific issue]" rather than using generic language
-                - When describing deficiencies, be precise: "${companyName}'s accounts receivable turnover ratio is significantly below industry standards at X days compared to the industry average of Y days"
-                - For recommendations, be specific: "${companyName} should implement [specific action] to address [specific issue]"
-                - When highlighting strengths, be concrete: "${companyName} demonstrates strong [specific area] as evidenced by [specific metric]"
-                - For risk factors, clearly state: "${companyName} faces [specific risk] due to [specific factor]"
-                - For compliance issues, be direct: "${companyName} is non-compliant with [specific requirement]"
-                - For financial metrics, provide context: "${companyName}'s [metric] of [value] is [comparison] to the industry average of [value]"
-                - For audit findings, be explicit: "Our audit of ${companyName} identified [specific finding]"
-                - For each recommendation, explain the expected benefit: "By implementing [recommendation], ${companyName} could improve [specific area] by approximately [estimated impact]"
-
-                TREND ANALYSIS GUIDELINES:
-                - GENERATE AT LEAST 6-8 DIFFERENT FINANCIAL TREND GRAPHS covering various aspects of financial performance
-                - EACH TREND MUST INCLUDE CHART DATA with appropriate visualization type (line, bar, etc.)
-                - CRITICAL: EVERY TREND CHART MUST HAVE MULTIPLE DATA POINTS (AT LEAST 2-3 YEARS/PERIODS) TO SHOW ACTUAL TRENDS
-                - EXTREMELY IMPORTANT: USE THE TIME PERIOD METADATA FROM DOCUMENTS TO IDENTIFY DIFFERENT YEARS/PERIODS
-                - If documents from multiple years/periods are available (check the Time Period metadata field), USE ALL AVAILABLE YEARS in charts
-                - If only single-year documents are available, BREAK DOWN THE DATA INTO QUARTERS OR MONTHS to show trends within that year
-                - Include the following ESSENTIAL FINANCIAL TRENDS (with multiple years, or quarterly/monthly data points):
-                  * Revenue Growth Trend (MUST show multiple periods - at least 2-3 years or quarters)
-                  * EBITDA/Profit Margin Trend (MUST show multiple periods - at least 2-3 years or quarters)
-                  * Cash Flow Trend (MUST show multiple periods - at least 2-3 years or quarters)
-                  * Burn Rate Trend (MUST show multiple periods - at least 2-3 years or quarters)
-                  * Debt-to-Equity Ratio Trend (MUST show multiple periods - at least 2-3 years or quarters)
-                  * Working Capital Trend (MUST show multiple periods - at least 2-3 years or quarters)
-                  * Accounts Receivable/Payable Trend (MUST show multiple periods - at least 2-3 years or quarters)
-                  * Operational Efficiency Metrics Trend (MUST show multiple periods - at least 2-3 years or quarters)
-                - Use any appropriate term to describe trends (increasing, decreasing, stable, improving, deteriorating, etc.)
-                - Be consistent in your terminology within each section
-                - For financial metrics, use terms like "increasing", "decreasing", "stable", "volatile", "improving", "deteriorating"
-                - For ratios, use terms like "improving", "stable", "deteriorating", "strengthening", "weakening"
-                - Always explain the significance of the trend in the context of ${companyName}'s financial health
-                - Indicate whether a trend is positive or negative for ${companyName} specifically
-                - Compare ${companyName}'s trends to industry standards where possible
-                - Highlight any unusual or concerning trends specific to ${companyName}'s financial data
-                - Explain potential causes for significant trends observed in ${companyName}'s financial statements
-                - Provide forward-looking implications of current trends for ${companyName}'s future performance
-                - ENSURE EACH TREND HAS COMPLETE CHART DATA with appropriate labels, datasets, and colors
-                - CRITICAL: EVEN IF ONLY ONE DOCUMENT IS AVAILABLE FOR A SPECIFIC TYPE, EXTRACT MULTIPLE DATA POINTS FROM IT (e.g., monthly/quarterly figures within that document)
-
-                DOCUMENT CONTENT ANALYSIS AND SEPARATE FINANCIAL DD & AUDITING:
-                - For each of ${companyName}'s documents, perform an EXTREMELY DETAILED ANALYSIS OF THE FINANCIAL CONTENT with specific figures and metrics
-                - SEPARATE FINANCIAL DUE DILIGENCE from AUDITING in your analysis with clear distinction:
-                  * FINANCIAL DUE DILIGENCE: Focus on investment worthiness, growth potential, financial health, and business viability with specific ROI calculations and valuation metrics
-                  * AUDITING: Focus on compliance, accuracy, fraud detection, and adherence to accounting standards with specific references to Indian accounting standards
-
-                - DETAILED FINANCIAL CONTENT EXTRACTION:
-                  * Extract exact financial figures with proper currency notation (₹) and time periods
-                  * Calculate key financial ratios from the raw data and compare to industry benchmarks
-                  * Identify specific year-over-year or quarter-over-quarter growth rates with exact percentages
-                  * Extract specific business segments or revenue streams and their contribution percentages
-                  * Identify exact debt amounts, interest rates, and maturity schedules
-                  * Extract specific capital expenditure amounts and investment activities
-                  * Identify exact shareholder equity changes and dividend distributions
-                  * Extract specific tax payment amounts and compliance status
-
-                - FINANCIAL RED FLAGS AND INCONSISTENCIES:
-                  * Identify specific mathematical errors in calculations with exact figures
-                  * Flag unusual fluctuations in financial metrics with exact percentage changes
-                  * Identify specific inconsistencies between related financial statements with exact figures
-                  * Flag unusual accounting treatments with specific examples and amounts
-                  * Identify specific transactions that appear irregular with exact amounts
-                  * Flag any concerning financial ratios with exact values compared to industry norms
-                  * Identify specific disclosure inadequacies with references to required disclosures
-                  * Flag any concerning trends in key metrics with exact figures showing the trend
-
-                - DOCUMENT QUALITY AND RELIABILITY ASSESSMENT:
-                  * Assess data completeness with specific missing elements identified
-                  * Evaluate data consistency with specific examples of consistent/inconsistent figures
-                  * Assess adherence to accounting standards with specific standard references
-                  * Evaluate disclosure adequacy with specific missing disclosures identified
-                  * Assess internal controls based on evidence in financial reporting
-                  * Evaluate the reliability of projections based on historical accuracy
-
-                - COMPREHENSIVE CROSS-DOCUMENT ANALYSIS:
-                  * Compare specific figures across different documents to verify consistency
-                  * Analyze financial trends across multiple time periods with exact growth rates
-                  * Identify specific discrepancies between related documents with exact figures
-                  * Evaluate the overall financial story told across all documents
-                  * Assess whether the combined documents provide a complete financial picture
-                  * Identify specific information gaps across the document collection
-
-                - ADDITIONAL REQUIRED SECTIONS:
-                  * SHAREHOLDERS TABLE: Create a detailed shareholders table with the following information:
-                    - Name of each shareholder
-                    - Equity percentage held by each shareholder
-                    - Number of shares held by each shareholder
-                    - Face value of shares
-                    - Investment amount (if available)
-                    - Share class (if applicable)
-                    - Voting rights information
-                    - Analysis of the equity distribution
-                    - Recommendations related to shareholding structure
-
-                  * DIRECTORS TABLE: Create a detailed directors table with the following information:
-                    - Name of each director
-                    - Position/designation
-                    - Appointment date (if available)
-                    - Director Identification Number (DIN) if available
-                    - Shareholding percentage (if applicable)
-                    - Expertise/background
-                    - Other directorships (if available)
-                    - Analysis of the board composition
-                    - Recommendations related to board structure
-
-                  * KEY BUSINESS AGREEMENTS: Analyze and summarize key business agreements with:
-                    - Types of agreements
-                    - Parties involved
-                    - Effective dates and expiry dates
-                    - Key terms and conditions
-                    - Financial impact of agreements
-                    - Risks associated with agreements
-                    - Analysis of the agreements' impact on business
-                    - Recommendations related to business agreements
-
-                  * LEAVE POLICY ANALYSIS: Analyze the company's leave policy with:
-                    - Types of leave available
-                    - Entitlement for each leave type
-                    - Carry forward and encashment policies
-                    - Compliance status with labor laws
-                    - Financial implications of leave policy
-                    - Analysis of the leave policy
-                    - Recommendations for improvement
-
-                  * PROVISIONS & PREPAYMENTS: Analyze provisions and prepayments with:
-                    - Types of provisions made
-                    - Amounts allocated
-                    - Purpose of provisions
-                    - Accounting treatment
-                    - Adequacy assessment
-                    - Types of prepayments
-                    - Amortization schedules
-                    - Analysis of provisions and prepayments
-                    - Recommendations for improvement
-
-                  * DEFERRED TAX ASSETS (DTA): Analyze deferred tax assets with:
-                    - Types of deferred tax assets
-                    - Amounts recognized
-                    - Origin/source of DTAs
-                    - Expected utilization timeline
-                    - Recoverability assessment
-                    - Analysis of deferred tax position
-                    - Recommendations for tax planning
-
-                DOCUMENT CONTENT:
-                ${documentContent}
-                `;
+      const PROMPT = FIN_DD_PROMPT(companyName, startupContext, investorContext, missingDocumentsContext, documentContent, structure);
 
       // Call Gemini API with dynamic retry logic
       console.log('Calling Gemini API for financial analysis with dynamic retry logic...');
 
       let text = '';
       const result = await executeGeminiWithDynamicRetry(async () => {
-        return await model.generateContent(prompt);
+        return await model.generateContent(PROMPT);
       });
 
       const response = result.response;
       text = response.text();
 
       console.log('Successfully received response from Gemini API');
+
+      // Log the raw response to a file for debugging
+      try {
+        const timestamp = new Date().toISOString().replace(/:/g, '-');
+        const logDir = path.join(__dirname, '..', '..', 'logs');
+
+        // Create logs directory if it doesn't exist
+        if (!fs.existsSync(logDir)) {
+          fs.mkdirSync(logDir, { recursive: true });
+        }
+
+        const logFilePath = path.join(logDir, `gemini_raw_response_${timestamp}.json`);
+        fs.writeFileSync(logFilePath, text);
+        console.log(`Raw Gemini response logged to: ${logFilePath}`);
+      } catch (logError) {
+        console.error('Error logging raw Gemini response:', logError);
+      }
 
       // Parse the JSON response
       try {

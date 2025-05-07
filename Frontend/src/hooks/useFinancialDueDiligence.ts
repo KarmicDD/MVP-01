@@ -110,6 +110,56 @@ export interface AuditFinding {
 }
 
 export interface FinancialDueDiligenceReport {
+  // Report Type and Perspective
+  reportType?: string;
+  reportPerspective?: string;
+
+  // Total Company Score
+  totalCompanyScore?: {
+    score: number;
+    rating: string; // Accept any string value for rating
+    description: string;
+  };
+
+  // Investment Decision
+  investmentDecision?: {
+    recommendation: 'Invest' | 'Consider with Conditions' | 'Do Not Invest';
+    successProbability: number;
+    justification: string;
+    keyConsiderations: string[];
+    suggestedTerms?: string[];
+    chartData?: any;
+  };
+
+  // Compatibility Analysis
+  compatibilityAnalysis?: {
+    overallMatch: 'Strong Match' | 'Moderate Match' | 'Weak Match';
+    overallScore: number;
+    dimensions: {
+      name: string;
+      score: number;
+      description: string;
+      status: 'excellent' | 'good' | 'moderate' | 'poor';
+    }[];
+    keyInvestmentStrengths: string[];
+    keyInvestmentChallenges: string[];
+    investmentRecommendations: string[];
+    radarChartData?: any;
+  };
+
+  // Scoring Breakdown
+  scoringBreakdown?: {
+    overview: string;
+    categories: {
+      name: string;
+      score: number;
+      description: string;
+      status: 'excellent' | 'good' | 'moderate' | 'poor';
+      keyPoints: string[];
+    }[];
+    barChartData?: any;
+  };
+
   // Executive Summary Section
   executiveSummary: {
     headline: string;

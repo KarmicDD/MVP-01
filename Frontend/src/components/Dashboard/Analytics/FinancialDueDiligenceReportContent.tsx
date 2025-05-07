@@ -1,141 +1,17 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FiDownload, FiShare2, FiDollarSign, FiTrendingUp, FiAlertCircle, FiCheckCircle, FiBarChart2, FiFileText, FiInfo, FiArrowUp, FiArrowDown, FiMinus, FiActivity, FiTarget, FiGlobe, FiAward, FiShield, FiLayers, FiPieChart, FiUsers, FiBriefcase, FiCalendar, FiPackage, FiCreditCard } from 'react-icons/fi';
+import { FiDownload, FiShare2, FiDollarSign, FiTrendingUp, FiAlertCircle, FiCheckCircle, FiBarChart2, FiFileText, FiInfo, FiArrowUp, FiArrowDown, FiMinus, FiActivity, FiTarget, FiGlobe, FiAward, FiShield, FiLayers, FiPieChart, FiUsers, FiBriefcase, FiCalendar, FiPackage, FiCreditCard, FiTrendingDown, FiPercent, FiHash } from 'react-icons/fi';
 import { FinancialDueDiligenceReport as MatchFinancialDueDiligenceReport } from '../../../hooks/useFinancialDueDiligence';
 import { FinancialDueDiligenceReport as EntityFinancialDueDiligenceReport, ChartData } from '../../../hooks/useEntityFinancialDueDiligence';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, RadialLinearScale, Title, Tooltip as ChartTooltip, Legend, Filler } from 'chart.js';
 import { Line, Bar, Pie, Radar } from 'react-chartjs-2';
 import ChartRenderer from './ChartRenderer';
 import DocumentContentAnalysisSection from './DocumentContentAnalysisSection';
+import { AdditionalReportProperties } from '../../../types/FinancialDD.types';
+import ReportCard from './ReportCard';
+import ScoreDisplay from './ScoreDisplay';
 
-// Define additional properties that exist in the MongoDB schema but not in the TypeScript interfaces
-interface AdditionalReportProperties {
-  shareholdersTable?: {
-    overview: string;
-    shareholders: {
-      name: string;
-      equityPercentage: number | string;
-      shareCount: number | string;
-      faceValue: number | string;
-      investmentAmount?: number | string;
-      shareClass?: string;
-      votingRights?: string;
-      notes?: string;
-    }[];
-    totalShares: number | string;
-    totalEquity: number | string;
-    analysis: string;
-    recommendations: string[];
-  };
 
-  directorsTable?: {
-    overview: string;
-    directors: {
-      name: string;
-      position: string;
-      appointmentDate?: string;
-      din?: string;
-      shareholding?: number | string;
-      expertise?: string;
-      otherDirectorships?: string[];
-      notes?: string;
-    }[];
-    analysis: string;
-    recommendations: string[];
-  };
-
-  keyBusinessAgreements?: {
-    overview: string;
-    agreements: {
-      type?: string;
-      agreementType?: string;
-      parties: string[] | string;
-      effectiveDate?: string;
-      expiryDate?: string;
-      keyTerms?: string[];
-      financialImpact?: string;
-      risks?: string[];
-      notes?: string;
-      // Additional fields used in the UI
-      date?: string;
-      duration?: string;
-      value?: string | number;
-    }[];
-    analysis: string;
-    recommendations: string[];
-  };
-
-  leavePolicy?: {
-    overview: string;
-    policies: {
-      type: string;
-      daysAllowed: number | string;
-      eligibility?: string;
-      carryForward?: string;
-      encashment?: string;
-      notes?: string;
-    }[];
-    analysis: string;
-    recommendations: string[];
-  };
-
-  provisionsAndPrepayments?: {
-    overview: string;
-    items: {
-      name: string;
-      type: string;
-      amount: number | string;
-      period?: string;
-      justification?: string;
-      notes?: string;
-      status?: string;
-    }[];
-    analysis: string;
-    recommendations: string[];
-  };
-
-  deferredTaxAssets?: {
-    overview: string;
-    items: {
-      name: string;
-      amount: number | string;
-      origin?: string;
-      expectedUtilization?: string;
-      recoverability?: string;
-      notes?: string;
-      riskLevel?: string;
-    }[];
-    analysis: string;
-    recommendations: string[];
-  };
-
-  documentContentAnalysis?: {
-    overview: string;
-    dueDiligenceFindings: {
-      summary: string;
-      keyInsights: string[];
-      investmentImplications: string[];
-      growthIndicators: string[];
-      riskFactors: string[];
-    };
-    auditFindings: {
-      summary: string;
-      complianceIssues: string[];
-      accountingConcerns: string[];
-      internalControlWeaknesses: string[];
-      fraudRiskIndicators: string[];
-    };
-    documentSpecificAnalysis: {
-      documentType: string;
-      contentSummary: string;
-      dueDiligenceInsights: string[];
-      auditInsights: string[];
-      keyFinancialData: string[];
-      inconsistencies: string[];
-      recommendations: string[];
-    }[];
-  };
-}
 
 // Create a union type that can handle both report types and includes the additional properties
 type FinancialDueDiligenceReport = (MatchFinancialDueDiligenceReport | EntityFinancialDueDiligenceReport) & AdditionalReportProperties;
@@ -156,9 +32,82 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
   // isCompact is passed from parent but not used in this component
   // Keeping the prop for future use
 }) => {
+  // Add console logging to help debug the data structure
+  console.log('Report data in FinancialDueDiligenceReportContent:', report);
+
+  // Log each section separately to help with debugging
+  console.log('totalCompanyScore:', report.totalCompanyScore);
+  console.log('investmentDecision:', report.investmentDecision);
+  console.log('compatibilityAnalysis:', report.compatibilityAnalysis);
+
+  // Ensure the data structure is properly handled with robust defaults
+  const totalCompanyScore = report.totalCompanyScore ? {
+    score: report.totalCompanyScore.score || 0,
+    rating: report.totalCompanyScore.rating || 'Not Available',
+    description: report.totalCompanyScore.description || 'No description available'
+  } : {
+    score: 0,
+    rating: 'Not Available',
+    description: 'Total company score data is not available.'
+  };
+
+  const investmentDecision = report.investmentDecision ? {
+    recommendation: report.investmentDecision.recommendation || 'Not Available',
+    successProbability: report.investmentDecision.successProbability || 0,
+    justification: report.investmentDecision.justification || 'No justification available',
+    keyConsiderations: Array.isArray(report.investmentDecision.keyConsiderations) ?
+      report.investmentDecision.keyConsiderations : ['No considerations available'],
+    suggestedTerms: Array.isArray(report.investmentDecision.suggestedTerms) ?
+      report.investmentDecision.suggestedTerms : ['No terms available'],
+    chartData: report.investmentDecision.chartData || null
+  } : {
+    recommendation: 'Not Available',
+    successProbability: 0,
+    justification: 'Investment decision data is not available.',
+    keyConsiderations: ['No data available'],
+    suggestedTerms: ['No data available'],
+    chartData: null
+  };
+
+  const compatibilityAnalysis = report.compatibilityAnalysis ? {
+    overallMatch: report.compatibilityAnalysis.overallMatch || 'Not Available',
+    overallScore: report.compatibilityAnalysis.overallScore || 0,
+    dimensions: Array.isArray(report.compatibilityAnalysis.dimensions) ?
+      report.compatibilityAnalysis.dimensions : [],
+    keyInvestmentStrengths: Array.isArray(report.compatibilityAnalysis.keyInvestmentStrengths) ?
+      report.compatibilityAnalysis.keyInvestmentStrengths : ['No strengths data available'],
+    keyInvestmentChallenges: Array.isArray(report.compatibilityAnalysis.keyInvestmentChallenges) ?
+      report.compatibilityAnalysis.keyInvestmentChallenges : ['No challenges data available'],
+    investmentRecommendations: Array.isArray(report.compatibilityAnalysis.investmentRecommendations) ?
+      report.compatibilityAnalysis.investmentRecommendations : ['No recommendations data available'],
+    radarChartData: report.compatibilityAnalysis.radarChartData || null
+  } : {
+    overallMatch: 'Not Available',
+    overallScore: 0,
+    dimensions: [
+      {
+        name: 'Data Not Available',
+        score: 0,
+        description: 'No dimension data available',
+        status: 'moderate' as 'moderate'
+      }
+    ],
+    keyInvestmentStrengths: ['No data available'],
+    keyInvestmentChallenges: ['No data available'],
+    investmentRecommendations: ['No data available'],
+    radarChartData: null
+  };
+
+  // Log the processed data
+  console.log('Processed totalCompanyScore:', totalCompanyScore);
+  console.log('Processed investmentDecision:', investmentDecision);
+  console.log('Processed compatibilityAnalysis:', compatibilityAnalysis);
   // Helper function to get status color
-  const getStatusColor = (status: string) => {
-    switch (status) {
+  const getStatusColor = (status?: string) => {
+    // Handle undefined or null status
+    if (!status) return 'bg-gray-100 text-gray-800';
+
+    switch (status.toLowerCase()) {
       case 'good':
         return 'bg-green-100 text-green-800';
       case 'warning':
@@ -176,31 +125,78 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
     }
   };
 
-  // Helper function to get risk level color
-  const getRiskLevelColor = (level: string) => {
+  const getRatingBgColor = (rating?: string) => {
+    // Handle undefined or null rating
+    if (!rating) return 'bg-slate-600';
+
+    const ratingLower = rating.toLowerCase();
+    if (ratingLower.includes('excellent')) return 'bg-emerald-600';
+    if (ratingLower.includes('good')) return 'bg-blue-600';
+    if (ratingLower.includes('fair')) return 'bg-amber-600';
+    if (ratingLower.includes('poor')) return 'bg-orange-600';
+    if (ratingLower.includes('critical')) return 'bg-red-600';
+    // Default color for any other rating
+    return 'bg-slate-600';
+  };
+
+  // Helper function to get rating color for text - updated with new color scheme
+  const getRatingTextColor = (rating?: string) => {
+    // Handle undefined or null rating
+    if (!rating) return 'text-slate-300';
+
+    const ratingLower = rating.toLowerCase();
+    if (ratingLower.includes('excellent')) return 'text-emerald-500';
+    if (ratingLower.includes('good')) return 'text-blue-500';
+    if (ratingLower.includes('fair')) return 'text-amber-500';
+    if (ratingLower.includes('poor')) return 'text-orange-500';
+    if (ratingLower.includes('critical')) return 'text-red-500';
+    // Default color for any other rating
+    return 'text-slate-500';
+  };
+
+  // Helper function to get rating badge color - updated with new color scheme
+  const getRatingBadgeColor = (rating?: string) => {
+    // Handle undefined or null rating
+    if (!rating) return 'bg-slate-500 text-white';
+
+    const ratingLower = rating.toLowerCase();
+    if (ratingLower.includes('excellent')) return 'bg-emerald-500 text-white';
+    if (ratingLower.includes('good')) return 'bg-blue-500 text-white';
+    if (ratingLower.includes('fair')) return 'bg-amber-500 text-white';
+    if (ratingLower.includes('poor')) return 'bg-orange-500 text-white';
+    if (ratingLower.includes('critical')) return 'bg-red-500 text-white';
+    // Default color for any other rating
+    return 'bg-slate-500 text-white';
+  };
+
+  // Helper function to get risk level color - updated with new color scheme
+  const getRiskLevelColor = (level?: string) => {
+    // Handle undefined or null level
+    if (!level) return 'bg-slate-100 text-slate-800';
+
     switch (level.toLowerCase()) {
       case 'low':
-        return 'bg-green-100 text-green-800';
+        return 'bg-emerald-100 text-emerald-800';
       case 'medium':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-amber-100 text-amber-800';
       case 'high':
         return 'bg-red-100 text-red-800';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-slate-100 text-slate-800';
     }
   };
 
-  // Helper function to get trend icon
+  // Helper function to get trend icon - updated with new color scheme
   const getTrendIcon = (trend?: string) => {
     switch (trend) {
       case 'increasing':
       case 'improving':
-        return <FiArrowUp className="text-green-500" />;
+        return <FiArrowUp className="text-emerald-500" />;
       case 'decreasing':
       case 'deteriorating':
         return <FiArrowDown className="text-red-500" />;
       case 'stable':
-        return <FiMinus className="text-gray-500" />;
+        return <FiMinus className="text-slate-500" />;
       default:
         return null;
     }
@@ -221,34 +217,53 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
     Filler
   );
 
-  // Chart colors
+  // Enhanced chart colors with more professional palette - matching ChartRenderer
   const CHART_COLORS = {
-    primary: '#5A42E3',
-    secondary: '#818CF8',
-    tertiary: '#C3DAFE',
-    success: '#10B981',
-    warning: '#F59E0B',
-    danger: '#EF4444',
-    neutral: '#6B7280',
-    background: '#F1F2FE',
+    primary: '#2563EB',     // Bright blue - primary brand color
+    secondary: '#4F46E5',   // Indigo - secondary brand color
+    tertiary: '#8B5CF6',    // Purple - tertiary accent
+    success: '#10B981',     // Green - success states (brighter)
+    warning: '#F59E0B',     // Amber - warning states (brighter)
+    danger: '#EF4444',      // Red - error states (brighter)
+    neutral: '#6B7280',     // Gray - neutral text
+    background: '#F9FAFB',  // Light gray - background
+    accent1: '#06B6D4',     // Cyan - accent (brighter)
+    accent2: '#8B5CF6',     // Violet - accent (brighter)
+    accent3: '#0EA5E9',     // Sky blue - accent (brighter)
+    accent4: '#14B8A6',     // Teal - accent
+    accent5: '#F97316',     // Orange - accent
+    accent6: '#EC4899',     // Pink - accent
   };
 
-  // Pie chart colors
-  const PIE_COLORS = ['#5A42E3', '#10B981', '#F59E0B', '#EF4444', '#6B7280', '#818CF8', '#C3DAFE'];
+  // Enhanced pie chart colors - more vibrant and distinct - matching ChartRenderer
+  const PIE_COLORS = [
+    CHART_COLORS.primary,    // Blue
+    CHART_COLORS.success,    // Green
+    CHART_COLORS.warning,    // Amber
+    CHART_COLORS.danger,     // Red
+    CHART_COLORS.accent1,    // Cyan
+    CHART_COLORS.accent2,    // Violet
+    CHART_COLORS.accent4,    // Teal
+    CHART_COLORS.accent5,    // Orange
+    CHART_COLORS.accent6     // Pink
+  ];
 
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-      {/* Show notification for old data */}
+      {/* Show notification for old data - enhanced with better styling */}
       {report.isOldData && (
-        <div className="bg-amber-50 border-l-4 border-amber-400 p-4">
+        <motion.div
+          className="bg-amber-50 border-l-4 border-amber-500 p-4"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-amber-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
+              <FiAlertCircle className="h-5 w-5 text-amber-500" />
             </div>
             <div className="ml-3">
-              <p className="text-sm text-amber-700">
+              <p className="text-sm text-amber-800">
                 {report.message || 'Daily request limit reached. Showing previously generated data.'}
                 {report.generatedDate && (
                   <span className="ml-1 font-medium">
@@ -258,42 +273,49 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
               </p>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {/* Show warning for incomplete financial data extraction */}
+      {/* Show warning for incomplete financial data extraction - enhanced with better styling */}
       {(report as any).reportCalculated === false && (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+        <motion.div
+          className="bg-amber-50 border-l-4 border-amber-500 p-4"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+        >
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
+              <FiAlertCircle className="h-5 w-5 text-amber-500" />
             </div>
             <div className="ml-3">
-              <p className="text-sm text-yellow-700">
+              <p className="text-sm text-amber-800">
                 <span className="font-medium">Limited Analysis Available:</span> Our system was unable to extract complete financial data from the provided documents. The analysis below is based on limited information and may not be comprehensive.
               </p>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-700 to-purple-700 px-8 py-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-white">Financial Due Diligence Report</h2>
-            <div className="flex items-center mt-2">
-              <div className="h-1 w-10 bg-indigo-300 rounded mr-2"></div>
-              <p className="text-indigo-100">
+      {/* Enhanced Header with gradient background */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-8 border-b border-gray-200">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <h2 className="text-3xl font-bold text-blue-700 mb-2">Financial Due Diligence Report</h2>
+            <div className="flex items-center">
+              <div className="h-1 w-16 bg-blue-500 rounded mr-3"></div>
+              <p className="text-gray-600 font-medium">
                 Generated on {formatDate(report.generatedDate)}
               </p>
             </div>
-          </div>
-          <div className="flex space-x-3">
+          </motion.div>
+          <div className="flex space-x-3 mt-4 md:mt-0">
             <motion.button
-              className="px-4 py-2 bg-white text-indigo-700 hover:bg-gray-100 rounded-lg flex items-center shadow-md border border-white font-medium transition-all duration-200"
+              className="px-4 py-2.5 bg-white text-blue-700 hover:bg-gray-50 rounded-lg flex items-center shadow-sm border border-gray-200 font-medium transition-all duration-200"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleShareReport}
@@ -303,7 +325,7 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
               Share
             </motion.button>
             <motion.button
-              className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 rounded-lg text-white flex items-center shadow-md font-medium transition-all duration-200"
+              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-white flex items-center shadow-sm font-medium transition-all duration-200"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleExportPDF}
@@ -315,158 +337,850 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
           </div>
         </div>
 
-        {/* Report summary badges */}
-        <div className="flex flex-wrap gap-3 mt-4">
+        {/* Enhanced Report summary badges */}
+        <div className="flex flex-wrap gap-3 mt-6">
           {(report as any).reportCalculated && (
-            <span className="bg-green-600 text-white text-xs px-3 py-1 rounded-full font-medium flex items-center">
-              <FiCheckCircle className="mr-1" /> Complete Analysis
-            </span>
+            <motion.span
+              className="bg-emerald-100 text-emerald-800 text-xs px-4 py-1.5 rounded-full font-medium flex items-center shadow-sm"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <FiCheckCircle className="mr-1.5" /> Complete Analysis
+            </motion.span>
+          )}
+          {report.totalCompanyScore && (
+            <motion.span
+              className="bg-blue-100 text-blue-800 text-xs px-4 py-1.5 rounded-full font-medium flex items-center shadow-sm"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+            >
+              <FiAward className="mr-1.5" /> Company Score: {report.totalCompanyScore.score}
+            </motion.span>
           )}
           {report.documentAnalysis?.availableDocuments && (
-            <span className="bg-indigo-600 text-white text-xs px-3 py-1 rounded-full font-medium flex items-center">
-              <FiFileText className="mr-1" /> {report.documentAnalysis.availableDocuments.length} Documents Analyzed
-            </span>
+            <motion.span
+              className="bg-cyan-100 text-cyan-800 text-xs px-4 py-1.5 rounded-full font-medium flex items-center shadow-sm"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: 0.2 }}
+            >
+              <FiFileText className="mr-1.5" /> {report.documentAnalysis.availableDocuments.length} Documents Analyzed
+            </motion.span>
           )}
           {report.auditFindings?.complianceScore && (
-            <span className="bg-blue-600 text-white text-xs px-3 py-1 rounded-full font-medium flex items-center">
-              <FiTarget className="mr-1" /> Compliance Score: {report.auditFindings.complianceScore}
-            </span>
+            <motion.span
+              className="bg-indigo-100 text-indigo-800 text-xs px-4 py-1.5 rounded-full font-medium flex items-center shadow-sm"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: 0.3 }}
+            >
+              <FiTarget className="mr-1.5" /> Compliance Score: {report.auditFindings.complianceScore}
+            </motion.span>
           )}
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="p-6 space-y-8">
-        {/* Executive Summary */}
-        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-xl border border-indigo-100 shadow-sm">
-          <div className="flex items-center mb-4">
-            <div className="bg-indigo-600 p-2 rounded-lg mr-3">
-              <FiActivity className="text-white text-xl" />
+      {/* Main content with enhanced spacing and background */}
+      <div className="p-8 space-y-10 bg-white">
+        {/* Executive Summary - moved to top for better flow */}
+        {report.executiveSummary && (
+          <ReportCard
+            title={report.executiveSummary?.headline || "Executive Summary"}
+            icon={<FiActivity />}
+            iconBgColor="bg-blue-100"
+            iconColor="text-blue-600"
+          >
+            <p className="text-gray-700 leading-relaxed mb-5">{report.executiveSummary?.summary || "No summary available."}</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              {report.executiveSummary?.keyFindings && report.executiveSummary.keyFindings.length > 0 && (
+                <motion.div
+                  className="bg-white p-5 rounded-lg border border-indigo-100 shadow-sm"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.2 }}
+                >
+                  <h4 className="font-semibold text-indigo-800 mb-3 flex items-center">
+                    <FiInfo className="mr-2 text-indigo-600" />
+                    Key Findings
+                  </h4>
+                  <ul className="space-y-2">
+                    {report.executiveSummary.keyFindings.map((finding, index) => (
+                      <motion.li
+                        key={index}
+                        className="flex items-start"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 0.1 + (index * 0.05) }}
+                      >
+                        <span className="inline-flex items-center justify-center bg-indigo-100 text-indigo-800 w-5 h-5 rounded-full text-xs font-bold mr-2 mt-0.5">{index + 1}</span>
+                        <span className="text-gray-700">{finding}</span>
+                      </motion.li>
+                    ))}
+                  </ul>
+                </motion.div>
+              )}
+
+              {report.executiveSummary?.recommendedActions && report.executiveSummary.recommendedActions.length > 0 && (
+                <motion.div
+                  className="bg-white p-5 rounded-lg border border-green-100 shadow-sm"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.3 }}
+                >
+                  <h4 className="font-semibold text-green-800 mb-3 flex items-center">
+                    <FiCheckCircle className="mr-2 text-green-600" />
+                    Recommended Actions
+                  </h4>
+                  <ul className="space-y-2">
+                    {report.executiveSummary.recommendedActions.map((action, index) => (
+                      <motion.li
+                        key={index}
+                        className="flex items-start"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: 0.1 + (index * 0.05) }}
+                      >
+                        <span className="inline-flex items-center justify-center bg-green-100 text-green-800 w-5 h-5 rounded-full text-xs font-bold mr-2 mt-0.5">{index + 1}</span>
+                        <span className="text-gray-700">{action}</span>
+                      </motion.li>
+                    ))}
+                  </ul>
+                </motion.div>
+              )}
             </div>
-            <h3 className="text-xl font-bold text-indigo-900">{report.executiveSummary?.headline || "Executive Summary"}</h3>
-          </div>
 
-          <p className="text-gray-700 leading-relaxed mb-5">{report.executiveSummary?.summary || "No summary available."}</p>
+            {/* Due Diligence Summary and Audit Opinion */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              {/* Due Diligence Summary (if available) */}
+              {(report.executiveSummary as any)?.dueDiligenceSummary && (
+                <motion.div
+                  className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-lg border border-blue-100 shadow-sm"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.4 }}
+                >
+                  <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
+                    <FiDollarSign className="mr-2 text-blue-600" />
+                    Investment Worthiness Assessment
+                  </h4>
+                  <div className="flex items-center mb-3">
+                    <span className="text-sm font-medium text-gray-700 mr-2">Investment Worthiness:</span>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${(report.executiveSummary as any).dueDiligenceSummary.investmentWorthiness === 'high' ? 'bg-green-100 text-green-800' :
+                      (report.executiveSummary as any).dueDiligenceSummary.investmentWorthiness === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                      {(report.executiveSummary as any).dueDiligenceSummary.investmentWorthiness}
+                    </span>
+                  </div>
+                  <p className="text-gray-700 mb-3">{(report.executiveSummary as any).dueDiligenceSummary.statement}</p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-            {report.executiveSummary?.keyFindings && report.executiveSummary.keyFindings.length > 0 && (
-              <div className="bg-white p-4 rounded-lg border border-indigo-100 shadow-sm">
-                <h4 className="font-semibold text-indigo-800 mb-3 flex items-center">
-                  <FiInfo className="mr-2 text-indigo-600" />
-                  Key Findings
-                </h4>
-                <ul className="space-y-2">
-                  {report.executiveSummary.keyFindings.map((finding, index) => (
-                    <li key={index} className="flex items-start">
-                      <span className="inline-flex items-center justify-center bg-indigo-100 text-indigo-800 w-5 h-5 rounded-full text-xs font-bold mr-2 mt-0.5">{index + 1}</span>
-                      <span className="text-gray-700">{finding}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+                  <div className="grid grid-cols-1 gap-3">
+                    {(report.executiveSummary as any).dueDiligenceSummary.keyStrengths && (report.executiveSummary as any).dueDiligenceSummary.keyStrengths.length > 0 && (
+                      <div>
+                        <h5 className="font-medium text-green-700 mb-1">Key Strengths:</h5>
+                        <ul className="list-disc pl-5 space-y-1 bg-white p-2 rounded border border-green-100">
+                          {(report.executiveSummary as any).dueDiligenceSummary.keyStrengths.map((strength: string, index: number) => (
+                            <li key={index} className="text-gray-600 text-sm">{strength}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
-            {report.executiveSummary?.recommendedActions && report.executiveSummary.recommendedActions.length > 0 && (
-              <div className="bg-white p-4 rounded-lg border border-green-100 shadow-sm">
-                <h4 className="font-semibold text-green-800 mb-3 flex items-center">
-                  <FiCheckCircle className="mr-2 text-green-600" />
-                  Recommended Actions
-                </h4>
-                <ul className="space-y-2">
-                  {report.executiveSummary.recommendedActions.map((action, index) => (
-                    <li key={index} className="flex items-start">
-                      <span className="inline-flex items-center justify-center bg-green-100 text-green-800 w-5 h-5 rounded-full text-xs font-bold mr-2 mt-0.5">{index + 1}</span>
-                      <span className="text-gray-700">{action}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+                    {(report.executiveSummary as any).dueDiligenceSummary.keyRisks && (report.executiveSummary as any).dueDiligenceSummary.keyRisks.length > 0 && (
+                      <div>
+                        <h5 className="font-medium text-red-700 mb-1">Key Risks:</h5>
+                        <ul className="list-disc pl-5 space-y-1 bg-white p-2 rounded border border-red-100">
+                          {(report.executiveSummary as any).dueDiligenceSummary.keyRisks.map((risk: string, index: number) => (
+                            <li key={index} className="text-gray-600 text-sm">{risk}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
 
-          {/* Due Diligence Summary and Audit Opinion */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-            {/* Due Diligence Summary (if available) */}
-            {(report.executiveSummary as any)?.dueDiligenceSummary && (
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                <h4 className="font-semibold text-blue-800 mb-3 flex items-center">
-                  <FiDollarSign className="mr-2 text-blue-600" />
-                  Investment Worthiness Assessment
-                </h4>
-                <div className="flex items-center mb-3">
-                  <span className="text-sm font-medium text-gray-700 mr-2">Investment Worthiness:</span>
-                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${(report.executiveSummary as any).dueDiligenceSummary.investmentWorthiness === 'high' ? 'bg-green-100 text-green-800' :
-                    (report.executiveSummary as any).dueDiligenceSummary.investmentWorthiness === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                    {(report.executiveSummary as any).dueDiligenceSummary.investmentWorthiness}
-                  </span>
-                </div>
-                <p className="text-gray-700 mb-3">{(report.executiveSummary as any).dueDiligenceSummary.statement}</p>
+              {/* Audit Opinion (if available) */}
+              {(report.executiveSummary as any)?.auditOpinion && (
+                <motion.div
+                  className={`p-5 rounded-lg shadow-sm ${(report.executiveSummary as any).auditOpinion.type === 'unqualified' ? 'bg-green-50 border border-green-100' :
+                    (report.executiveSummary as any).auditOpinion.type === 'qualified' ? 'bg-yellow-50 border border-yellow-100' :
+                      (report.executiveSummary as any).auditOpinion.type === 'adverse' ? 'bg-red-50 border border-red-100' :
+                        'bg-gray-50 border border-gray-100'
+                    }`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.5 }}
+                >
+                  <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
+                    <FiShield className="mr-2 text-gray-600" />
+                    Audit Opinion
+                  </h4>
+                  <p className="text-gray-700 mb-3">{(report.executiveSummary as any).auditOpinion.statement}</p>
 
-                <div className="grid grid-cols-1 gap-3">
-                  {(report.executiveSummary as any).dueDiligenceSummary.keyStrengths && (report.executiveSummary as any).dueDiligenceSummary.keyStrengths.length > 0 && (
-                    <div>
-                      <h5 className="font-medium text-green-700 mb-1">Key Strengths:</h5>
-                      <ul className="list-disc pl-5 space-y-1 bg-white p-2 rounded border border-green-100">
-                        {(report.executiveSummary as any).dueDiligenceSummary.keyStrengths.map((strength: string, index: number) => (
-                          <li key={index} className="text-gray-600 text-sm">{strength}</li>
+                  {(report.executiveSummary as any).auditOpinion.qualifications && (report.executiveSummary as any).auditOpinion.qualifications.length > 0 && (
+                    <div className="mt-2">
+                      <h5 className="font-medium text-gray-700 mb-1">Qualifications:</h5>
+                      <ul className="list-disc pl-5 space-y-1 bg-white p-2 rounded border border-gray-200">
+                        {(report.executiveSummary as any).auditOpinion.qualifications.map((qualification: string, index: number) => (
+                          <li key={index} className="text-gray-600 text-sm">{qualification}</li>
                         ))}
                       </ul>
                     </div>
                   )}
 
-                  {(report.executiveSummary as any).dueDiligenceSummary.keyRisks && (report.executiveSummary as any).dueDiligenceSummary.keyRisks.length > 0 && (
-                    <div>
-                      <h5 className="font-medium text-red-700 mb-1">Key Risks:</h5>
-                      <ul className="list-disc pl-5 space-y-1 bg-white p-2 rounded border border-red-100">
-                        {(report.executiveSummary as any).dueDiligenceSummary.keyRisks.map((risk: string, index: number) => (
-                          <li key={index} className="text-gray-600 text-sm">{risk}</li>
+                  <div className="mt-3">
+                    <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${(report.executiveSummary as any).auditOpinion.type === 'unqualified' ? 'bg-green-100 text-green-800' :
+                      (report.executiveSummary as any).auditOpinion.type === 'qualified' ? 'bg-yellow-100 text-yellow-800' :
+                        (report.executiveSummary as any).auditOpinion.type === 'adverse' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                      }`}>
+                      {(report.executiveSummary as any).auditOpinion.type} opinion
+                    </span>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </ReportCard>
+        )}
+
+        {/* Total Company Score Section - enhanced with ScoreDisplay component */}
+        {totalCompanyScore && (
+          <ReportCard
+            title="Total Company Score"
+            icon={<FiAward />}
+            iconBgColor="bg-blue-100"
+            iconColor="text-blue-600"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="md:col-span-1 flex justify-center">
+                <ScoreDisplay
+                  score={totalCompanyScore.score}
+                  rating={totalCompanyScore.rating}
+                  size="large"
+                  label="Overall Score"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <div className="bg-gradient-to-br from-gray-50 to-blue-50 p-6 rounded-xl h-full flex flex-col justify-center border border-gray-200 shadow-sm">
+                  <h4 className="text-lg font-semibold mb-3 text-gray-800">Assessment</h4>
+                  <p className="text-gray-700 leading-relaxed">{totalCompanyScore.description}</p>
+                </div>
+              </div>
+            </div>
+          </ReportCard>
+        )}
+
+        {/* Investment Decision Section - enhanced with ReportCard component */}
+        {investmentDecision && (
+          <ReportCard
+            title="Investment Decision"
+            icon={<FiTarget />}
+            iconBgColor="bg-indigo-100"
+            iconColor="text-indigo-600"
+            delay={0.1}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="md:col-span-2">
+                <div className="mb-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center mb-4">
+                    <span className="text-lg font-semibold mr-3 text-gray-800 mb-2 sm:mb-0">Recommendation:</span>
+                    <motion.span
+                      className={`px-4 py-1.5 rounded-full text-sm font-medium inline-flex items-center ${investmentDecision.recommendation === 'Invest' ? 'bg-emerald-100 text-emerald-800' :
+                        investmentDecision.recommendation === 'Consider with Conditions' ? 'bg-amber-100 text-amber-800' :
+                          'bg-red-100 text-red-800'
+                        }`}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      {investmentDecision.recommendation === 'Invest' ? <FiCheckCircle className="mr-1.5" /> :
+                        investmentDecision.recommendation === 'Consider with Conditions' ? <FiAlertCircle className="mr-1.5" /> :
+                          <FiInfo className="mr-1.5" />}
+                      {investmentDecision.recommendation}
+                    </motion.span>
+                  </div>
+                  <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-4 rounded-lg border border-indigo-100 shadow-sm">
+                    <p className="text-gray-700 leading-relaxed">{investmentDecision.justification}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {investmentDecision.keyConsiderations && investmentDecision.keyConsiderations.length > 0 && (
+                    <motion.div
+                      className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.2 }}
+                    >
+                      <h4 className="font-semibold mb-3 text-gray-800 flex items-center">
+                        <FiInfo className="mr-2 text-indigo-500" /> Key Considerations
+                      </h4>
+                      <ul className="space-y-2">
+                        {investmentDecision.keyConsiderations.map((consideration, index) => (
+                          <motion.li
+                            key={index}
+                            className="text-gray-700 flex items-start"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.3, delay: 0.1 + (index * 0.05) }}
+                          >
+                            <span className="text-indigo-500 mr-2 mt-1">•</span>
+                            <span>{consideration}</span>
+                          </motion.li>
                         ))}
                       </ul>
-                    </div>
+                    </motion.div>
+                  )}
+
+                  {investmentDecision.suggestedTerms && investmentDecision.suggestedTerms.length > 0 && (
+                    <motion.div
+                      className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.3 }}
+                    >
+                      <h4 className="font-semibold mb-3 text-gray-800 flex items-center">
+                        <FiFileText className="mr-2 text-indigo-500" /> Suggested Terms
+                      </h4>
+                      <ul className="space-y-2">
+                        {investmentDecision.suggestedTerms.map((term, index) => (
+                          <motion.li
+                            key={index}
+                            className="text-gray-700 flex items-start"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.3, delay: 0.1 + (index * 0.05) }}
+                          >
+                            <span className="text-indigo-500 mr-2 mt-1">•</span>
+                            <span>{term}</span>
+                          </motion.li>
+                        ))}
+                      </ul>
+                    </motion.div>
                   )}
                 </div>
               </div>
-            )}
 
-            {/* Audit Opinion (if available) */}
-            {(report.executiveSummary as any)?.auditOpinion && (
-              <div className={`p-4 rounded-lg ${(report.executiveSummary as any).auditOpinion.type === 'unqualified' ? 'bg-green-50 border border-green-100' :
-                (report.executiveSummary as any).auditOpinion.type === 'qualified' ? 'bg-yellow-50 border border-yellow-100' :
-                  (report.executiveSummary as any).auditOpinion.type === 'adverse' ? 'bg-red-50 border border-red-100' :
-                    'bg-gray-50 border border-gray-100'
-                }`}>
-                <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
-                  <FiShield className="mr-2 text-gray-600" />
-                  Audit Opinion
-                </h4>
-                <p className="text-gray-700 mb-3">{(report.executiveSummary as any).auditOpinion.statement}</p>
+              <div className="md:col-span-1 flex flex-col items-center justify-center">
+                {investmentDecision.chartData ? (
+                  <motion.div
+                    className="h-64 w-64"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                  >
+                    <ChartRenderer chartData={investmentDecision.chartData} height={256} />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    className="w-full h-full flex flex-col items-center justify-center"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                  >
+                    <div className="relative w-72 h-72">
+                      {/* Enhanced background with subtle gradient */}
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-br from-gray-50 to-gray-100 shadow-inner"></div>
 
-                {(report.executiveSummary as any).auditOpinion.qualifications && (report.executiveSummary as any).auditOpinion.qualifications.length > 0 && (
-                  <div className="mt-2">
-                    <h5 className="font-medium text-gray-700 mb-1">Qualifications:</h5>
-                    <ul className="list-disc pl-5 space-y-1 bg-white p-2 rounded border border-gray-200">
-                      {(report.executiveSummary as any).auditOpinion.qualifications.map((qualification: string, index: number) => (
-                        <li key={index} className="text-gray-600 text-sm">{qualification}</li>
+                      {/* Success probability gauge */}
+                      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
+                        <defs>
+                          {/* Enhanced success gradient with more vibrant colors */}
+                          <linearGradient id="successGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#10B981" />
+                            <stop offset="50%" stopColor="#0EA5E9" />
+                            <stop offset="100%" stopColor="#3B82F6" />
+                          </linearGradient>
+
+                          {/* Risk factor gradient */}
+                          <linearGradient id="riskGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#F87171" />
+                            <stop offset="100%" stopColor="#EF4444" />
+                          </linearGradient>
+
+                          {/* Glow filter for success ring */}
+                          <filter id="successGlow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="2" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                          </filter>
+
+                          {/* Glow filter for risk ring */}
+                          <filter id="riskGlow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="1" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                          </filter>
+                        </defs>
+
+                        {/* Outer track with subtle shadow */}
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="45"
+                          fill="none"
+                          stroke="#E5E7EB"
+                          strokeWidth="8"
+                          strokeLinecap="round"
+                        />
+
+                        {/* Subtle tick marks for outer track */}
+                        {[...Array(10)].map((_, i) => {
+                          const angle = (i * 36) * (Math.PI / 180);
+                          const x1 = 50 + 45 * Math.cos(angle);
+                          const y1 = 50 + 45 * Math.sin(angle);
+                          const x2 = 50 + 42 * Math.cos(angle);
+                          const y2 = 50 + 42 * Math.sin(angle);
+                          return (
+                            <line
+                              key={`tick-${i}`}
+                              x1={x1}
+                              y1={y1}
+                              x2={x2}
+                              y2={y2}
+                              stroke="#D1D5DB"
+                              strokeWidth="1"
+                            />
+                          );
+                        })}
+
+                        {/* Progress - Success Probability with enhanced styling */}
+                        <motion.circle
+                          cx="50"
+                          cy="50"
+                          r="45"
+                          fill="none"
+                          stroke="url(#successGradient)"
+                          strokeWidth="8"
+                          strokeLinecap="round"
+                          filter="url(#successGlow)"
+                          strokeDasharray={`${2 * Math.PI * 45}`}
+                          strokeDashoffset={`${2 * Math.PI * 45 * (1 - investmentDecision.successProbability / 100)}`}
+                          initial={{ strokeDashoffset: `${2 * Math.PI * 45}` }}
+                          animate={{ strokeDashoffset: `${2 * Math.PI * 45 * (1 - investmentDecision.successProbability / 100)}` }}
+                          transition={{ duration: 1.5, delay: 0.3, ease: "easeOut" }}
+                        />
+
+                        {/* Inner track with subtle shadow */}
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="35"
+                          fill="none"
+                          stroke="#F3F4F6"
+                          strokeWidth="6"
+                          strokeLinecap="round"
+                        />
+
+                        {/* Subtle tick marks for inner track */}
+                        {[...Array(5)].map((_, i) => {
+                          const angle = (i * 72) * (Math.PI / 180);
+                          const x1 = 50 + 35 * Math.cos(angle);
+                          const y1 = 50 + 35 * Math.sin(angle);
+                          const x2 = 50 + 33 * Math.cos(angle);
+                          const y2 = 50 + 33 * Math.sin(angle);
+                          return (
+                            <line
+                              key={`inner-tick-${i}`}
+                              x1={x1}
+                              y1={y1}
+                              x2={x2}
+                              y2={y2}
+                              stroke="#D1D5DB"
+                              strokeWidth="1"
+                            />
+                          );
+                        })}
+
+                        {/* Risk factor indicator with enhanced styling */}
+                        <motion.circle
+                          cx="50"
+                          cy="50"
+                          r="35"
+                          fill="none"
+                          stroke="url(#riskGradient)"
+                          strokeWidth="6"
+                          strokeLinecap="round"
+                          filter="url(#riskGlow)"
+                          strokeDasharray={`${2 * Math.PI * 35}`}
+                          strokeDashoffset={`${2 * Math.PI * 35 * (1 - (100 - investmentDecision.successProbability) / 100)}`}
+                          initial={{ strokeDashoffset: `${2 * Math.PI * 35}` }}
+                          animate={{ strokeDashoffset: `${2 * Math.PI * 35 * (1 - (100 - investmentDecision.successProbability) / 100)}` }}
+                          transition={{ duration: 1.5, delay: 0.5, ease: "easeOut" }}
+                        />
+
+                        {/* Percentage markers */}
+                        {[0, 25, 50, 75, 100].map((percent) => {
+                          const angle = (percent / 100 * 360 - 90) * (Math.PI / 180);
+                          const x = 50 + 52 * Math.cos(angle);
+                          const y = 50 + 52 * Math.sin(angle);
+                          return (
+                            <text
+                              key={`percent-${percent}`}
+                              x={x}
+                              y={y}
+                              fill="#6B7280"
+                              fontSize="7"
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                              fontWeight="bold"
+                            >
+                              {percent}%
+                            </text>
+                          );
+                        })}
+                      </svg>
+
+                      {/* Enhanced center content with additional information */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <motion.div
+                          className="flex flex-col items-center"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.5, delay: 0.6 }}
+                        >
+                          <motion.span
+                            className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
+                            initial={{ opacity: 0, scale: 0.5 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.5, delay: 0.7, type: "spring" }}
+                          >
+                            {investmentDecision.successProbability}%
+                          </motion.span>
+                          <motion.span
+                            className="text-sm font-medium text-gray-500 mt-1"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.5, delay: 0.9 }}
+                          >
+                            Success Probability
+                          </motion.span>
+                        </motion.div>
+                      </div>
+                    </div>
+
+                    {/* Enhanced Legend with better styling */}
+                    <div className="flex flex-col items-center mt-4 space-y-3">
+                      <div className="flex items-center bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
+                        <div className="w-4 h-4 rounded-full bg-gradient-to-r from-green-500 via-blue-500 to-indigo-500 mr-2"></div>
+                        <motion.span
+                          className="text-sm font-medium text-gray-700"
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: 0.8 }}
+                        >
+                          Success Probability: {investmentDecision.successProbability}%
+                        </motion.span>
+                      </div>
+                      <div className="flex items-center bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
+                        <div className="w-4 h-4 rounded-full bg-gradient-to-r from-red-400 to-red-600 mr-2"></div>
+                        <motion.span
+                          className="text-sm font-medium text-gray-700"
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: 0.9 }}
+                        >
+                          Risk Factor: {100 - investmentDecision.successProbability}%
+                        </motion.span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+          </ReportCard>
+        )}
+
+        {/* Investment Potential Analysis Section - enhanced with ReportCard component */}
+        {compatibilityAnalysis && (
+          <ReportCard
+            title="Investment Potential Analysis"
+            icon={<FiUsers />}
+            iconBgColor="bg-purple-100"
+            iconColor="text-purple-600"
+            delay={0.2}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="md:col-span-1">
+                <motion.div
+                  className="bg-gradient-to-br from-purple-50 to-indigo-50 p-6 rounded-xl border border-purple-100 shadow-sm text-center"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                >
+                  <h4 className="text-lg font-semibold text-gray-800 mb-3">Investment Potential</h4>
+                  <motion.div
+                    className={`text-5xl font-bold mb-3 ${compatibilityAnalysis.overallMatch === 'Strong Match' ? 'text-emerald-600' :
+                      compatibilityAnalysis.overallMatch === 'Moderate Match' ? 'text-amber-600' :
+                        'text-red-600'
+                      }`}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5, delay: 0.4, type: 'spring' }}
+                  >
+                    {compatibilityAnalysis.overallScore}%
+                  </motion.div>
+                  <motion.div
+                    className={`inline-block px-4 py-1.5 rounded-full text-sm font-medium shadow-sm ${compatibilityAnalysis.overallMatch === 'Strong Match' ? 'bg-emerald-100 text-emerald-800' :
+                      compatibilityAnalysis.overallMatch === 'Moderate Match' ? 'bg-amber-100 text-amber-800' :
+                        'bg-red-100 text-red-800'
+                      }`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.5 }}
+                  >
+                    {compatibilityAnalysis.overallMatch}
+                  </motion.div>
+                </motion.div>
+
+                <div className="mt-6 grid grid-cols-1 gap-5">
+                  {compatibilityAnalysis.keyInvestmentStrengths && compatibilityAnalysis.keyInvestmentStrengths.length > 0 && (
+                    <motion.div
+                      className="bg-white p-5 rounded-lg border border-green-100 shadow-sm"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.4 }}
+                    >
+                      <h4 className="font-semibold mb-3 text-gray-800 flex items-center">
+                        <FiTrendingUp className="mr-2 text-green-500" /> Key Investment Strengths
+                      </h4>
+                      <ul className="space-y-2">
+                        {compatibilityAnalysis.keyInvestmentStrengths.map((area, index) => (
+                          <motion.li
+                            key={index}
+                            className="text-gray-700 flex items-start"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.3, delay: 0.1 + (index * 0.05) }}
+                          >
+                            <span className="text-green-500 mr-2 mt-1">•</span>
+                            <span>{area}</span>
+                          </motion.li>
+                        ))}
+                      </ul>
+                    </motion.div>
+                  )}
+
+                  {compatibilityAnalysis.keyInvestmentChallenges && compatibilityAnalysis.keyInvestmentChallenges.length > 0 && (
+                    <motion.div
+                      className="bg-white p-5 rounded-lg border border-red-100 shadow-sm"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.5 }}
+                    >
+                      <h4 className="font-semibold mb-3 text-gray-800 flex items-center">
+                        <FiAlertCircle className="mr-2 text-red-500" /> Key Investment Challenges
+                      </h4>
+                      <ul className="space-y-2">
+                        {compatibilityAnalysis.keyInvestmentChallenges.map((area, index) => (
+                          <motion.li
+                            key={index}
+                            className="text-gray-700 flex items-start"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.3, delay: 0.1 + (index * 0.05) }}
+                          >
+                            <span className="text-red-500 mr-2 mt-1">•</span>
+                            <span>{area}</span>
+                          </motion.li>
+                        ))}
+                      </ul>
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+
+              <div className="md:col-span-2">
+                {compatibilityAnalysis.radarChartData ? (
+                  <motion.div
+                    className="h-full"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                  >
+                    <h4 className="font-semibold mb-4 text-gray-800 text-center">Investment Potential Score</h4>
+                    <ChartRenderer
+                      chartData={compatibilityAnalysis.radarChartData}
+                      height={300}
+                      className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm"
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm h-full"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                  >
+                    <h4 className="font-semibold mb-4 text-gray-800 text-center">Investment Dimensions</h4>
+                    <div className="space-y-4">
+                      {compatibilityAnalysis.dimensions.map((dimension, index) => (
+                        <motion.div
+                          key={index}
+                          className="bg-gradient-to-r from-gray-50 to-white p-4 rounded-lg border border-gray-200 shadow-sm"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: 0.2 + (index * 0.1) }}
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="font-medium text-gray-800">{dimension.name}</span>
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium shadow-sm ${dimension.status === 'excellent' ? 'bg-green-100 text-green-800' :
+                              dimension.status === 'good' ? 'bg-blue-100 text-blue-800' :
+                                dimension.status === 'moderate' ? 'bg-amber-100 text-amber-800' :
+                                  'bg-red-100 text-red-800'
+                              }`}>
+                              {dimension.score}/100
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+                            <motion.div
+                              className="h-3 rounded-full"
+                              style={{
+                                width: '0%',
+                                backgroundColor: dimension.status === 'excellent' ? CHART_COLORS.success :
+                                  dimension.status === 'good' ? CHART_COLORS.primary :
+                                    dimension.status === 'moderate' ? CHART_COLORS.warning :
+                                      CHART_COLORS.danger
+                              }}
+                              animate={{ width: `${dimension.score}%` }}
+                              transition={{ duration: 1, delay: 0.3 + (index * 0.1) }}
+                            ></motion.div>
+                          </div>
+                          <p className="mt-2 text-sm text-gray-600">{dimension.description}</p>
+                        </motion.div>
                       ))}
-                    </ul>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+
+            {compatibilityAnalysis.investmentRecommendations && compatibilityAnalysis.investmentRecommendations.length > 0 && (
+              <motion.div
+                className="mt-8"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.6 }}
+              >
+                <h4 className="font-semibold mb-4 text-gray-800 flex items-center">
+                  <FiTarget className="mr-2 text-purple-600" /> Investment Recommendations
+                </h4>
+                <div className="space-y-3">
+                  {compatibilityAnalysis.investmentRecommendations.map((recommendation, index) => (
+                    <motion.div
+                      key={index}
+                      className="bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-lg border border-purple-100 shadow-sm"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.4, delay: 0.2 + (index * 0.1) }}
+                    >
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <span className="bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-sm">
+                            {index + 1}
+                          </span>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-gray-700">{recommendation}</p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </ReportCard>
+        )}
+
+        {/* Scoring Breakdown Section - updated with new color scheme */}
+        {report.scoringBreakdown && (
+          <div className="bg-white rounded-xl shadow-md border border-blue-100 p-6 mb-6">
+            <div className="flex items-center mb-4">
+              <div className="bg-blue-600 p-2 rounded-lg mr-3">
+                <FiBarChart2 className="text-white text-xl" />
+              </div>
+              <h3 className="text-xl font-bold text-blue-900">Scoring Breakdown</h3>
+            </div>
+
+            <p className="text-gray-700 mb-4">{report.scoringBreakdown.overview}</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-1">
+                {report.scoringBreakdown.barChartData ? (
+                  <ChartRenderer
+                    chartData={report.scoringBreakdown.barChartData}
+                    height={300}
+                    className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm"
+                  />
+                ) : (
+                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <h4 className="font-semibold text-gray-800 mb-3">Category Scores</h4>
+                    <div className="space-y-3">
+                      {report.scoringBreakdown.categories.map((category, index) => (
+                        <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-medium text-gray-700">{category.name}</span>
+                            <span className="text-sm font-semibold">{category.score}/100</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2.5">
+                            <div
+                              className="h-2.5 rounded-full"
+                              style={{
+                                width: `${category.score}%`,
+                                backgroundColor: category.status === 'excellent' ? CHART_COLORS.success :
+                                  category.status === 'good' ? CHART_COLORS.primary :
+                                    category.status === 'moderate' ? CHART_COLORS.warning :
+                                      CHART_COLORS.danger
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
+              </div>
 
-                <div className="mt-3">
-                  <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${(report.executiveSummary as any).auditOpinion.type === 'unqualified' ? 'bg-green-100 text-green-800' :
-                    (report.executiveSummary as any).auditOpinion.type === 'qualified' ? 'bg-yellow-100 text-yellow-800' :
-                      (report.executiveSummary as any).auditOpinion.type === 'adverse' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                    }`}>
-                    {(report.executiveSummary as any).auditOpinion.type} opinion
-                  </span>
+              <div className="md:col-span-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {report.scoringBreakdown.categories.map((category, index) => (
+                    <div key={index} className={`p-4 rounded-lg border ${category.status === 'excellent' ? 'border-emerald-200 bg-emerald-50' :
+                      category.status === 'good' ? 'border-blue-200 bg-blue-50' :
+                        category.status === 'moderate' ? 'border-amber-200 bg-amber-50' :
+                          'border-red-200 bg-red-50'
+                      }`}>
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="font-semibold text-gray-800">{category.name}</h4>
+                        <span className={`px-2 py-1 text-xs rounded-full font-medium ${category.status === 'excellent' ? 'bg-emerald-100 text-emerald-800' :
+                          category.status === 'good' ? 'bg-blue-100 text-blue-800' :
+                            category.status === 'moderate' ? 'bg-amber-100 text-amber-800' :
+                              'bg-red-100 text-red-800'
+                          }`}>
+                          {category.score}/100
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">{category.description}</p>
+                      {category.keyPoints && category.keyPoints.length > 0 && (
+                        <div>
+                          <h5 className="text-xs font-medium text-gray-700 mb-1">Key Points:</h5>
+                          <ul className="list-disc pl-5 space-y-1">
+                            {category.keyPoints.map((point, idx) => (
+                              <li key={idx} className="text-gray-600 text-xs">{point}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Key Financial Metrics Section - moved up for better flow */}
 
         {/* Key Financial Metrics */}
         <div>
@@ -681,20 +1395,10 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
               <div className="md:col-span-1">
                 <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-xl border border-indigo-100 shadow-sm text-center">
                   <h4 className="text-lg font-semibold text-gray-800 mb-2">Overall Score</h4>
-                  <div className={`text-5xl font-bold mb-2 ${(report.financialAnalysis as any).financialHealthScore.rating === 'Excellent' ? 'text-green-600' :
-                    (report.financialAnalysis as any).financialHealthScore.rating === 'Good' ? 'text-blue-600' :
-                      (report.financialAnalysis as any).financialHealthScore.rating === 'Fair' ? 'text-yellow-600' :
-                        (report.financialAnalysis as any).financialHealthScore.rating === 'Poor' ? 'text-orange-600' :
-                          'text-red-600'
-                    }`}>
+                  <div className={`text-5xl font-bold mb-2 ${getRatingTextColor((report.financialAnalysis as any).financialHealthScore.rating)}`}>
                     {(report.financialAnalysis as any).financialHealthScore.score}
                   </div>
-                  <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${(report.financialAnalysis as any).financialHealthScore.rating === 'Excellent' ? 'bg-green-100 text-green-800' :
-                    (report.financialAnalysis as any).financialHealthScore.rating === 'Good' ? 'bg-blue-100 text-blue-800' :
-                      (report.financialAnalysis as any).financialHealthScore.rating === 'Fair' ? 'bg-yellow-100 text-yellow-800' :
-                        (report.financialAnalysis as any).financialHealthScore.rating === 'Poor' ? 'bg-orange-100 text-orange-800' :
-                          'bg-red-100 text-red-800'
-                    }`}>
+                  <div className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getRatingBadgeColor((report.financialAnalysis as any).financialHealthScore.rating)}`}>
                     {(report.financialAnalysis as any).financialHealthScore.rating}
                   </div>
                   <p className="mt-4 text-gray-600 text-sm">
@@ -745,11 +1449,11 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
 
         {/* Financial Trends */}
         {report.financialAnalysis?.trends && report.financialAnalysis.trends.length > 0 && (
-          <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
-                <div className="bg-purple-600 p-2 rounded-lg mr-3">
-                  <FiTrendingUp className="text-white" />
+                <div className="bg-blue-100 p-2 rounded-lg mr-3">
+                  <FiTrendingUp className="text-blue-600" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-800">Financial Trends</h3>
               </div>
@@ -941,7 +1645,7 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
             {report.financialAnalysis.growthProjections && report.financialAnalysis.growthProjections.length > 0 && (
               <div className="mt-8">
                 <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                  <FiTarget className="mr-2 text-purple-600" />
+                  <FiTarget className="mr-2 text-blue-600" />
                   Growth Projections
                 </h4>
 
@@ -949,7 +1653,7 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                   {report.financialAnalysis.growthProjections.map((projection, index) => (
                     <motion.div
                       key={index}
-                      className="bg-white p-4 rounded-lg border border-purple-100 shadow-sm"
+                      className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
@@ -997,10 +1701,10 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
         {/* Recommendations and Risk Factors */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Recommendations */}
-          <div className="bg-white p-6 rounded-xl shadow-md border border-green-100">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center mb-4">
-              <div className="bg-green-600 p-2 rounded-lg mr-3">
-                <FiCheckCircle className="text-white" />
+              <div className="bg-blue-100 p-2 rounded-lg mr-3">
+                <FiCheckCircle className="text-blue-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-800">Recommendations</h3>
             </div>
@@ -1027,10 +1731,10 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
           </div>
 
           {/* Risk Factors */}
-          <div className="bg-white p-6 rounded-xl shadow-md border border-red-100">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center mb-4">
-              <div className="bg-red-600 p-2 rounded-lg mr-3">
-                <FiAlertCircle className="text-white" />
+              <div className="bg-blue-100 p-2 rounded-lg mr-3">
+                <FiAlertCircle className="text-blue-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-800">Risk Factors</h3>
             </div>
@@ -1085,10 +1789,10 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
 
         {/* Compliance Items (if available) */}
         {report.complianceItems && report.complianceItems.length > 0 && (
-          <div className="bg-white p-6 rounded-xl shadow-md border border-blue-100">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center mb-5">
-              <div className="bg-blue-600 p-2 rounded-lg mr-3">
-                <FiFileText className="text-white" />
+              <div className="bg-blue-100 p-2 rounded-lg mr-3">
+                <FiFileText className="text-blue-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-800">Compliance Assessment</h3>
             </div>
@@ -1170,10 +1874,10 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
 
         {/* Financial Ratios (if available) */}
         {report.ratioAnalysis && (
-          <div className="bg-white p-6 rounded-xl shadow-md border border-indigo-100">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center mb-5">
-              <div className="bg-indigo-600 p-2 rounded-lg mr-3">
-                <FiBarChart2 className="text-white" />
+              <div className="bg-blue-100 p-2 rounded-lg mr-3">
+                <FiBarChart2 className="text-blue-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-800">Financial Ratio Analysis</h3>
             </div>
@@ -1181,15 +1885,15 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Liquidity Ratios */}
               {report.ratioAnalysis.liquidityRatios.length > 0 && (
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-5 rounded-lg border border-blue-100 shadow-sm">
-                  <h4 className="font-semibold text-blue-800 mb-4 flex items-center">
+                <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+                  <h4 className="font-semibold text-gray-800 mb-4 flex items-center">
                     <FiActivity className="mr-2 text-blue-600" />
                     Liquidity Ratios
                   </h4>
 
                   <div className="space-y-4">
                     {report.ratioAnalysis.liquidityRatios.map((ratio, index) => (
-                      <div key={index} className="bg-white p-3 rounded-lg border border-blue-100 shadow-sm">
+                      <div key={index} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm font-semibold text-gray-800">{ratio.name}</span>
                           <div className="flex items-center">

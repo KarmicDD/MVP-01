@@ -54,6 +54,53 @@ export interface IFinancialDueDiligenceReport extends Document {
   reportDate: Date;
   generatedBy: string;
 
+  // Report Type and Perspective
+  reportType?: string;
+  reportPerspective?: string;
+
+  // Total Company Score
+  totalCompanyScore?: {
+    score: number;
+    rating: string; // Accept any string value for rating
+    description: string;
+  };
+
+  // Investment Decision
+  investmentDecision?: {
+    recommendation: string; // Accept any string value for recommendation
+    successProbability: number;
+    justification: string;
+    keyConsiderations: string[];
+    suggestedTerms?: string[];
+  };
+
+  // Compatibility Analysis
+  compatibilityAnalysis?: {
+    overallMatch: string; // Accept any string value for overallMatch
+    overallScore: number;
+    dimensions: {
+      name: string;
+      score: number;
+      description: string;
+      status: string; // Accept any string value for status
+    }[];
+    keyInvestmentStrengths: string[];
+    keyInvestmentChallenges: string[];
+    investmentRecommendations: string[];
+  };
+
+  // Scoring Breakdown
+  scoringBreakdown?: {
+    overview: string;
+    categories: {
+      name: string;
+      score: number;
+      description: string;
+      status: string; // Accept any string value for status
+      keyPoints: string[];
+    }[];
+  };
+
   // Legacy fields for backward compatibility
   perspective?: 'startup' | 'investor'; // For backward compatibility with match-based reports
 
@@ -523,6 +570,56 @@ const FinancialDueDiligenceReportSchema: Schema = new Schema({
   companyName: { type: String, required: true },
   reportDate: { type: Date, default: Date.now },
   generatedBy: { type: String, required: true },
+
+  // Report Type and Perspective
+  reportType: { type: String },
+  reportPerspective: { type: String },
+
+  // Total Company Score
+  totalCompanyScore: {
+    score: { type: Number },
+    rating: { type: String },
+    description: { type: String }
+  },
+
+  // Investment Decision
+  investmentDecision: {
+    recommendation: { type: String },
+    successProbability: { type: Number },
+    justification: { type: String },
+    keyConsiderations: [String],
+    suggestedTerms: [String],
+    chartData: Schema.Types.Mixed
+  },
+
+  // Compatibility Analysis
+  compatibilityAnalysis: {
+    overallMatch: { type: String },
+    overallScore: { type: Number },
+    dimensions: [{
+      name: { type: String },
+      score: { type: Number },
+      description: { type: String },
+      status: { type: String }
+    }],
+    keyInvestmentStrengths: [String],
+    keyInvestmentChallenges: [String],
+    investmentRecommendations: [String],
+    radarChartData: Schema.Types.Mixed
+  },
+
+  // Scoring Breakdown
+  scoringBreakdown: {
+    overview: { type: String },
+    categories: [{
+      name: { type: String },
+      score: { type: Number },
+      description: { type: String },
+      status: { type: String },
+      keyPoints: [String]
+    }],
+    barChartData: Schema.Types.Mixed
+  },
 
   // Legacy fields for backward compatibility
   perspective: { type: String }, // Accept any string value for perspective

@@ -156,8 +156,55 @@ export interface FinancialDocument {
 }
 
 export interface FinancialDueDiligenceReport {
-  // Report Type
+  // Report Type and Perspective
   reportType?: string;
+  reportPerspective?: string;
+
+  // Total Company Score
+  totalCompanyScore?: {
+    score: number;
+    rating: string; // Accept any string value for rating
+    description: string;
+  };
+
+  // Investment Decision
+  investmentDecision?: {
+    recommendation: 'Invest' | 'Consider with Conditions' | 'Do Not Invest';
+    successProbability: number;
+    justification: string;
+    keyConsiderations: string[];
+    suggestedTerms?: string[];
+    chartData?: ChartData;
+  };
+
+  // Compatibility Analysis
+  compatibilityAnalysis?: {
+    overallMatch: 'Strong Match' | 'Moderate Match' | 'Weak Match';
+    overallScore: number;
+    dimensions: {
+      name: string;
+      score: number;
+      description: string;
+      status: 'excellent' | 'good' | 'moderate' | 'poor';
+    }[];
+    keyInvestmentStrengths: string[];
+    keyInvestmentChallenges: string[];
+    investmentRecommendations: string[];
+    radarChartData?: ChartData;
+  };
+
+  // Scoring Breakdown
+  scoringBreakdown?: {
+    overview: string;
+    categories: {
+      name: string;
+      score: number;
+      description: string;
+      status: 'excellent' | 'good' | 'moderate' | 'poor';
+      keyPoints: string[];
+    }[];
+    barChartData?: ChartData;
+  };
 
   // Executive Summary Section
   executiveSummary: {
@@ -479,7 +526,41 @@ export function useEntityFinancialDueDiligence(entityId: string | null, entityTy
 
         // Call the financial due diligence API with entity type
         const response = await api.get(`/financial/entity/${entityId}?entityType=${entityType}`);
-        setReport(response.data);
+
+        // Log the response data to help debug
+        console.log('Financial due diligence API response received');
+        console.log('totalCompanyScore in response:', response.data.totalCompanyScore);
+        console.log('investmentDecision in response:', response.data.investmentDecision);
+        console.log('compatibilityAnalysis in response:', response.data.compatibilityAnalysis);
+
+        // Create a properly structured report object
+        const processedReport = {
+          ...response.data,
+          // Ensure these critical sections exist with proper structure
+          totalCompanyScore: response.data.totalCompanyScore || {
+            score: 0,
+            rating: 'Not Available',
+            description: 'Score data not available'
+          },
+          investmentDecision: response.data.investmentDecision || {
+            recommendation: 'Not Available',
+            successProbability: 0,
+            justification: 'Investment decision data not available',
+            keyConsiderations: [],
+            suggestedTerms: []
+          },
+          compatibilityAnalysis: response.data.compatibilityAnalysis || {
+            overallMatch: 'Not Available',
+            overallScore: 0,
+            dimensions: [],
+            keyInvestmentStrengths: [],
+            keyInvestmentChallenges: [],
+            investmentRecommendations: []
+          }
+        };
+
+        console.log('Processed report:', processedReport);
+        setReport(processedReport);
       } catch (err: unknown) {
         if (err instanceof Error) {
           const errorObj = err as {

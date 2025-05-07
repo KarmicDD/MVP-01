@@ -222,6 +222,23 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
             if (oldAnalysis) {
                 // Return old analysis with a flag indicating it's old data
                 res.json({
+                    // Include the report type and perspective
+                    reportType: oldAnalysis.reportType,
+                    reportPerspective: oldAnalysis.reportPerspective,
+
+                    // Include the total company score
+                    totalCompanyScore: oldAnalysis.totalCompanyScore,
+
+                    // Include the investment decision
+                    investmentDecision: oldAnalysis.investmentDecision,
+
+                    // Include the compatibility analysis
+                    compatibilityAnalysis: oldAnalysis.compatibilityAnalysis,
+
+                    // Include the scoring breakdown
+                    scoringBreakdown: oldAnalysis.scoringBreakdown,
+
+                    // Standard sections
                     executiveSummary: oldAnalysis.executiveSummary,
                     financialAnalysis: oldAnalysis.financialAnalysis,
                     recommendations: oldAnalysis.recommendations,
@@ -231,6 +248,7 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                     ratioAnalysis: oldAnalysis.ratioAnalysis,
                     taxCompliance: oldAnalysis.taxCompliance,
                     auditFindings: oldAnalysis.auditFindings,
+                    documentAnalysis: oldAnalysis.documentAnalysis,
 
                     // Add the table sections
                     directorsTable: oldAnalysis.directorsTable,
@@ -242,6 +260,7 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                     availableDocuments: oldAnalysis.availableDocuments,
                     missingDocumentTypes: oldAnalysis.missingDocumentTypes,
                     generatedDate: oldAnalysis.createdAt,
+                    reportCalculated: oldAnalysis.reportCalculated,
                     isOldData: true,
                     message: 'Daily request limit reached. Showing previously generated data.'
                 });
@@ -281,6 +300,23 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 // Return cached analysis
                 console.log('Found existing analysis, returning cached result');
                 res.json({
+                    // Include the report type and perspective
+                    reportType: existingAnalysis.reportType,
+                    reportPerspective: existingAnalysis.reportPerspective,
+
+                    // Include the total company score
+                    totalCompanyScore: existingAnalysis.totalCompanyScore,
+
+                    // Include the investment decision
+                    investmentDecision: existingAnalysis.investmentDecision,
+
+                    // Include the compatibility analysis
+                    compatibilityAnalysis: existingAnalysis.compatibilityAnalysis,
+
+                    // Include the scoring breakdown
+                    scoringBreakdown: existingAnalysis.scoringBreakdown,
+
+                    // Standard sections
                     executiveSummary: existingAnalysis.executiveSummary,
                     financialAnalysis: existingAnalysis.financialAnalysis,
                     recommendations: existingAnalysis.recommendations,
@@ -290,6 +326,7 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                     ratioAnalysis: existingAnalysis.ratioAnalysis,
                     taxCompliance: existingAnalysis.taxCompliance,
                     auditFindings: existingAnalysis.auditFindings,
+                    documentAnalysis: existingAnalysis.documentAnalysis,
 
                     // Add the table sections
                     directorsTable: existingAnalysis.directorsTable,
@@ -300,7 +337,8 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
 
                     availableDocuments: existingAnalysis.availableDocuments,
                     missingDocumentTypes: existingAnalysis.missingDocumentTypes,
-                    generatedDate: existingAnalysis.createdAt
+                    generatedDate: existingAnalysis.createdAt,
+                    reportCalculated: existingAnalysis.reportCalculated
                 });
                 return;
             }
@@ -504,6 +542,23 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
 
                 // Update the existing report with new data
                 financialReport.companyName = companyName;
+
+                // Report Type and Perspective
+                financialReport.reportType = financialData.reportType;
+                financialReport.reportPerspective = financialData.reportPerspective;
+
+                // Total Company Score
+                financialReport.totalCompanyScore = financialData.totalCompanyScore;
+
+                // Investment Decision
+                financialReport.investmentDecision = financialData.investmentDecision;
+
+                // Compatibility Analysis
+                financialReport.compatibilityAnalysis = financialData.compatibilityAnalysis;
+
+                // Scoring Breakdown
+                financialReport.scoringBreakdown = financialData.scoringBreakdown;
+
                 financialReport.availableDocuments = availableDocuments;
                 financialReport.missingDocumentTypes = missingDocumentTypes;
                 financialReport.reportCalculated = reportCalculated;
@@ -588,6 +643,22 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                     requestedById: req.user.userId,
                     companyName,
                     generatedBy: 'KarmicDD AI',
+
+                    // Report Type and Perspective
+                    reportType: financialData.reportType,
+                    reportPerspective: financialData.reportPerspective,
+
+                    // Total Company Score
+                    totalCompanyScore: financialData.totalCompanyScore,
+
+                    // Investment Decision
+                    investmentDecision: financialData.investmentDecision,
+
+                    // Compatibility Analysis
+                    compatibilityAnalysis: financialData.compatibilityAnalysis,
+
+                    // Scoring Breakdown
+                    scoringBreakdown: financialData.scoringBreakdown,
 
                     // Document tracking
                     availableDocuments,
@@ -693,33 +764,64 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 });
             }
 
+            // Log the data before saving to help with debugging
+            console.log('Financial data from Gemini:');
+            console.log('totalCompanyScore:', financialData.totalCompanyScore);
+            console.log('investmentDecision:', financialData.investmentDecision);
+            console.log('compatibilityAnalysis:', financialData.compatibilityAnalysis);
+
             await financialReport.save();
             console.log('Saved financial report to database');
 
+            // Convert the Mongoose document to a plain JavaScript object
+            const reportObj = financialReport.toObject();
+
+            // Log the key sections to help with debugging
+            console.log('Report totalCompanyScore:', reportObj.totalCompanyScore);
+            console.log('Report investmentDecision:', reportObj.investmentDecision);
+            console.log('Report compatibilityAnalysis:', reportObj.compatibilityAnalysis);
+
             // Return complete analysis data with current date as generation date
             res.json({
-                executiveSummary: financialReport.executiveSummary,
-                financialAnalysis: financialReport.financialAnalysis,
-                recommendations: financialReport.recommendations,
-                riskFactors: financialReport.riskFactors,
-                complianceItems: financialReport.complianceItems,
-                financialStatements: financialReport.financialStatements,
-                ratioAnalysis: financialReport.ratioAnalysis,
-                taxCompliance: financialReport.taxCompliance,
-                auditFindings: financialReport.auditFindings,
-                documentAnalysis: financialReport.documentAnalysis,
+                // Include the report type and perspective
+                reportType: reportObj.reportType,
+                reportPerspective: reportObj.reportPerspective,
+
+                // Include the total company score
+                totalCompanyScore: reportObj.totalCompanyScore,
+
+                // Include the investment decision
+                investmentDecision: reportObj.investmentDecision,
+
+                // Include the compatibility analysis
+                compatibilityAnalysis: reportObj.compatibilityAnalysis,
+
+                // Include the scoring breakdown
+                scoringBreakdown: reportObj.scoringBreakdown,
+
+                // Standard sections
+                executiveSummary: reportObj.executiveSummary,
+                financialAnalysis: reportObj.financialAnalysis,
+                recommendations: reportObj.recommendations,
+                riskFactors: reportObj.riskFactors,
+                complianceItems: reportObj.complianceItems,
+                financialStatements: reportObj.financialStatements,
+                ratioAnalysis: reportObj.ratioAnalysis,
+                taxCompliance: reportObj.taxCompliance,
+                auditFindings: reportObj.auditFindings,
+                documentAnalysis: reportObj.documentAnalysis,
 
                 // Add the table sections
-                directorsTable: financialReport.directorsTable,
-                keyBusinessAgreements: financialReport.keyBusinessAgreements,
-                leavePolicy: financialReport.leavePolicy,
-                provisionsAndPrepayments: financialReport.provisionsAndPrepayments,
-                deferredTaxAssets: financialReport.deferredTaxAssets,
+                directorsTable: reportObj.directorsTable,
+                keyBusinessAgreements: reportObj.keyBusinessAgreements,
+                leavePolicy: reportObj.leavePolicy,
+                provisionsAndPrepayments: reportObj.provisionsAndPrepayments,
+                deferredTaxAssets: reportObj.deferredTaxAssets,
 
-                availableDocuments: financialReport.availableDocuments,
-                missingDocumentTypes: financialReport.missingDocumentTypes,
-                generatedDate: financialReport.createdAt,
-                reportCalculated: financialReport.reportCalculated,
+                availableDocuments: reportObj.availableDocuments,
+                missingDocumentTypes: reportObj.missingDocumentTypes,
+                generatedDate: reportObj.createdAt,
+                reportCalculated: reportObj.reportCalculated,
                 entityProfile
             });
         } catch (error) {
@@ -776,31 +878,56 @@ export const getFinancialDueDiligenceReport = async (req: Request, res: Response
 
         console.log('Found report, returning data');
 
-        // Return the report
+        // Convert the Mongoose document to a plain JavaScript object
+        const reportObj = report.toObject();
+
+        // Log the key sections to help with debugging
+        console.log('Report totalCompanyScore:', reportObj.totalCompanyScore);
+        console.log('Report investmentDecision:', reportObj.investmentDecision);
+        console.log('Report compatibilityAnalysis:', reportObj.compatibilityAnalysis);
+
+        // Return the report with all fields
         res.json({
-            executiveSummary: report.executiveSummary,
-            financialAnalysis: report.financialAnalysis,
-            recommendations: report.recommendations,
-            riskFactors: report.riskFactors,
-            complianceItems: report.complianceItems,
-            financialStatements: report.financialStatements,
-            ratioAnalysis: report.ratioAnalysis,
-            taxCompliance: report.taxCompliance,
-            auditFindings: report.auditFindings,
-            documentAnalysis: report.documentAnalysis,
-            documentContentAnalysis: report.documentContentAnalysis, // Add the new document content analysis section
+            // Report Type and Perspective
+            reportType: reportObj.reportType,
+            reportPerspective: reportObj.reportPerspective,
+
+            // Total Company Score
+            totalCompanyScore: reportObj.totalCompanyScore,
+
+            // Investment Decision
+            investmentDecision: reportObj.investmentDecision,
+
+            // Compatibility Analysis
+            compatibilityAnalysis: reportObj.compatibilityAnalysis,
+
+            // Scoring Breakdown
+            scoringBreakdown: reportObj.scoringBreakdown,
+
+            // Original fields
+            executiveSummary: reportObj.executiveSummary,
+            financialAnalysis: reportObj.financialAnalysis,
+            recommendations: reportObj.recommendations,
+            riskFactors: reportObj.riskFactors,
+            complianceItems: reportObj.complianceItems,
+            financialStatements: reportObj.financialStatements,
+            ratioAnalysis: reportObj.ratioAnalysis,
+            taxCompliance: reportObj.taxCompliance,
+            auditFindings: reportObj.auditFindings,
+            documentAnalysis: reportObj.documentAnalysis,
+            documentContentAnalysis: reportObj.documentContentAnalysis,
 
             // Add the table sections
-            directorsTable: report.directorsTable,
-            keyBusinessAgreements: report.keyBusinessAgreements,
-            leavePolicy: report.leavePolicy,
-            provisionsAndPrepayments: report.provisionsAndPrepayments,
-            deferredTaxAssets: report.deferredTaxAssets,
+            directorsTable: reportObj.directorsTable,
+            keyBusinessAgreements: reportObj.keyBusinessAgreements,
+            leavePolicy: reportObj.leavePolicy,
+            provisionsAndPrepayments: reportObj.provisionsAndPrepayments,
+            deferredTaxAssets: reportObj.deferredTaxAssets,
 
-            availableDocuments: report.availableDocuments,
-            missingDocumentTypes: report.missingDocumentTypes,
-            generatedDate: report.createdAt,
-            reportCalculated: report.reportCalculated
+            availableDocuments: reportObj.availableDocuments,
+            missingDocumentTypes: reportObj.missingDocumentTypes,
+            generatedDate: reportObj.createdAt,
+            reportCalculated: reportObj.reportCalculated
         });
     } catch (error) {
         handleControllerError(

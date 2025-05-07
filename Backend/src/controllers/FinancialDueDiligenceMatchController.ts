@@ -653,6 +653,23 @@ export const getFinancialDueDiligenceReport = async (req: Request, res: Response
 
         // Return the report
         res.json({
+            // Report Type and Perspective
+            reportType: report.reportType,
+            reportPerspective: report.reportPerspective,
+
+            // Total Company Score
+            totalCompanyScore: report.totalCompanyScore,
+
+            // Investment Decision
+            investmentDecision: report.investmentDecision,
+
+            // Compatibility Analysis
+            compatibilityAnalysis: report.compatibilityAnalysis,
+
+            // Scoring Breakdown
+            scoringBreakdown: report.scoringBreakdown,
+
+            // Original fields
             executiveSummary: report.executiveSummary || {
                 headline: "Financial Due Diligence Report",
                 summary: "Financial analysis of the provided documents.",
