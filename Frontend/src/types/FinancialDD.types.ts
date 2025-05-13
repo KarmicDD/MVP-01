@@ -126,5 +126,86 @@ export interface AdditionalReportProperties {
             recommendations: string[];
         }[];
     };
+
+    forwardLookingAnalysis?: {
+        marketPotential?: {
+            tamSize?: string | number;
+            growthRate?: string | number;
+            adoptionStage?: string;
+            metrics?: {
+                name: string;
+                value: string | number;
+                description?: string;
+                trend?: string;
+                status?: string;
+            }[];
+        };
+        innovationAssessment?: {
+            uniquenessScore?: number;
+            ipStrength?: string;
+            competitiveAdvantage?: string;
+            metrics?: {
+                name: string;
+                value: string | number;
+                description?: string;
+                trend?: string;
+                status?: string;
+            }[];
+        };
+        teamCapability?: {
+            executionScore?: number;
+            experienceLevel?: string;
+            trackRecord?: string;
+            metrics?: {
+                name: string;
+                value: string | number;
+                description?: string;
+                trend?: string;
+                status?: string;
+            }[];
+        };
+        growthTrajectory?: {
+            scenarios?: {
+                conservative?: number;
+                moderate?: number;
+                aggressive?: number;
+            };
+            unitEconomics?: {
+                currentCac?: number;
+                projectedCac?: number;
+                currentLtv?: number;
+                projectedLtv?: number;
+            };
+            metrics?: {
+                name: string;
+                value: string | number;
+                description?: string;
+                trend?: string;
+                status?: string;
+            }[];
+        };
+        dimensions?: {
+            name: string;
+            score: number;
+            description: string;
+            status: string;
+        }[];
+        chartData?: any;
+    };
+
+    analysisMetadata?: {
+        enhancedAnalysis: boolean;
+        dataSourcesUsed: {
+            documents: boolean;
+            startupProfile: boolean;
+            investorProfile: boolean;
+            extendedProfile: boolean;
+            questionnaire: boolean;
+            tasks: boolean;
+            financialReports: boolean;
+            historicalMetrics: boolean;
+        };
+        analysisTimestamp: string;
+    };
 }
 

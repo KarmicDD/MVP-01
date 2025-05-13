@@ -89,6 +89,140 @@ export interface IFinancialDueDiligenceReport extends Document {
     investmentRecommendations: string[];
   };
 
+  // Forward-Looking Analysis
+  forwardLookingAnalysis?: {
+    marketPotential?: {
+      tamSize?: string | number;
+      growthRate?: string | number;
+      adoptionStage?: string;
+      targetSegments?: string[]; // Specific market segments with highest potential
+      entryStrategy?: string; // Concrete market entry strategy
+      competitiveLandscape?: string; // Analysis of competitive landscape
+      historicalComparisons?: string[]; // Named examples of similar market developments
+      goToMarketRecommendations?: {
+        recommendation: string; // Specific recommendation
+        implementationSteps: string[]; // Step-by-step implementation guide
+        timeline: string; // Expected timeline for implementation
+        resourceRequirements: string; // Resources needed
+        expectedOutcome: string; // Expected outcome with metrics
+      }[];
+      metrics?: {
+        name: string;
+        value: string | number;
+        description?: string;
+        trend?: string;
+        status?: string;
+      }[];
+    };
+    innovationAssessment?: {
+      uniquenessScore?: number | string; // Allow for both numbers and strings like "N/A"
+      ipStrength?: string;
+      competitiveAdvantage?: string;
+      keyDifferentiators?: string[]; // Specific differentiators
+      protectionStrategies?: string[]; // Concrete IP protection strategies
+      innovationGaps?: string[]; // Identified innovation gaps
+      rdRoadmap?: {
+        priority: string; // High, medium, low
+        initiative: string; // Specific R&D initiative
+        timeline: string; // Expected timeline
+        resourceRequirements: string; // Resources needed
+        expectedOutcome: string; // Expected outcome
+      }[];
+      historicalComparisons?: string[]; // Named examples of similar innovation trajectories
+      metrics?: {
+        name: string;
+        value: string | number;
+        description?: string;
+        trend?: string;
+        status?: string;
+      }[];
+    };
+    teamCapability?: {
+      executionScore?: number | string; // Allow for both numbers and strings like "N/A"
+      experienceLevel?: string;
+      trackRecord?: string;
+      founderAchievements?: string[]; // Specific founder achievements
+      identifiedSkillGaps?: string[]; // Specific skill gaps in the team
+      hiringPriorities?: {
+        role: string; // Specific role to hire
+        responsibilities: string[]; // Key responsibilities
+        impact: string; // Expected impact on business
+        timeline: string; // When to hire
+      }[];
+      organizationalImprovements?: {
+        area: string; // Area for improvement
+        recommendation: string; // Specific recommendation
+        implementationSteps: string[]; // Implementation steps
+        expectedOutcome: string; // Expected outcome
+      }[];
+      historicalComparisons?: string[]; // Named examples of successful team patterns
+      metrics?: {
+        name: string;
+        value: string | number;
+        description?: string;
+        trend?: string;
+        status?: string;
+      }[];
+    };
+    growthTrajectory?: {
+      scenarios?: {
+        conservative?: number | string; // Allow for both numbers and strings like "N/A"
+        moderate?: number | string; // Allow for both numbers and strings like "N/A"
+        aggressive?: number | string; // Allow for both numbers and strings like "N/A"
+      };
+      assumptions?: {
+        scenario: string; // 'conservative', 'moderate', or 'aggressive'
+        assumptions: string[]; // Detailed assumptions for this scenario
+      }[];
+      unitEconomics?: {
+        currentCac?: number | string; // Allow for both numbers and strings like "N/A"
+        projectedCac?: number | string; // Allow for both numbers and strings like "N/A"
+        currentLtv?: number | string; // Allow for both numbers and strings like "N/A"
+        projectedLtv?: number | string; // Allow for both numbers and strings like "N/A"
+      };
+      scalingStrategies?: {
+        strategy: string; // Specific scaling strategy
+        implementationSteps: string[]; // Step-by-step implementation guide
+        resourceRequirements: string; // Resources needed
+        timeline: string; // Expected timeline
+        expectedOutcome: string; // Expected outcome with metrics
+      }[];
+      growthLevers?: string[]; // Specific growth levers
+      optimizationTactics?: string[]; // Specific optimization tactics
+      historicalComparisons?: string[]; // Named examples of similar growth patterns
+      metrics?: {
+        name: string;
+        value: string | number;
+        description?: string;
+        trend?: string;
+        status?: string;
+      }[];
+    };
+    dimensions?: {
+      name: string;
+      score: number | string; // Allow for both numbers and strings like "N/A"
+      description: string;
+      status: string;
+    }[];
+    chartData?: any;
+  };
+
+  // Analysis Metadata
+  analysisMetadata?: {
+    enhancedAnalysis: boolean;
+    dataSourcesUsed: {
+      documents: boolean;
+      startupProfile: boolean;
+      investorProfile: boolean;
+      extendedProfile: boolean;
+      questionnaire: boolean;
+      tasks: boolean;
+      financialReports: boolean;
+      historicalMetrics: boolean;
+    };
+    analysisTimestamp: string;
+  };
+
   // Scoring Breakdown
   scoringBreakdown?: {
     overview: string;
@@ -606,6 +740,140 @@ const FinancialDueDiligenceReportSchema: Schema = new Schema({
     keyInvestmentChallenges: [String],
     investmentRecommendations: [String],
     radarChartData: Schema.Types.Mixed
+  },
+
+  // Forward-Looking Analysis
+  forwardLookingAnalysis: {
+    marketPotential: {
+      tamSize: { type: Schema.Types.Mixed },
+      growthRate: { type: Schema.Types.Mixed },
+      adoptionStage: { type: String },
+      targetSegments: [String], // Specific market segments with highest potential
+      entryStrategy: { type: String }, // Concrete market entry strategy
+      competitiveLandscape: { type: String }, // Analysis of competitive landscape
+      historicalComparisons: [String], // Named examples of similar market developments
+      goToMarketRecommendations: [{
+        recommendation: { type: String }, // Specific recommendation
+        implementationSteps: [String], // Step-by-step implementation guide
+        timeline: { type: String }, // Expected timeline for implementation
+        resourceRequirements: { type: String }, // Resources needed
+        expectedOutcome: { type: String } // Expected outcome with metrics
+      }],
+      metrics: [{
+        name: { type: String },
+        value: { type: Schema.Types.Mixed },
+        description: { type: String },
+        trend: { type: String },
+        status: { type: String }
+      }]
+    },
+    innovationAssessment: {
+      uniquenessScore: { type: Schema.Types.Mixed }, // Allow for both numbers and strings like "N/A"
+      ipStrength: { type: String },
+      competitiveAdvantage: { type: String },
+      keyDifferentiators: [String], // Specific differentiators
+      protectionStrategies: [String], // Concrete IP protection strategies
+      innovationGaps: [String], // Identified innovation gaps
+      rdRoadmap: [{
+        priority: { type: String }, // High, medium, low
+        initiative: { type: String }, // Specific R&D initiative
+        timeline: { type: String }, // Expected timeline
+        resourceRequirements: { type: String }, // Resources needed
+        expectedOutcome: { type: String } // Expected outcome
+      }],
+      historicalComparisons: [String], // Named examples of similar innovation trajectories
+      metrics: [{
+        name: { type: String },
+        value: { type: Schema.Types.Mixed },
+        description: { type: String },
+        trend: { type: String },
+        status: { type: String }
+      }]
+    },
+    teamCapability: {
+      executionScore: { type: Schema.Types.Mixed }, // Allow for both numbers and strings like "N/A"
+      experienceLevel: { type: String },
+      trackRecord: { type: String },
+      founderAchievements: [String], // Specific founder achievements
+      identifiedSkillGaps: [String], // Specific skill gaps in the team
+      hiringPriorities: [{
+        role: { type: String }, // Specific role to hire
+        responsibilities: [String], // Key responsibilities
+        impact: { type: String }, // Expected impact on business
+        timeline: { type: String } // When to hire
+      }],
+      organizationalImprovements: [{
+        area: { type: String }, // Area for improvement
+        recommendation: { type: String }, // Specific recommendation
+        implementationSteps: [String], // Implementation steps
+        expectedOutcome: { type: String } // Expected outcome
+      }],
+      historicalComparisons: [String], // Named examples of successful team patterns
+      metrics: [{
+        name: { type: String },
+        value: { type: Schema.Types.Mixed },
+        description: { type: String },
+        trend: { type: String },
+        status: { type: String }
+      }]
+    },
+    growthTrajectory: {
+      scenarios: {
+        conservative: { type: Schema.Types.Mixed }, // Allow for both numbers and strings like "N/A"
+        moderate: { type: Schema.Types.Mixed }, // Allow for both numbers and strings like "N/A"
+        aggressive: { type: Schema.Types.Mixed } // Allow for both numbers and strings like "N/A"
+      },
+      assumptions: [{
+        scenario: { type: String }, // 'conservative', 'moderate', or 'aggressive'
+        assumptions: [String] // Detailed assumptions for this scenario
+      }],
+      unitEconomics: {
+        currentCac: { type: Schema.Types.Mixed }, // Allow for both numbers and strings like "N/A"
+        projectedCac: { type: Schema.Types.Mixed }, // Allow for both numbers and strings like "N/A"
+        currentLtv: { type: Schema.Types.Mixed }, // Allow for both numbers and strings like "N/A"
+        projectedLtv: { type: Schema.Types.Mixed } // Allow for both numbers and strings like "N/A"
+      },
+      scalingStrategies: [{
+        strategy: { type: String }, // Specific scaling strategy
+        implementationSteps: [String], // Step-by-step implementation guide
+        resourceRequirements: { type: String }, // Resources needed
+        timeline: { type: String }, // Expected timeline
+        expectedOutcome: { type: String } // Expected outcome with metrics
+      }],
+      growthLevers: [String], // Specific growth levers
+      optimizationTactics: [String], // Specific optimization tactics
+      historicalComparisons: [String], // Named examples of similar growth patterns
+      metrics: [{
+        name: { type: String },
+        value: { type: Schema.Types.Mixed },
+        description: { type: String },
+        trend: { type: String },
+        status: { type: String }
+      }]
+    },
+    dimensions: [{
+      name: { type: String },
+      score: { type: Schema.Types.Mixed }, // Allow for both numbers and strings like "N/A"
+      description: { type: String },
+      status: { type: String }
+    }],
+    chartData: { type: Schema.Types.Mixed }
+  },
+
+  // Analysis Metadata
+  analysisMetadata: {
+    enhancedAnalysis: { type: Boolean, default: false },
+    dataSourcesUsed: {
+      documents: { type: Boolean, default: true },
+      startupProfile: { type: Boolean, default: false },
+      investorProfile: { type: Boolean, default: false },
+      extendedProfile: { type: Boolean, default: false },
+      questionnaire: { type: Boolean, default: false },
+      tasks: { type: Boolean, default: false },
+      financialReports: { type: Boolean, default: false },
+      historicalMetrics: { type: Boolean, default: false }
+    },
+    analysisTimestamp: { type: String }
   },
 
   // Scoring Breakdown

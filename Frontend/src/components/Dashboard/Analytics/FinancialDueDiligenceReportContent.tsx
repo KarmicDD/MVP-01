@@ -7,6 +7,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 import { Line, Bar, Pie, Radar } from 'react-chartjs-2';
 import ChartRenderer from './ChartRenderer';
 import DocumentContentAnalysisSection from './DocumentContentAnalysisSection';
+import ForwardLookingAnalysisSection from './ForwardLookingAnalysisSection';
 import { AdditionalReportProperties } from '../../../types/FinancialDD.types';
 import ReportCard from './ReportCard';
 import ScoreDisplay from './ScoreDisplay';
@@ -893,6 +894,68 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
           </ReportCard>
         )}
 
+        {/* Forward-Looking Analysis Section */}
+        <ForwardLookingAnalysisSection
+          marketPotential={{
+            tamSize: (report as any).forwardLookingAnalysis?.marketPotential?.tamSize || "Not available",
+            growthRate: (report as any).forwardLookingAnalysis?.marketPotential?.growthRate || "Not available",
+            adoptionStage: (report as any).forwardLookingAnalysis?.marketPotential?.adoptionStage || "Not available",
+            // Market Potential Enhancements
+            targetSegments: (report as any).forwardLookingAnalysis?.marketPotential?.targetSegments || [],
+            entryStrategy: (report as any).forwardLookingAnalysis?.marketPotential?.entryStrategy || "Not available",
+            competitiveLandscape: (report as any).forwardLookingAnalysis?.marketPotential?.competitiveLandscape || "Not available",
+            historicalComparisons: (report as any).forwardLookingAnalysis?.marketPotential?.historicalComparisons || [],
+            goToMarketRecommendations: (report as any).forwardLookingAnalysis?.marketPotential?.goToMarketRecommendations || [],
+            metrics: (report as any).forwardLookingAnalysis?.marketPotential?.metrics || []
+          }}
+          innovationAssessment={{
+            uniquenessScore: (report as any).forwardLookingAnalysis?.innovationAssessment?.uniquenessScore,
+            ipStrength: (report as any).forwardLookingAnalysis?.innovationAssessment?.ipStrength || "Not available",
+            competitiveAdvantage: (report as any).forwardLookingAnalysis?.innovationAssessment?.competitiveAdvantage || "Not available",
+            // Innovation Assessment Enhancements
+            keyDifferentiators: (report as any).forwardLookingAnalysis?.innovationAssessment?.keyDifferentiators || [],
+            protectionStrategies: (report as any).forwardLookingAnalysis?.innovationAssessment?.protectionStrategies || [],
+            innovationGaps: (report as any).forwardLookingAnalysis?.innovationAssessment?.innovationGaps || [],
+            rdRoadmap: (report as any).forwardLookingAnalysis?.innovationAssessment?.rdRoadmap || [],
+            historicalComparisons: (report as any).forwardLookingAnalysis?.innovationAssessment?.historicalComparisons || [],
+            metrics: (report as any).forwardLookingAnalysis?.innovationAssessment?.metrics || []
+          }}
+          teamCapability={{
+            executionScore: (report as any).forwardLookingAnalysis?.teamCapability?.executionScore,
+            experienceLevel: (report as any).forwardLookingAnalysis?.teamCapability?.experienceLevel || "Not available",
+            trackRecord: (report as any).forwardLookingAnalysis?.teamCapability?.trackRecord || "Not available",
+            // Team Capability Enhancements
+            founderAchievements: (report as any).forwardLookingAnalysis?.teamCapability?.founderAchievements || [],
+            identifiedSkillGaps: (report as any).forwardLookingAnalysis?.teamCapability?.identifiedSkillGaps || [],
+            hiringPriorities: (report as any).forwardLookingAnalysis?.teamCapability?.hiringPriorities || [],
+            organizationalImprovements: (report as any).forwardLookingAnalysis?.teamCapability?.organizationalImprovements || [],
+            historicalComparisons: (report as any).forwardLookingAnalysis?.teamCapability?.historicalComparisons || [],
+            metrics: (report as any).forwardLookingAnalysis?.teamCapability?.metrics || []
+          }}
+          growthTrajectory={{
+            scenarios: (report as any).forwardLookingAnalysis?.growthTrajectory?.scenarios || {
+              conservative: 0,
+              moderate: 0,
+              aggressive: 0
+            },
+            unitEconomics: (report as any).forwardLookingAnalysis?.growthTrajectory?.unitEconomics || {
+              currentCac: 0,
+              projectedCac: 0,
+              currentLtv: 0,
+              projectedLtv: 0
+            },
+            // Growth Trajectory Enhancements
+            assumptions: (report as any).forwardLookingAnalysis?.growthTrajectory?.assumptions || [],
+            scalingStrategies: (report as any).forwardLookingAnalysis?.growthTrajectory?.scalingStrategies || [],
+            growthLevers: (report as any).forwardLookingAnalysis?.growthTrajectory?.growthLevers || [],
+            optimizationTactics: (report as any).forwardLookingAnalysis?.growthTrajectory?.optimizationTactics || [],
+            historicalComparisons: (report as any).forwardLookingAnalysis?.growthTrajectory?.historicalComparisons || [],
+            metrics: (report as any).forwardLookingAnalysis?.growthTrajectory?.metrics || []
+          }}
+          dimensions={(report as any).forwardLookingAnalysis?.dimensions || []}
+          chartData={(report as any).forwardLookingAnalysis?.chartData}
+        />
+
         {/* Investment Potential Analysis Section - enhanced with ReportCard component */}
         {compatibilityAnalysis && (
           <ReportCard
@@ -902,60 +965,144 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
             iconColor="text-purple-600"
             delay={0.2}
           >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Redesigned layout with better visual hierarchy */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Left column with score and radar chart */}
               <div className="md:col-span-1">
-                <motion.div
-                  className="bg-gradient-to-br from-purple-50 to-indigo-50 p-6 rounded-xl border border-purple-100 shadow-sm text-center"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                >
-                  <h4 className="text-lg font-semibold text-gray-800 mb-3">Investment Potential</h4>
+                <div className="flex flex-col h-full">
+                  {/* Score card with enhanced styling */}
                   <motion.div
-                    className={`text-5xl font-bold mb-3 ${compatibilityAnalysis.overallMatch === 'Strong Match' ? 'text-emerald-600' :
-                      compatibilityAnalysis.overallMatch === 'Moderate Match' ? 'text-amber-600' :
-                        'text-red-600'
-                      }`}
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5, delay: 0.4, type: 'spring' }}
-                  >
-                    {compatibilityAnalysis.overallScore}%
-                  </motion.div>
-                  <motion.div
-                    className={`inline-block px-4 py-1.5 rounded-full text-sm font-medium shadow-sm ${compatibilityAnalysis.overallMatch === 'Strong Match' ? 'bg-emerald-100 text-emerald-800' :
-                      compatibilityAnalysis.overallMatch === 'Moderate Match' ? 'bg-amber-100 text-amber-800' :
-                        'bg-red-100 text-red-800'
-                      }`}
-                    initial={{ opacity: 0, y: 10 }}
+                    className="bg-white p-6 rounded-xl border border-purple-100 shadow-sm text-center mb-6"
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.5 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
                   >
-                    {compatibilityAnalysis.overallMatch}
+                    <h4 className="text-lg font-semibold text-gray-800 mb-3">Investment Potential</h4>
+                    <div className="relative inline-block">
+                      <motion.div
+                        className={`text-6xl font-bold mb-3 ${compatibilityAnalysis.overallMatch === 'Strong Match' ? 'text-emerald-600' :
+                          compatibilityAnalysis.overallMatch === 'Moderate Match' ? 'text-amber-600' :
+                            'text-red-600'
+                          }`}
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.5, delay: 0.4, type: 'spring' }}
+                      >
+                        {compatibilityAnalysis.overallScore}%
+                      </motion.div>
+                      {/* Add subtle glow effect */}
+                      <div className={`absolute inset-0 rounded-full blur-xl opacity-20 ${compatibilityAnalysis.overallMatch === 'Strong Match' ? 'bg-emerald-400' :
+                        compatibilityAnalysis.overallMatch === 'Moderate Match' ? 'bg-amber-400' :
+                          'bg-red-400'
+                        }`}></div>
+                    </div>
+                    <motion.div
+                      className={`inline-block px-4 py-1.5 rounded-full text-sm font-medium shadow-sm ${compatibilityAnalysis.overallMatch === 'Strong Match' ? 'bg-emerald-100 text-emerald-800' :
+                        compatibilityAnalysis.overallMatch === 'Moderate Match' ? 'bg-amber-100 text-amber-800' :
+                          'bg-red-100 text-red-800'
+                        }`}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.5 }}
+                    >
+                      {compatibilityAnalysis.overallMatch}
+                    </motion.div>
                   </motion.div>
-                </motion.div>
 
-                <div className="mt-6 grid grid-cols-1 gap-5">
+                  {/* Radar chart with enhanced styling */}
+                  {compatibilityAnalysis.radarChartData ? (
+                    <motion.div
+                      className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex-grow"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: 0.3 }}
+                    >
+                      <h4 className="font-semibold mb-4 text-gray-800 text-center">Investment Potential Score</h4>
+                      <ChartRenderer
+                        chartData={compatibilityAnalysis.radarChartData}
+                        height={350}
+                        className="p-2"
+                      />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex-grow"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: 0.3 }}
+                    >
+                      <h4 className="font-semibold mb-4 text-gray-800 text-center">Investment Dimensions</h4>
+                      <div className="space-y-4">
+                        {compatibilityAnalysis.dimensions.map((dimension, index) => (
+                          <motion.div
+                            key={index}
+                            className="bg-gradient-to-r from-gray-50 to-white p-4 rounded-lg border border-gray-200 shadow-sm"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: 0.2 + (index * 0.1) }}
+                          >
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="font-medium text-gray-800">{dimension.name}</span>
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium shadow-sm ${dimension.status === 'excellent' ? 'bg-green-100 text-green-800' :
+                                dimension.status === 'good' ? 'bg-blue-100 text-blue-800' :
+                                  dimension.status === 'moderate' ? 'bg-amber-100 text-amber-800' :
+                                    'bg-red-100 text-red-800'
+                                }`}>
+                                {dimension.score}/100
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+                              <motion.div
+                                className="h-3 rounded-full"
+                                style={{
+                                  width: '0%',
+                                  backgroundColor: dimension.status === 'excellent' ? CHART_COLORS.success :
+                                    dimension.status === 'good' ? CHART_COLORS.primary :
+                                      dimension.status === 'moderate' ? CHART_COLORS.warning :
+                                        CHART_COLORS.danger
+                                }}
+                                animate={{ width: `${dimension.score}%` }}
+                                transition={{ duration: 1, delay: 0.3 + (index * 0.1) }}
+                              ></motion.div>
+                            </div>
+                            <p className="mt-2 text-sm text-gray-600">{dimension.description}</p>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right column with strengths, challenges and recommendations */}
+              <div className="md:col-span-1">
+                <div className="flex flex-col h-full space-y-6">
+                  {/* Strengths section with enhanced styling */}
                   {compatibilityAnalysis.keyInvestmentStrengths && compatibilityAnalysis.keyInvestmentStrengths.length > 0 && (
                     <motion.div
-                      className="bg-white p-5 rounded-lg border border-green-100 shadow-sm"
+                      className="bg-white p-6 rounded-xl border border-green-100 shadow-sm"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, delay: 0.4 }}
                     >
-                      <h4 className="font-semibold mb-3 text-gray-800 flex items-center">
-                        <FiTrendingUp className="mr-2 text-green-500" /> Key Investment Strengths
+                      <h4 className="font-semibold mb-4 text-gray-800 flex items-center">
+                        <div className="bg-green-100 p-2 rounded-lg mr-3">
+                          <FiTrendingUp className="text-green-600" />
+                        </div>
+                        Key Investment Strengths
                       </h4>
-                      <ul className="space-y-2">
+                      <ul className="space-y-3">
                         {compatibilityAnalysis.keyInvestmentStrengths.map((area, index) => (
                           <motion.li
                             key={index}
-                            className="text-gray-700 flex items-start"
+                            className="bg-green-50 p-3 rounded-lg border border-green-100 text-gray-700 flex items-start"
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.3, delay: 0.1 + (index * 0.05) }}
                           >
-                            <span className="text-green-500 mr-2 mt-1">•</span>
+                            <div className="bg-green-100 rounded-full p-1 mr-3 mt-0.5">
+                              <FiCheckCircle className="text-green-600 text-sm" />
+                            </div>
                             <span>{area}</span>
                           </motion.li>
                         ))}
@@ -963,26 +1110,32 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                     </motion.div>
                   )}
 
+                  {/* Challenges section with enhanced styling */}
                   {compatibilityAnalysis.keyInvestmentChallenges && compatibilityAnalysis.keyInvestmentChallenges.length > 0 && (
                     <motion.div
-                      className="bg-white p-5 rounded-lg border border-red-100 shadow-sm"
+                      className="bg-white p-6 rounded-xl border border-red-100 shadow-sm"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, delay: 0.5 }}
                     >
-                      <h4 className="font-semibold mb-3 text-gray-800 flex items-center">
-                        <FiAlertCircle className="mr-2 text-red-500" /> Key Investment Challenges
+                      <h4 className="font-semibold mb-4 text-gray-800 flex items-center">
+                        <div className="bg-red-100 p-2 rounded-lg mr-3">
+                          <FiAlertCircle className="text-red-600" />
+                        </div>
+                        Key Investment Challenges
                       </h4>
-                      <ul className="space-y-2">
+                      <ul className="space-y-3">
                         {compatibilityAnalysis.keyInvestmentChallenges.map((area, index) => (
                           <motion.li
                             key={index}
-                            className="text-gray-700 flex items-start"
+                            className="bg-red-50 p-3 rounded-lg border border-red-100 text-gray-700 flex items-start"
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.3, delay: 0.1 + (index * 0.05) }}
                           >
-                            <span className="text-red-500 mr-2 mt-1">•</span>
+                            <div className="bg-red-100 rounded-full p-1 mr-3 mt-0.5">
+                              <FiAlertCircle className="text-red-600 text-sm" />
+                            </div>
                             <span>{area}</span>
                           </motion.li>
                         ))}
@@ -991,83 +1144,23 @@ const FinancialDueDiligenceReportContent: React.FC<FinancialDueDiligenceReportCo
                   )}
                 </div>
               </div>
-
-              <div className="md:col-span-2">
-                {compatibilityAnalysis.radarChartData ? (
-                  <motion.div
-                    className="h-full"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.3 }}
-                  >
-                    <h4 className="font-semibold mb-4 text-gray-800 text-center">Investment Potential Score</h4>
-                    <ChartRenderer
-                      chartData={compatibilityAnalysis.radarChartData}
-                      height={300}
-                      className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm"
-                    />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm h-full"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.3 }}
-                  >
-                    <h4 className="font-semibold mb-4 text-gray-800 text-center">Investment Dimensions</h4>
-                    <div className="space-y-4">
-                      {compatibilityAnalysis.dimensions.map((dimension, index) => (
-                        <motion.div
-                          key={index}
-                          className="bg-gradient-to-r from-gray-50 to-white p-4 rounded-lg border border-gray-200 shadow-sm"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: 0.2 + (index * 0.1) }}
-                        >
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="font-medium text-gray-800">{dimension.name}</span>
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium shadow-sm ${dimension.status === 'excellent' ? 'bg-green-100 text-green-800' :
-                              dimension.status === 'good' ? 'bg-blue-100 text-blue-800' :
-                                dimension.status === 'moderate' ? 'bg-amber-100 text-amber-800' :
-                                  'bg-red-100 text-red-800'
-                              }`}>
-                              {dimension.score}/100
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
-                            <motion.div
-                              className="h-3 rounded-full"
-                              style={{
-                                width: '0%',
-                                backgroundColor: dimension.status === 'excellent' ? CHART_COLORS.success :
-                                  dimension.status === 'good' ? CHART_COLORS.primary :
-                                    dimension.status === 'moderate' ? CHART_COLORS.warning :
-                                      CHART_COLORS.danger
-                              }}
-                              animate={{ width: `${dimension.score}%` }}
-                              transition={{ duration: 1, delay: 0.3 + (index * 0.1) }}
-                            ></motion.div>
-                          </div>
-                          <p className="mt-2 text-sm text-gray-600">{dimension.description}</p>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </div>
             </div>
 
+            {/* Investment recommendations section with enhanced styling */}
             {compatibilityAnalysis.investmentRecommendations && compatibilityAnalysis.investmentRecommendations.length > 0 && (
               <motion.div
-                className="mt-8"
+                className="mt-8 bg-white p-6 rounded-xl border border-purple-100 shadow-sm"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.6 }}
               >
-                <h4 className="font-semibold mb-4 text-gray-800 flex items-center">
-                  <FiTarget className="mr-2 text-purple-600" /> Investment Recommendations
+                <h4 className="font-semibold mb-5 text-gray-800 flex items-center">
+                  <div className="bg-purple-100 p-2 rounded-lg mr-3">
+                    <FiTarget className="text-purple-600" />
+                  </div>
+                  Investment Recommendations
                 </h4>
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {compatibilityAnalysis.investmentRecommendations.map((recommendation, index) => (
                     <motion.div
                       key={index}

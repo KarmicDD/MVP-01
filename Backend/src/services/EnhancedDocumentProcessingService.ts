@@ -3781,6 +3781,13 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
             dimension.score = 50;
           }
 
+          // Validate status field - ensure it's a valid value
+          const validStatusValues = ['excellent', 'good', 'moderate', 'poor', 'critical'];
+          if (!dimension.status || !validStatusValues.includes(dimension.status)) {
+            console.log(`Invalid status for dimension ${dimension.name}. Setting default.`);
+            dimension.status = 'moderate'; // Use 'moderate' as a safe default
+          }
+
           if (!dimension.description || typeof dimension.description !== 'string') {
             console.log(`Missing or invalid description for dimension ${dimension.name}. Setting default.`);
             dimension.description = `Assessment of ${dimension.name.toLowerCase()}.`;
@@ -3813,6 +3820,395 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
       }
     }
 
+    // Validate forwardLookingAnalysis
+    if (data) {
+      console.log('Validating forwardLookingAnalysis...');
+
+      // Create forwardLookingAnalysis if it doesn't exist
+      if (!data.forwardLookingAnalysis) {
+        data.forwardLookingAnalysis = {};
+      }
+
+      // Validate marketPotential
+      if (!data.forwardLookingAnalysis.marketPotential) {
+        data.forwardLookingAnalysis.marketPotential = {
+          tamSize: "Not available",
+          growthRate: "Not available",
+          adoptionStage: "Not available",
+          targetSegments: [],
+          entryStrategy: "Not available",
+          competitiveLandscape: "Not available",
+          historicalComparisons: [],
+          goToMarketRecommendations: [],
+          metrics: []
+        };
+      } else {
+        // Ensure metrics is an array
+        if (!data.forwardLookingAnalysis.marketPotential.metrics || !Array.isArray(data.forwardLookingAnalysis.marketPotential.metrics)) {
+          data.forwardLookingAnalysis.marketPotential.metrics = [];
+        }
+
+        // Ensure targetSegments is an array
+        if (!data.forwardLookingAnalysis.marketPotential.targetSegments || !Array.isArray(data.forwardLookingAnalysis.marketPotential.targetSegments)) {
+          data.forwardLookingAnalysis.marketPotential.targetSegments = [];
+        }
+
+        // Ensure entryStrategy exists
+        if (!data.forwardLookingAnalysis.marketPotential.entryStrategy) {
+          data.forwardLookingAnalysis.marketPotential.entryStrategy = "Not available";
+        }
+
+        // Ensure competitiveLandscape exists
+        if (!data.forwardLookingAnalysis.marketPotential.competitiveLandscape) {
+          data.forwardLookingAnalysis.marketPotential.competitiveLandscape = "Not available";
+        }
+
+        // Ensure historicalComparisons is an array
+        if (!data.forwardLookingAnalysis.marketPotential.historicalComparisons || !Array.isArray(data.forwardLookingAnalysis.marketPotential.historicalComparisons)) {
+          data.forwardLookingAnalysis.marketPotential.historicalComparisons = [];
+        }
+
+        // Ensure goToMarketRecommendations is an array
+        if (!data.forwardLookingAnalysis.marketPotential.goToMarketRecommendations || !Array.isArray(data.forwardLookingAnalysis.marketPotential.goToMarketRecommendations)) {
+          data.forwardLookingAnalysis.marketPotential.goToMarketRecommendations = [];
+        } else {
+          // Validate each recommendation
+          data.forwardLookingAnalysis.marketPotential.goToMarketRecommendations.forEach((rec: any, index: number) => {
+            if (!rec.recommendation) {
+              console.log(`Missing recommendation for go-to-market recommendation at index ${index}. Adding placeholder.`);
+              rec.recommendation = `Recommendation ${index + 1}`;
+            }
+
+            if (!rec.implementationSteps || !Array.isArray(rec.implementationSteps)) {
+              rec.implementationSteps = [];
+            }
+
+            if (!rec.timeline) {
+              rec.timeline = "Not specified";
+            }
+
+            if (!rec.resourceRequirements) {
+              rec.resourceRequirements = "Not specified";
+            }
+
+            if (!rec.expectedOutcome) {
+              rec.expectedOutcome = "Not specified";
+            }
+          });
+        }
+      }
+
+      // Validate innovationAssessment
+      if (!data.forwardLookingAnalysis.innovationAssessment) {
+        data.forwardLookingAnalysis.innovationAssessment = {
+          uniquenessScore: 50,
+          ipStrength: "Not available",
+          competitiveAdvantage: "Not available",
+          keyDifferentiators: [],
+          protectionStrategies: [],
+          innovationGaps: [],
+          rdRoadmap: [],
+          historicalComparisons: [],
+          metrics: []
+        };
+      } else {
+        // Ensure uniquenessScore is a number
+        if (typeof data.forwardLookingAnalysis.innovationAssessment.uniquenessScore !== 'number') {
+          data.forwardLookingAnalysis.innovationAssessment.uniquenessScore =
+            parseInt(data.forwardLookingAnalysis.innovationAssessment.uniquenessScore) || 50;
+        }
+
+        // Ensure metrics is an array
+        if (!data.forwardLookingAnalysis.innovationAssessment.metrics || !Array.isArray(data.forwardLookingAnalysis.innovationAssessment.metrics)) {
+          data.forwardLookingAnalysis.innovationAssessment.metrics = [];
+        }
+
+        // Ensure keyDifferentiators is an array
+        if (!data.forwardLookingAnalysis.innovationAssessment.keyDifferentiators || !Array.isArray(data.forwardLookingAnalysis.innovationAssessment.keyDifferentiators)) {
+          data.forwardLookingAnalysis.innovationAssessment.keyDifferentiators = [];
+        }
+
+        // Ensure protectionStrategies is an array
+        if (!data.forwardLookingAnalysis.innovationAssessment.protectionStrategies || !Array.isArray(data.forwardLookingAnalysis.innovationAssessment.protectionStrategies)) {
+          data.forwardLookingAnalysis.innovationAssessment.protectionStrategies = [];
+        }
+
+        // Ensure innovationGaps is an array
+        if (!data.forwardLookingAnalysis.innovationAssessment.innovationGaps || !Array.isArray(data.forwardLookingAnalysis.innovationAssessment.innovationGaps)) {
+          data.forwardLookingAnalysis.innovationAssessment.innovationGaps = [];
+        }
+
+        // Ensure rdRoadmap is an array
+        if (!data.forwardLookingAnalysis.innovationAssessment.rdRoadmap || !Array.isArray(data.forwardLookingAnalysis.innovationAssessment.rdRoadmap)) {
+          data.forwardLookingAnalysis.innovationAssessment.rdRoadmap = [];
+        } else {
+          // Validate each roadmap item
+          data.forwardLookingAnalysis.innovationAssessment.rdRoadmap.forEach((item: any, index: number) => {
+            if (!item.priority) {
+              console.log(`Missing priority for R&D roadmap item at index ${index}. Setting default.`);
+              item.priority = "Medium";
+            }
+
+            if (!item.initiative) {
+              console.log(`Missing initiative for R&D roadmap item at index ${index}. Adding placeholder.`);
+              item.initiative = `R&D Initiative ${index + 1}`;
+            }
+
+            if (!item.timeline) {
+              item.timeline = "Not specified";
+            }
+
+            if (!item.resourceRequirements) {
+              item.resourceRequirements = "Not specified";
+            }
+
+            if (!item.expectedOutcome) {
+              item.expectedOutcome = "Not specified";
+            }
+          });
+        }
+
+        // Ensure historicalComparisons is an array
+        if (!data.forwardLookingAnalysis.innovationAssessment.historicalComparisons || !Array.isArray(data.forwardLookingAnalysis.innovationAssessment.historicalComparisons)) {
+          data.forwardLookingAnalysis.innovationAssessment.historicalComparisons = [];
+        }
+      }
+
+      // Validate teamCapability
+      if (!data.forwardLookingAnalysis.teamCapability) {
+        data.forwardLookingAnalysis.teamCapability = {
+          executionScore: 50,
+          experienceLevel: "Not available",
+          trackRecord: "Not available",
+          founderAchievements: [],
+          identifiedSkillGaps: [],
+          hiringPriorities: [],
+          organizationalImprovements: [],
+          historicalComparisons: [],
+          metrics: []
+        };
+      } else {
+        // Ensure executionScore is a number
+        if (typeof data.forwardLookingAnalysis.teamCapability.executionScore !== 'number') {
+          data.forwardLookingAnalysis.teamCapability.executionScore =
+            parseInt(data.forwardLookingAnalysis.teamCapability.executionScore) || 50;
+        }
+
+        // Ensure metrics is an array
+        if (!data.forwardLookingAnalysis.teamCapability.metrics || !Array.isArray(data.forwardLookingAnalysis.teamCapability.metrics)) {
+          data.forwardLookingAnalysis.teamCapability.metrics = [];
+        }
+
+        // Ensure founderAchievements is an array
+        if (!data.forwardLookingAnalysis.teamCapability.founderAchievements || !Array.isArray(data.forwardLookingAnalysis.teamCapability.founderAchievements)) {
+          data.forwardLookingAnalysis.teamCapability.founderAchievements = [];
+        }
+
+        // Ensure identifiedSkillGaps is an array
+        if (!data.forwardLookingAnalysis.teamCapability.identifiedSkillGaps || !Array.isArray(data.forwardLookingAnalysis.teamCapability.identifiedSkillGaps)) {
+          data.forwardLookingAnalysis.teamCapability.identifiedSkillGaps = [];
+        }
+
+        // Ensure hiringPriorities is an array
+        if (!data.forwardLookingAnalysis.teamCapability.hiringPriorities || !Array.isArray(data.forwardLookingAnalysis.teamCapability.hiringPriorities)) {
+          data.forwardLookingAnalysis.teamCapability.hiringPriorities = [];
+        } else {
+          // Validate each hiring priority
+          data.forwardLookingAnalysis.teamCapability.hiringPriorities.forEach((priority: any, index: number) => {
+            if (!priority.role) {
+              console.log(`Missing role for hiring priority at index ${index}. Adding placeholder.`);
+              priority.role = `Role ${index + 1}`;
+            }
+
+            if (!priority.responsibilities || !Array.isArray(priority.responsibilities)) {
+              priority.responsibilities = [];
+            }
+
+            if (!priority.impact) {
+              priority.impact = "Not specified";
+            }
+
+            if (!priority.timeline) {
+              priority.timeline = "Not specified";
+            }
+          });
+        }
+
+        // Ensure organizationalImprovements is an array
+        if (!data.forwardLookingAnalysis.teamCapability.organizationalImprovements || !Array.isArray(data.forwardLookingAnalysis.teamCapability.organizationalImprovements)) {
+          data.forwardLookingAnalysis.teamCapability.organizationalImprovements = [];
+        } else {
+          // Validate each organizational improvement
+          data.forwardLookingAnalysis.teamCapability.organizationalImprovements.forEach((improvement: any, index: number) => {
+            if (!improvement.area) {
+              console.log(`Missing area for organizational improvement at index ${index}. Adding placeholder.`);
+              improvement.area = `Improvement Area ${index + 1}`;
+            }
+
+            if (!improvement.recommendation) {
+              improvement.recommendation = "Not specified";
+            }
+
+            if (!improvement.implementationSteps || !Array.isArray(improvement.implementationSteps)) {
+              improvement.implementationSteps = [];
+            }
+
+            if (!improvement.expectedOutcome) {
+              improvement.expectedOutcome = "Not specified";
+            }
+          });
+        }
+
+        // Ensure historicalComparisons is an array
+        if (!data.forwardLookingAnalysis.teamCapability.historicalComparisons || !Array.isArray(data.forwardLookingAnalysis.teamCapability.historicalComparisons)) {
+          data.forwardLookingAnalysis.teamCapability.historicalComparisons = [];
+        }
+      }
+
+      // Validate growthTrajectory
+      if (!data.forwardLookingAnalysis.growthTrajectory) {
+        data.forwardLookingAnalysis.growthTrajectory = {
+          scenarios: {
+            conservative: 5,
+            moderate: 15,
+            aggressive: 30
+          },
+          assumptions: [],
+          unitEconomics: {
+            currentCac: 0,
+            projectedCac: 0,
+            currentLtv: 0,
+            projectedLtv: 0
+          },
+          scalingStrategies: [],
+          growthLevers: [],
+          optimizationTactics: [],
+          historicalComparisons: [],
+          metrics: []
+        };
+      } else {
+        // Ensure scenarios exists
+        if (!data.forwardLookingAnalysis.growthTrajectory.scenarios) {
+          data.forwardLookingAnalysis.growthTrajectory.scenarios = {
+            conservative: 5,
+            moderate: 15,
+            aggressive: 30
+          };
+        }
+
+        // Ensure unitEconomics exists
+        if (!data.forwardLookingAnalysis.growthTrajectory.unitEconomics) {
+          data.forwardLookingAnalysis.growthTrajectory.unitEconomics = {
+            currentCac: 0,
+            projectedCac: 0,
+            currentLtv: 0,
+            projectedLtv: 0
+          };
+        }
+
+        // Ensure metrics is an array
+        if (!data.forwardLookingAnalysis.growthTrajectory.metrics || !Array.isArray(data.forwardLookingAnalysis.growthTrajectory.metrics)) {
+          data.forwardLookingAnalysis.growthTrajectory.metrics = [];
+        }
+
+        // Ensure assumptions is an array
+        if (!data.forwardLookingAnalysis.growthTrajectory.assumptions || !Array.isArray(data.forwardLookingAnalysis.growthTrajectory.assumptions)) {
+          data.forwardLookingAnalysis.growthTrajectory.assumptions = [];
+        } else {
+          // Validate each assumption
+          data.forwardLookingAnalysis.growthTrajectory.assumptions.forEach((assumption: any, index: number) => {
+            if (!assumption.scenario) {
+              console.log(`Missing scenario for growth assumption at index ${index}. Setting default.`);
+              assumption.scenario = "moderate";
+            }
+
+            if (!assumption.assumptions || !Array.isArray(assumption.assumptions)) {
+              assumption.assumptions = [];
+            }
+          });
+        }
+
+        // Ensure scalingStrategies is an array
+        if (!data.forwardLookingAnalysis.growthTrajectory.scalingStrategies || !Array.isArray(data.forwardLookingAnalysis.growthTrajectory.scalingStrategies)) {
+          data.forwardLookingAnalysis.growthTrajectory.scalingStrategies = [];
+        } else {
+          // Validate each scaling strategy
+          data.forwardLookingAnalysis.growthTrajectory.scalingStrategies.forEach((strategy: any, index: number) => {
+            if (!strategy.strategy) {
+              console.log(`Missing strategy for scaling strategy at index ${index}. Adding placeholder.`);
+              strategy.strategy = `Scaling Strategy ${index + 1}`;
+            }
+
+            if (!strategy.implementationSteps || !Array.isArray(strategy.implementationSteps)) {
+              strategy.implementationSteps = [];
+            }
+
+            if (!strategy.resourceRequirements) {
+              strategy.resourceRequirements = "Not specified";
+            }
+
+            if (!strategy.timeline) {
+              strategy.timeline = "Not specified";
+            }
+
+            if (!strategy.expectedOutcome) {
+              strategy.expectedOutcome = "Not specified";
+            }
+          });
+        }
+
+        // Ensure growthLevers is an array
+        if (!data.forwardLookingAnalysis.growthTrajectory.growthLevers || !Array.isArray(data.forwardLookingAnalysis.growthTrajectory.growthLevers)) {
+          data.forwardLookingAnalysis.growthTrajectory.growthLevers = [];
+        }
+
+        // Ensure optimizationTactics is an array
+        if (!data.forwardLookingAnalysis.growthTrajectory.optimizationTactics || !Array.isArray(data.forwardLookingAnalysis.growthTrajectory.optimizationTactics)) {
+          data.forwardLookingAnalysis.growthTrajectory.optimizationTactics = [];
+        }
+
+        // Ensure historicalComparisons is an array
+        if (!data.forwardLookingAnalysis.growthTrajectory.historicalComparisons || !Array.isArray(data.forwardLookingAnalysis.growthTrajectory.historicalComparisons)) {
+          data.forwardLookingAnalysis.growthTrajectory.historicalComparisons = [];
+        }
+      }
+
+      // Validate dimensions
+      if (!data.forwardLookingAnalysis.dimensions || !Array.isArray(data.forwardLookingAnalysis.dimensions)) {
+        data.forwardLookingAnalysis.dimensions = [];
+      } else {
+        // Validate each dimension
+        data.forwardLookingAnalysis.dimensions.forEach((dimension: any, index: number) => {
+          if (!dimension.name) {
+            console.log(`Missing name for forward-looking dimension at index ${index}. Adding placeholder.`);
+            dimension.name = `Dimension ${index + 1}`;
+          }
+
+          if (typeof dimension.score !== 'number' || dimension.score < 0 || dimension.score > 100) {
+            console.log(`Invalid score for forward-looking dimension ${dimension.name}. Setting default.`);
+            dimension.score = 50;
+          }
+
+          if (!dimension.description) {
+            dimension.description = `No description available for ${dimension.name}.`;
+          }
+
+          if (!dimension.status) {
+            // Determine status based on score
+            if (dimension.score >= 80) {
+              dimension.status = 'excellent';
+            } else if (dimension.score >= 60) {
+              dimension.status = 'good';
+            } else if (dimension.score >= 40) {
+              dimension.status = 'moderate';
+            } else {
+              dimension.status = 'poor';
+            }
+          }
+        });
+      }
+    }
+
     // Validate scoringBreakdown
     if (data && data.scoringBreakdown) {
       console.log('Validating scoringBreakdown...');
@@ -3838,6 +4234,13 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           if (typeof category.score !== 'number' || category.score < 0 || category.score > 100) {
             console.log(`Invalid score for category ${category.name}. Setting default.`);
             category.score = 50;
+          }
+
+          // Validate status field - ensure it's a valid value
+          const validStatusValues = ['excellent', 'good', 'moderate', 'poor', 'critical'];
+          if (!category.status || !validStatusValues.includes(category.status)) {
+            console.log(`Invalid status for category ${category.name}. Setting default.`);
+            category.status = 'moderate'; // Use 'moderate' as a safe default
           }
 
           if (!category.description || typeof category.description !== 'string') {
@@ -4991,17 +5394,21 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
   }
 
   /**
-   * Extract financial data from documents using Gemini AI
+   * Extract financial data from documents using Gemini AI with enhanced forward-looking analysis
    * This method can work with either:
    * 1. Pre-combined document content (legacy mode)
    * 2. An array of document objects (new mode that extracts raw data first)
+   *
+   * Enhanced to incorporate additional data sources and forward-looking analysis
+   * to better evaluate future potential and investment value
    *
    * @param documentContentOrDocuments Combined document content string or array of document objects
    * @param companyName Name of the company
    * @param startupInfo Additional startup information
    * @param investorInfo Additional investor information
    * @param missingDocumentTypes Array of missing document types
-   * @returns Extracted financial data
+   * @param additionalDataSources Optional additional data from MongoDB models
+   * @returns Extracted financial data with enhanced forward-looking analysis
    */
   async extractFinancialData(
     documentContentOrDocuments: string | Array<{
@@ -5018,7 +5425,14 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
     companyName: string,
     startupInfo?: any,
     investorInfo?: any,
-    missingDocumentTypes?: string[]
+    missingDocumentTypes?: string[],
+    additionalDataSources?: {
+      extendedProfile?: any,
+      questionnaireSubmission?: any,
+      tasks?: any[],
+      financialReports?: any[],
+      historicalMetrics?: any
+    }
   ): Promise<any> {
     try {
       // Determine if we're using the new or legacy mode
@@ -5038,8 +5452,67 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
         console.log('Enhanced document processing complete, sending to Gemini for financial analysis');
       }
 
-      // Prepare context information
-      const startupContext = startupInfo ? `
+      // Prepare enhanced startup context with more detailed information
+      let startupContext = '';
+      if (startupInfo) {
+        // Extract team information from extended profile if available
+        let teamInfo = '';
+        if (additionalDataSources?.extendedProfile?.teamMembers && additionalDataSources.extendedProfile.teamMembers.length > 0) {
+          teamInfo = `
+                TEAM INFORMATION:
+                ${additionalDataSources.extendedProfile.teamMembers.map((member: any, index: number) =>
+            `Team Member ${index + 1}:
+                   Name: ${member.name || 'Not specified'}
+                   Role: ${member.role || 'Not specified'}
+                   Bio: ${member.bio || 'Not specified'}`
+          ).join('\n                ')}
+                `;
+        }
+
+        // Extract vision and mission from questionnaire if available
+        let visionMissionInfo = '';
+        if (additionalDataSources?.questionnaireSubmission?.responses) {
+          const responses = additionalDataSources.questionnaireSubmission.responses;
+          // Convert Map to object if needed
+          const responsesObj = responses instanceof Map ? Object.fromEntries(responses) : responses;
+
+          if (responsesObj.vision || responsesObj.mission || responsesObj.longTermGoals) {
+            visionMissionInfo = `
+                VISION AND MISSION:
+                Vision: ${responsesObj.vision || 'Not specified'}
+                Mission: ${responsesObj.mission || 'Not specified'}
+                Long-term Goals: ${responsesObj.longTermGoals || 'Not specified'}
+                `;
+          }
+        }
+
+        // Extract execution capability indicators from tasks if available
+        let executionInfo = '';
+        if (additionalDataSources?.tasks && additionalDataSources.tasks.length > 0) {
+          const completedTasks = additionalDataSources.tasks.filter((task: any) => task.completed).length;
+          const totalTasks = additionalDataSources.tasks.length;
+          const completionRate = totalTasks > 0 ? (completedTasks / totalTasks * 100).toFixed(2) : 'N/A';
+
+          executionInfo = `
+                EXECUTION CAPABILITY:
+                Task Completion Rate: ${completionRate}%
+                Completed Tasks: ${completedTasks}/${totalTasks}
+                `;
+        }
+
+        // Extract historical metrics if available
+        let historicalMetricsInfo = '';
+        if (additionalDataSources?.historicalMetrics) {
+          historicalMetricsInfo = `
+                HISTORICAL METRICS:
+                ${Object.entries(additionalDataSources.historicalMetrics).map(([key, value]) =>
+            `${key}: ${value}`
+          ).join('\n                ')}
+                `;
+        }
+
+        // Combine all startup information
+        startupContext = `
                 STARTUP INFORMATION:
                 Company Name: ${startupInfo.companyName || companyName}
                 Industry: ${startupInfo.industry || 'Not specified'}
@@ -5052,7 +5525,12 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
                 Funding Round: ${startupInfo.fundingRound || 'Not specified'}
                 Funding Amount: ${startupInfo.fundingAmount || 'Not specified'}
                 Valuation: ${startupInfo.valuation || 'Not specified'}
-            ` : '';
+                ${teamInfo}
+                ${visionMissionInfo}
+                ${executionInfo}
+                ${historicalMetricsInfo}
+            `;
+      }
 
       // Prepare missing documents information
       const missingDocumentsContext = missingDocumentTypes && missingDocumentTypes.length > 0 ? `
@@ -5065,7 +5543,30 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
       }).join('\n                ')}
             ` : '';
 
-      const investorContext = investorInfo ? `
+      // Enhance investor context with more detailed information
+      let investorContext = '';
+      if (investorInfo) {
+        // Extract additional investor preferences if available
+        let additionalPreferences = '';
+        if (additionalDataSources?.questionnaireSubmission?.responses &&
+          additionalDataSources.questionnaireSubmission.userRole === 'investor') {
+          const responses = additionalDataSources.questionnaireSubmission.responses;
+          // Convert Map to object if needed
+          const responsesObj = responses instanceof Map ? Object.fromEntries(responses) : responses;
+
+          if (responsesObj.investmentCriteria || responsesObj.returnExpectations) {
+            additionalPreferences = `
+                INVESTMENT PREFERENCES:
+                Investment Criteria: ${responsesObj.investmentCriteria || 'Not specified'}
+                Return Expectations: ${responsesObj.returnExpectations || 'Not specified'}
+                Risk Tolerance: ${responsesObj.riskTolerance || 'Not specified'}
+                Investment Horizon: ${responsesObj.investmentHorizon || 'Not specified'}
+                `;
+          }
+        }
+
+        // Combine all investor information
+        investorContext = `
                 INVESTOR INFORMATION:
                 Name: ${investorInfo.name || 'Not specified'}
                 Investment Stage: ${investorInfo.investmentStage || 'Not specified'}
@@ -5073,12 +5574,37 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
                 Sectors: ${Array.isArray(investorInfo.sectors) ? investorInfo.sectors.join(', ') : (investorInfo.sectors || 'Not specified')}
                 Location: ${investorInfo.location || 'Not specified'}
                 Portfolio: ${Array.isArray(investorInfo.portfolio) ? investorInfo.portfolio.join(', ') : (investorInfo.portfolio || 'Not specified')}
-            ` : '';
+                ${additionalPreferences}
+            `;
+      }
 
-      const PROMPT = FIN_DD_PROMPT(companyName, startupContext, investorContext, missingDocumentsContext, documentContent, structure);
+      // Add industry benchmarks and success patterns if available
+      let benchmarksContext = '';
+      if (additionalDataSources?.financialReports && additionalDataSources.financialReports.length > 0) {
+        // Extract industry benchmarks from previous financial reports
+        const industryBenchmarks = additionalDataSources.financialReports
+          .filter((report: any) => report.industryBenchmarking && report.industryBenchmarking.metrics)
+          .flatMap((report: any) => report.industryBenchmarking.metrics)
+          .filter((metric: any) => metric.name && metric.industryAverage);
+
+        if (industryBenchmarks.length > 0) {
+          benchmarksContext = `
+                INDUSTRY BENCHMARKS:
+                ${industryBenchmarks.map((metric: any) =>
+            `${metric.name}: ${metric.industryAverage} (Industry Average)`
+          ).join('\n                ')}
+                `;
+        }
+      }
+
+      // Combine all context information for enhanced analysis
+      const enhancedStartupContext = `${startupContext}
+                ${benchmarksContext}`;
+
+      const PROMPT = FIN_DD_PROMPT(companyName, enhancedStartupContext, investorContext, missingDocumentsContext, documentContent, structure);
 
       // Call Gemini API with dynamic retry logic
-      console.log('Calling Gemini API for financial analysis with dynamic retry logic...');
+      console.log('Calling Gemini API for enhanced financial analysis with dynamic retry logic...');
 
       let text = '';
       const result = await executeGeminiWithDynamicRetry(async () => {
@@ -5129,6 +5655,22 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
         // Validate and ensure proper structure for new sections
         this.validateNewSections(parsedData);
 
+        // Add metadata about the enhanced analysis
+        parsedData.analysisMetadata = {
+          enhancedAnalysis: true,
+          dataSourcesUsed: {
+            documents: true,
+            startupProfile: !!startupInfo,
+            investorProfile: !!investorInfo,
+            extendedProfile: !!additionalDataSources?.extendedProfile,
+            questionnaire: !!additionalDataSources?.questionnaireSubmission,
+            tasks: !!additionalDataSources?.tasks,
+            financialReports: !!additionalDataSources?.financialReports,
+            historicalMetrics: !!additionalDataSources?.historicalMetrics
+          },
+          analysisTimestamp: new Date().toISOString()
+        };
+
         return parsedData;
       } catch (error) {
         console.error('Error parsing Gemini response:', error);
@@ -5142,4 +5684,4 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
   }
 }
 
-export default new EnhancedDocumentProcessingService();
+export default new EnhancedDocumentProcessingService()

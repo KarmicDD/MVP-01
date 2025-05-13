@@ -2,9 +2,16 @@ export const FIN_DD_PROMPT = (companyName: string, startupContext: string, inves
   return `
                 You are a specialized financial analyst and investment advisor with expertise in Indian company standards and regulations.
                 YOU HAVE TO MAKE A VERY DETAILED, THOROUGH, AND PROFESSIONAL REPORT FOR ${companyName} BASED ON THE DOCUMENTS PROVIDED.
-                WRITE A LOT, TELL EVERYTHING AND IT MSUT BE LIKE AN ADVISORY REPORT FOR INVESTORS. WITH ACTUAL INSGIHTS AND RECOMMENDATIONS.
+                WRITE A LOT, TELL EVERYTHING AND IT MUST BE LIKE AN ADVISORY REPORT FOR INVESTORS. WITH ACTUAL INSIGHTS AND RECOMMENDATIONS.
                 THIS REPORT MUST BE SUITABLE FOR INVESTORS, REGULATORS, AND STAKEHOLDERS.
-                BUT MAIN FOCUS IS ON CREATING A DETAILED, EXHAUSTIVE, REPROT WHICH CLEARLY SEPARATES FINANCIAL DUE DILIGENCE FROM AUDIT FINDINGS. 
+
+                *** CRITICAL DATA FORMATTING REQUIREMENTS ***
+                1. ALL NUMERIC VALUES MUST BE PLAIN NUMBERS WITHOUT SYMBOLS
+                2. DO NOT USE % SYMBOLS IN PERCENTAGE VALUES (e.g., use 24.1 not "24.1%")
+                3. DO NOT USE CURRENCY SYMBOLS (e.g., use 500000 not "$500,000")
+                4. DO NOT USE COMMAS IN LARGE NUMBERS (e.g., use 1000000 not "1,000,000")
+                5. FOR CHART DATASETS, COMPLETELY OMIT MISSING DATA POINTS (don't use "N/A" or null)
+                BUT MAIN FOCUS IS ON CREATING A DETAILED, EXHAUSTIVE, REPORT WHICH CLEARLY SEPARATES FINANCIAL DUE DILIGENCE FROM AUDIT FINDINGS.
                 AND TELLS EVERYTHING ABOUT THE COMPANY, ITS FINANCIAL HEALTH, AND ITS INVESTMENT POTENTIAL.
                 You are tasked with analyzing the financial documents of ${companyName} to provide a comprehensive report for investors.
                 CRITICAL INSTRUCTION FOR CHARTS AND TRENDS:
@@ -15,9 +22,47 @@ export const FIN_DD_PROMPT = (companyName: string, startupContext: string, inves
                 - USE VIBRANT, COLOR-CODED METRICS AND GRAPHS. PROVIDE MAXIMUM, ACCURATE DATA FOR CHARTS.
                 - ENSURE ALL TREND CHARTS SHOW ACTUAL TRENDS OVER MULTIPLE TIME PERIODS. MAKE THE REPORT VISUALLY ENGAGING.
 
-                *** CRITICAL INSTRUCTION: REPORT FOR INVESTOR DECISION-MAKING ***
+                ANY SCORING MUST KEEP IN MIND At the end, startup founders are trying to create something no existent before.
+                Success lies on the unique perspective together with fast learning and execution capability of entprepreneurs.
+                Thus incorporating those points as data input (you can not create such input data to begin with) and assessing
+                forward looking business potential is very hard even by AI, I think. You can still estimate the valuation range
+                using multiples of other startups in the same thesis. Traxcn etc does this to the certain extent.
+
+                *** CRITICAL INSTRUCTION: FORWARD-LOOKING INVESTMENT ANALYSIS ***
                 THIS REPORT IS PRIMARILY FOR INVESTORS DECIDING WHETHER TO INVEST IN OR BUY ${companyName}.
-                WRITE FROM AN INVESTOR'S PERSPECTIVE.
+                WRITE FROM AN INVESTOR'S PERSPECTIVE WITH STRONG EMPHASIS ON FUTURE POTENTIAL.
+                CURRENT PROFITABILITY IS ONLY ONE FACTOR - MANY SUCCESSFUL INVESTMENTS (LIKE AMAZON, TESLA, UBER)
+                WERE INITIALLY UNPROFITABLE BUT BECAME EXTREMELY VALUABLE DUE TO THEIR FUTURE POTENTIAL.
+
+                EVALUATE BOTH CURRENT FINANCIAL HEALTH AND FUTURE GROWTH POTENTIAL:
+                1. MARKET POTENTIAL ANALYSIS:
+                   - Evaluate total addressable market (TAM) and growth trajectory with SPECIFIC MARKET SIZE FIGURES
+                   - Assess market timing and adoption curves with SPECIFIC TIMELINE PREDICTIONS
+                   - Compare to historical patterns of similar disruptive technologies with NAMED EXAMPLES
+                   - Identify SPECIFIC MARKET SEGMENTS with highest potential and CONCRETE ENTRY STRATEGIES
+                   - Provide ACTIONABLE GO-TO-MARKET RECOMMENDATIONS with implementation steps
+
+                2. INNOVATION ASSESSMENT:
+                   - Evaluate uniqueness of technology/approach with SPECIFIC DIFFERENTIATORS
+                   - Assess IP portfolio and defensibility with CONCRETE PROTECTION STRATEGIES
+                   - Compare to historical innovation trajectories in similar fields with NAMED EXAMPLES
+                   - Identify SPECIFIC INNOVATION GAPS and provide ACTIONABLE R&D ROADMAP
+                   - Recommend PRACTICAL STEPS to enhance competitive advantage with IMPLEMENTATION TIMELINE
+
+                3. TEAM CAPABILITY EVALUATION:
+                   - Assess founder experience and track record with SPECIFIC ACHIEVEMENTS
+                   - Evaluate team composition and expertise alignment with IDENTIFIED SKILL GAPS
+                   - Compare to successful startup team patterns with NAMED EXAMPLES
+                   - Recommend SPECIFIC HIRING PRIORITIES with roles and responsibilities
+                   - Suggest PRACTICAL ORGANIZATIONAL STRUCTURE improvements with implementation steps
+
+                4. GROWTH TRAJECTORY PROJECTION:
+                   - Project multiple growth scenarios (conservative, moderate, aggressive) with DETAILED ASSUMPTIONS
+                   - Assess unit economics at scale with SPECIFIC CAC/LTV PROJECTIONS
+                   - Compare to historical growth patterns of similar companies with NAMED EXAMPLES
+                   - Provide ACTIONABLE SCALING STRATEGIES with implementation steps and resource requirements
+                   - Identify SPECIFIC GROWTH LEVERS and PRACTICAL OPTIMIZATION TACTICS
+
                 PROVIDE A CLEAR INVESTMENT RECOMMENDATION WITH JUSTIFICATION AND A SUCCESS PROBABILITY PERCENTAGE.
                 ANALYZE INVESTMENT POTENTIAL ACROSS KEY DIMENSIONS (RETURN POTENTIAL, RISK PROFILE, MARKET POSITION, SCALABILITY,
                 FINANCIAL STABILITY, EXIT OPPORTUNITY, COMPETITIVE ADVANTAGE, MANAGEMENT QUALITY).
@@ -30,9 +75,6 @@ export const FIN_DD_PROMPT = (companyName: string, startupContext: string, inves
 
                 PROVIDE MAXIMUM DATA FOR CHARTS, INCLUDING VALUES WITHIN CHARTS.
 
-                *** CRITICAL INSTRUCTION: TWO DISTINCT ANALYSES REQUIRED ***
-                You are a specialized financial analyst and investment advisor with expertise in Indian company standards and regulations. Perform TWO DISTINCT ANALYSES for ${companyName}:
-
                 KEEP THE TOTAL RESPONSE LENGTH UNDER 60,000 TOKENS. DO NOT EXCEED THIS LIMIT. MAINTAIN THE SPECIFIED FORMAT.
 
                 1.  FINANCIAL DUE DILIGENCE (INVESTOR PERSPECTIVE):
@@ -44,6 +86,8 @@ export const FIN_DD_PROMPT = (companyName: string, startupContext: string, inves
                     - Analyze investment potential across key investor-focused dimensions.
                     - Calculate total company score across multiple dimensions.
                     - Offer insights for investment decisions.
+                    - IMPORTANT: Assess future potential even if current financials show losses.
+                    - Compare to historical patterns of successful companies that were initially unprofitable.
 
                 2.  FORMAL FINANCIAL AUDITING:
                     Focus on compliance, accuracy, fraud detection, adherence to accounting standards.
@@ -72,13 +116,13 @@ export const FIN_DD_PROMPT = (companyName: string, startupContext: string, inves
                 9. Clear investment recommendation with justification.
                 10. Success probability percentage based on analysis.
                 11. Calculate and display a total company score (multiple dimensions).
+                12. CRITICAL: Evaluate long-term investment potential even if current financials show losses.
 
                 ${startupContext}
                 ${investorContext}
                 ${missingDocumentsContext}
 
                 IMPORTANT DOCUMENT ORGANIZATION & METADATA ANALYSIS:
-                - Document content is organized by type (e.g., "=== Balance Sheet ==="), with individual documents marked "--- Document: filename ---".
                 - Each document has metadata: Filename, Type, Description, Time Period, File Format, Size, Created.
                 - CRITICAL: CAREFULLY ANALYZE TIME PERIOD METADATA for documents from different years/periods.
                 - EXTREMELY IMPORTANT: USE TIME PERIOD METADATA FOR MULTI-YEAR TREND DATA in all financial metrics and charts.
@@ -103,10 +147,17 @@ export const FIN_DD_PROMPT = (companyName: string, startupContext: string, inves
                 - INCORRECT: "data": [4710232 / 12, 10676425 / 12] or "data": [(9082204 / (10676425 / 12))]
                 - CORRECT: "data": [392519.33, 889702.08] or "data": [10.2]
                 - ALL NUMERIC VALUES MUST BE ACTUAL NUMBERS, NOT CALCULATIONS OR EXPRESSIONS.
+                - NEVER INCLUDE SYMBOLS LIKE % OR $ IN NUMERIC VALUES - USE ONLY PLAIN NUMBERS.
+                - INCORRECT: "value": "24.1%" or "value": "$500,000"
+                - CORRECT: "value": 24.1 or "value": 500000
                 - ENSURE ALL ARRAYS CONTAIN PROPERLY CALCULATED VALUES, NOT FORMULAS.
                 - DO NOT USE MATHEMATICAL OPERATIONS INSIDE THE JSON STRUCTURE.
                 - COMPUTE ALL VALUES BEFORE PLACING THEM IN THE JSON.
-
+                - IMPORTANT: FOR CHART DATASETS, WHEN THERE IS NO DATA AVAILABLE, COMPLETELY OMIT THOSE DATA POINTS.
+                - INCORRECT: "data": [30, 100, 40, "N/A", "N/A"] or "data": [30, 100, 40, null, null]
+                - CORRECT: "data": [30, 100, 40] (only include actual data points)
+                REMEMBER: ALL NUMERIC VALUES MUST BE PLAIN NUMBERS WITHOUT ANY SYMBOLS (%, $, commas, etc.)
+                STRICTLY FOLLOW THE JSON FORMAT
                 ${structure}
 
                **IMPORTANT: THIS REPORT MUST MEET INDUSTRY STANDARDS FOR FINANCIAL DUE DILIGENCE AND AUDITING, SUITABLE FOR INVESTORS, REGULATORS, AND STAKEHOLDERS.**
@@ -322,7 +373,7 @@ export const structure = `{
                           "datasets": [
                             {
                               "label": "Projected Growth",
-                              "data": [currentValue, year1Value, year2Value, year3Value], // Numeric values for each period
+                              "data": [currentValue, year1Value, year2Value, year3Value], // Only include available numeric values - omit any missing data points
                               "backgroundColor": ["#9C27B0", "#9C27B0", "#9C27B0", "#9C27B0"] // Suggested color for projections
                             }
                           ]
@@ -445,13 +496,13 @@ export const structure = `{
                           "datasets": [
                             {
                               "label": "Company Ratio",
-                              "data": [value1, value2, value3], // Numeric values for each period
+                              "data": [value1, value2, value3], // Only include available numeric values - omit any missing data points
                               "borderColor": "#2196F3",
                               "backgroundColor": "rgba(33, 150, 243, 0.2)"
                             },
                             {
                               "label": "Industry Average",
-                              "data": [avg1, avg2, avg3], // Industry average values
+                              "data": [avg1, avg2, avg3], // Only include available numeric values - omit any missing data points
                               "borderColor": "#9C27B0",
                               "backgroundColor": "rgba(156, 39, 176, 0.2)",
                               "borderDash": [5, 5] // Dashed line for industry average
@@ -725,6 +776,155 @@ export const structure = `{
                       }
                     ]
                   },
+                  "forwardLookingAnalysis": {
+                    "marketPotential": {
+                      "tamSize": numeric value or "N/A", // Total addressable market size
+                      "growthRate": numeric value or "N/A", // Market growth rate
+                      "adoptionStage": "Early Adoption" or "Growth Phase" or "Maturity" or "Decline",
+                      "targetSegments": ["Specific market segment 1", "Specific market segment 2"], // Specific market segments with highest potential
+                      "entryStrategy": "Detailed market entry strategy with specific steps and timeline",
+                      "competitiveLandscape": "Detailed analysis of competitive landscape with named competitors and their positions",
+                      "historicalComparisons": ["Named example 1 of similar market development", "Named example 2 of similar market development"],
+                      "goToMarketRecommendations": [
+                        {
+                          "recommendation": "Specific actionable recommendation",
+                          "implementationSteps": ["Step 1", "Step 2", "Step 3"],
+                          "timeline": "Expected timeline for implementation (e.g., Q1 2024 - Q2 2024)",
+                          "resourceRequirements": "Specific resources needed (e.g., budget, personnel)",
+                          "expectedOutcome": "Expected outcome with specific metrics"
+                        }
+                      ],
+                      "metrics": [
+                        {
+                          "name": "Metric name",
+                          "value": numeric value or "N/A",
+                          "description": "Description of the metric",
+                          "trend": "increasing" or "decreasing" or "stable",
+                          "status": "positive" or "neutral" or "negative"
+                        }
+                      ]
+                    },
+                    "innovationAssessment": {
+                      "uniquenessScore": numeric value between 0 and 100,
+                      "ipStrength": "Strong" or "Moderate" or "Weak",
+                      "competitiveAdvantage": "Detailed description of competitive advantage",
+                      "keyDifferentiators": ["Specific differentiator 1", "Specific differentiator 2"],
+                      "protectionStrategies": ["Specific IP protection strategy 1", "Specific IP protection strategy 2"],
+                      "innovationGaps": ["Specific innovation gap 1", "Specific innovation gap 2"],
+                      "rdRoadmap": [
+                        {
+                          "priority": "High" or "Medium" or "Low",
+                          "initiative": "Specific R&D initiative",
+                          "timeline": "Expected timeline (e.g., Q3 2024 - Q1 2025)",
+                          "resourceRequirements": "Specific resources needed",
+                          "expectedOutcome": "Expected outcome with specific metrics"
+                        }
+                      ],
+                      "historicalComparisons": ["Named example 1 of similar innovation trajectory", "Named example 2 of similar innovation trajectory"],
+                      "metrics": [
+                        {
+                          "name": "Metric name",
+                          "value": numeric value or "N/A",
+                          "description": "Description of the metric",
+                          "trend": "increasing" or "decreasing" or "stable",
+                          "status": "positive" or "neutral" or "negative"
+                        }
+                      ]
+                    },
+                    "teamCapability": {
+                      "executionScore": numeric value between 0 and 100,
+                      "experienceLevel": "High" or "Medium" or "Low",
+                      "trackRecord": "Detailed description of team track record",
+                      "founderAchievements": ["Specific founder achievement 1", "Specific founder achievement 2"],
+                      "identifiedSkillGaps": ["Specific skill gap 1", "Specific skill gap 2"],
+                      "hiringPriorities": [
+                        {
+                          "role": "Specific role to hire",
+                          "responsibilities": ["Key responsibility 1", "Key responsibility 2"],
+                          "impact": "Expected impact on business",
+                          "timeline": "When to hire (e.g., Immediate, Q2 2024)"
+                        }
+                      ],
+                      "organizationalImprovements": [
+                        {
+                          "area": "Area for improvement",
+                          "recommendation": "Specific recommendation",
+                          "implementationSteps": ["Step 1", "Step 2", "Step 3"],
+                          "expectedOutcome": "Expected outcome with specific metrics"
+                        }
+                      ],
+                      "historicalComparisons": ["Named example 1 of successful team pattern", "Named example 2 of successful team pattern"],
+                      "metrics": [
+                        {
+                          "name": "Metric name",
+                          "value": numeric value or "N/A",
+                          "description": "Description of the metric",
+                          "trend": "increasing" or "decreasing" or "stable",
+                          "status": "positive" or "neutral" or "negative"
+                        }
+                      ]
+                    },
+                    "growthTrajectory": {
+                      "scenarios": {
+                        "conservative": numeric value, // Conservative growth rate percentage
+                        "moderate": numeric value, // Moderate growth rate percentage
+                        "aggressive": numeric value // Aggressive growth rate percentage
+                      },
+                      "assumptions": [
+                        {
+                          "scenario": "conservative" or "moderate" or "aggressive",
+                          "assumptions": ["Detailed assumption 1", "Detailed assumption 2"]
+                        }
+                      ],
+                      "unitEconomics": {
+                        "currentCac": numeric value or "N/A", // Current customer acquisition cost
+                        "projectedCac": numeric value or "N/A", // Projected customer acquisition cost
+                        "currentLtv": numeric value or "N/A", // Current lifetime value
+                        "projectedLtv": numeric value or "N/A" // Projected lifetime value
+                      },
+                      "scalingStrategies": [
+                        {
+                          "strategy": "Specific scaling strategy",
+                          "implementationSteps": ["Step 1", "Step 2", "Step 3"],
+                          "resourceRequirements": "Specific resources needed",
+                          "timeline": "Expected timeline",
+                          "expectedOutcome": "Expected outcome with specific metrics"
+                        }
+                      ],
+                      "growthLevers": ["Specific growth lever 1", "Specific growth lever 2"],
+                      "optimizationTactics": ["Specific optimization tactic 1", "Specific optimization tactic 2"],
+                      "historicalComparisons": ["Named example 1 of similar growth pattern", "Named example 2 of similar growth pattern"],
+                      "metrics": [
+                        {
+                          "name": "Metric name",
+                          "value": numeric value or "N/A",
+                          "description": "Description of the metric",
+                          "trend": "increasing" or "decreasing" or "stable",
+                          "status": "positive" or "neutral" or "negative"
+                        }
+                      ]
+                    },
+                    "dimensions": [
+                      {
+                        "name": "Dimension name",
+                        "score": numeric value between 0 and 100,
+                        "description": "Description of this dimension",
+                        "status": "excellent" or "good" or "moderate" or "poor"
+                      }
+                    ],
+                    "chartData": {
+                      "type": "radar",
+                      "labels": ["Market Potential", "Innovation", "Team Capability", "Growth Trajectory"],
+                      "datasets": [
+                        {
+                          "label": "Forward-Looking Score",
+                          "data": [score1, score2, score3, score4],
+                          "backgroundColor": "rgba(75, 192, 192, 0.2)",
+                          "borderColor": "rgba(75, 192, 192, 1)"
+                        }
+                      ]
+                    }
+                  },
                   "industryBenchmarking": {
                     "overview": "Overview of industry benchmarking",
                     "industryContext": "Description of the industry context and trends",
@@ -764,19 +964,19 @@ export const structure = `{
                         "datasets": [
                           {
                             "label": "Company",
-                            "data": [companyScore1, companyScore2, companyScore3, companyScore4, companyScore5], // Normalized scores (0-100)
+                            "data": [companyScore1, companyScore2, companyScore3, companyScore4, companyScore5], // Only include available numeric values - omit any missing data points
                             "backgroundColor": "rgba(33, 150, 243, 0.2)",
                             "borderColor": "#2196F3"
                           },
                           {
                             "label": "Industry Average",
-                            "data": [industryScore1, industryScore2, industryScore3, industryScore4, industryScore5], // Industry average scores
+                            "data": [industryScore1, industryScore2, industryScore3, industryScore4, industryScore5], // Only include available numeric values - omit any missing data points
                             "backgroundColor": "rgba(156, 39, 176, 0.2)",
                             "borderColor": "#9C27B0"
                           },
                           {
                             "label": "Top Performers",
-                            "data": [topScore1, topScore2, topScore3, topScore4, topScore5], // Top performers scores
+                            "data": [topScore1, topScore2, topScore3, topScore4, topScore5], // Only include available numeric values - omit any missing data points
                             "backgroundColor": "rgba(76, 175, 80, 0.2)",
                             "borderColor": "#4CAF50"
                           }
@@ -808,7 +1008,7 @@ export const structure = `{
                     "shareholders": [
                       {
                         "name": "Shareholder name",
-                        "equityPercentage": "Percentage value (e.g., 25%)",
+                        "equityPercentage": "Percentage value as plain number (e.g., 25 not 25%)",
                         "shareCount": "Number of shares",
                         "faceValue": "Face value per share",
                         "investmentAmount": "Total investment amount",

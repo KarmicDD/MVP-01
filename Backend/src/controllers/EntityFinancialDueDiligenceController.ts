@@ -5,9 +5,11 @@ import DocumentModel, { DocumentType } from '../models/Profile/Document';
 import ApiUsageModel from '../models/ApiUsageModel/ApiUsage';
 import StartupProfileModel from '../models/Profile/StartupProfile';
 import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
+import ExtendedProfileModel from '../models/Profile/ExtendedProfile';
+import QuestionnaireSubmissionModel from '../models/question/QuestionnaireSubmission';
+import TaskModel from '../models/Task';
 import enhancedDocumentProcessingService from '../services/EnhancedDocumentProcessingService';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import fs from 'fs';
 import path from 'path';
 
 /**
@@ -235,6 +237,9 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                     // Include the compatibility analysis
                     compatibilityAnalysis: oldAnalysis.compatibilityAnalysis,
 
+                    // Include the Forward-Looking Analysis
+                    forwardLookingAnalysis: oldAnalysis.forwardLookingAnalysis,
+
                     // Include the scoring breakdown
                     scoringBreakdown: oldAnalysis.scoringBreakdown,
 
@@ -312,6 +317,9 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
 
                     // Include the compatibility analysis
                     compatibilityAnalysis: existingAnalysis.compatibilityAnalysis,
+
+                    // Include the Forward-Looking Analysis
+                    forwardLookingAnalysis: existingAnalysis.forwardLookingAnalysis,
 
                     // Include the scoring breakdown
                     scoringBreakdown: existingAnalysis.scoringBreakdown,
@@ -424,17 +432,62 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
 
             // Extract financial data using Gemini with enhanced context
             // Using the new approach that extracts raw data first, then sends to Gemini
-            console.log('Extracting financial data using raw extraction first, then Gemini');
+            console.log('Extracting financial data using raw extraction first, then Gemini with forward-looking analysis');
             let financialData;
             try {
-                // Pass the document objects directly to extractFinancialData
+                // Fetch additional data sources for enhanced analysis
+                console.log('Fetching additional data sources for enhanced analysis');
+
+                // Get extended profile data
+                const extendedProfile = await ExtendedProfileModel.findOne({ userId: entityId });
+
+                // Get questionnaire submission data
+                const questionnaireSubmission = await QuestionnaireSubmissionModel.findOne({
+                    userId: entityId
+                }).sort({ createdAt: -1 });
+
+                // Get task data to evaluate execution capability
+                const tasks = await TaskModel.find({
+                    assignedTo: entityId
+                }).sort({ createdAt: -1 }).limit(50);
+
+                // Get previous financial reports for historical metrics and industry benchmarks
+                const financialReports = await FinancialDueDiligenceReport.find({
+                    targetEntityType: entityType
+                }).sort({ createdAt: -1 }).limit(10);
+
+                // Prepare historical metrics from previous reports if available
+                const historicalMetrics: Record<string, any> = {};
+                if (financialReports && financialReports.length > 0) {
+                    // Extract metrics from previous reports
+                    financialReports.forEach(report => {
+                        if (report.financialAnalysis && report.financialAnalysis.metrics) {
+                            report.financialAnalysis.metrics.forEach((metric: any) => {
+                                if (metric.name && metric.value) {
+                                    historicalMetrics[metric.name] = metric.value;
+                                }
+                            });
+                        }
+                    });
+                }
+
+                console.log('Additional data sources fetched successfully');
+
+                // Pass the document objects directly to extractFinancialData with additional data sources
                 // This will use the new approach that extracts raw data first
                 financialData = await enhancedDocumentProcessingService.extractFinancialData(
                     documentsWithMetadata, // Pass documents directly instead of combined content
                     companyName,
                     entityProfile,
                     null, // No counterparty info needed
-                    missingDocumentTypes // Pass missing document types to Gemini
+                    missingDocumentTypes, // Pass missing document types to Gemini
+                    { // Pass additional data sources for enhanced analysis
+                        extendedProfile,
+                        questionnaireSubmission,
+                        tasks,
+                        financialReports,
+                        historicalMetrics
+                    }
                 );
             } catch (error) {
                 console.error('Error extracting financial data:', error);
@@ -556,6 +609,9 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 // Compatibility Analysis
                 financialReport.compatibilityAnalysis = financialData.compatibilityAnalysis;
 
+                // Forward-Looking Analysis
+                financialReport.forwardLookingAnalysis = financialData.forwardLookingAnalysis;
+
                 // Scoring Breakdown
                 financialReport.scoringBreakdown = financialData.scoringBreakdown;
 
@@ -656,6 +712,9 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
 
                     // Compatibility Analysis
                     compatibilityAnalysis: financialData.compatibilityAnalysis,
+
+                    // Forward-Looking Analysis
+                    forwardLookingAnalysis: financialData.forwardLookingAnalysis,
 
                     // Scoring Breakdown
                     scoringBreakdown: financialData.scoringBreakdown,
@@ -764,22 +823,73 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 });
             }
 
-            // Log the data before saving to help with debugging
-            console.log('Financial data from Gemini:');
-            console.log('totalCompanyScore:', financialData.totalCompanyScore);
-            console.log('investmentDecision:', financialData.investmentDecision);
-            console.log('compatibilityAnalysis:', financialData.compatibilityAnalysis);
+            // Log and process Forward-Looking Analysis data
+            const forwardLookingStartTime = Date.now();
+            console.log('Processing Forward-Looking Analysis data');
+            if (financialData.forwardLookingAnalysis) {
+                const analysis = financialData.forwardLookingAnalysis as Record<string, any>;
+                console.log('Forward-Looking Analysis sections available:',
+                    Object.keys(analysis).filter(key =>
+                        analysis[key] && typeof analysis[key] === 'object' &&
+                        Object.keys(analysis[key]).length > 0
+                    ).join(', ')
+                );
+
+                // Process growth trajectory data if available
+                if (analysis.growthTrajectory) {
+                    console.log('Processing Growth Trajectory data');
+
+                    // Process unitEconomics data
+                    if (analysis.growthTrajectory.unitEconomics) {
+                        const unitEconomics = analysis.growthTrajectory.unitEconomics;
+                        console.log('Processing unitEconomics data:', JSON.stringify(unitEconomics));
+
+                        // Ensure all fields are properly formatted for MongoDB
+                        // Keep "N/A" as strings rather than trying to convert to numbers
+                        // This works with our updated schema that accepts both numbers and strings
+                    }
+
+                    // Process scenarios data
+                    if (analysis.growthTrajectory.scenarios) {
+                        const scenarios = analysis.growthTrajectory.scenarios;
+                        console.log('Processing scenarios data:', JSON.stringify(scenarios));
+
+                        // Ensure all fields are properly formatted for MongoDB
+                        // Keep "N/A" as strings rather than trying to convert to numbers
+                    }
+
+                    console.log('Growth Trajectory data processed successfully');
+                }
+
+                // Process innovation assessment data if available
+                if (analysis.innovationAssessment) {
+                    console.log('Processing Innovation Assessment data');
+                    // Keep uniquenessScore as is, our schema now accepts both numbers and strings
+                }
+
+                // Process team capability data if available
+                if (analysis.teamCapability) {
+                    console.log('Processing Team Capability data');
+                    // Keep executionScore as is, our schema now accepts both numbers and strings
+                }
+
+                // Process dimensions data if available
+                if (analysis.dimensions) {
+                    console.log('Processing Dimensions data');
+                    // Keep score as is, our schema now accepts both numbers and strings
+                }
+
+                console.log('Forward-Looking Analysis data processed successfully');
+            } else {
+                console.log('No Forward-Looking Analysis data available');
+            }
+            console.log('Forward-Looking Analysis processing time:', Date.now() - forwardLookingStartTime, 'ms');
 
             await financialReport.save();
             console.log('Saved financial report to database');
 
             // Convert the Mongoose document to a plain JavaScript object
             const reportObj = financialReport.toObject();
-
-            // Log the key sections to help with debugging
-            console.log('Report totalCompanyScore:', reportObj.totalCompanyScore);
-            console.log('Report investmentDecision:', reportObj.investmentDecision);
-            console.log('Report compatibilityAnalysis:', reportObj.compatibilityAnalysis);
 
             // Return complete analysis data with current date as generation date
             res.json({
@@ -795,6 +905,9 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
 
                 // Include the compatibility analysis
                 compatibilityAnalysis: reportObj.compatibilityAnalysis,
+
+                // Include the Forward-Looking Analysis
+                forwardLookingAnalysis: reportObj.forwardLookingAnalysis,
 
                 // Include the scoring breakdown
                 scoringBreakdown: reportObj.scoringBreakdown,
@@ -881,10 +994,38 @@ export const getFinancialDueDiligenceReport = async (req: Request, res: Response
         // Convert the Mongoose document to a plain JavaScript object
         const reportObj = report.toObject();
 
-        // Log the key sections to help with debugging
-        console.log('Report totalCompanyScore:', reportObj.totalCompanyScore);
-        console.log('Report investmentDecision:', reportObj.investmentDecision);
-        console.log('Report compatibilityAnalysis:', reportObj.compatibilityAnalysis);
+        // Log Forward-Looking Analysis data for debugging
+        const forwardLookingStartTime = Date.now();
+        console.log('Retrieving Forward-Looking Analysis data');
+        if (reportObj.forwardLookingAnalysis) {
+            console.log('Forward-Looking Analysis sections available:',
+                Object.keys(reportObj.forwardLookingAnalysis).filter(key => {
+                    const analysis = reportObj.forwardLookingAnalysis as Record<string, any>;
+                    return analysis[key] && typeof analysis[key] === 'object' &&
+                        Object.keys(analysis[key]).length > 0;
+                }).join(', ')
+            );
+
+            // Log growth trajectory data if available
+            if (reportObj.forwardLookingAnalysis.growthTrajectory) {
+                const growthTrajectory = reportObj.forwardLookingAnalysis.growthTrajectory as Record<string, any>;
+
+                // Log unitEconomics data
+                if (growthTrajectory.unitEconomics) {
+                    console.log('Retrieved unitEconomics data:',
+                        JSON.stringify(growthTrajectory.unitEconomics));
+                }
+
+                // Log scenarios data
+                if (growthTrajectory.scenarios) {
+                    console.log('Retrieved scenarios data:',
+                        JSON.stringify(growthTrajectory.scenarios));
+                }
+            }
+        } else {
+            console.log('No Forward-Looking Analysis data available in report');
+        }
+        console.log('Forward-Looking Analysis retrieval time:', Date.now() - forwardLookingStartTime, 'ms');
 
         // Return the report with all fields
         res.json({
@@ -900,6 +1041,9 @@ export const getFinancialDueDiligenceReport = async (req: Request, res: Response
 
             // Compatibility Analysis
             compatibilityAnalysis: reportObj.compatibilityAnalysis,
+
+            // Forward-Looking Analysis
+            forwardLookingAnalysis: reportObj.forwardLookingAnalysis,
 
             // Scoring Breakdown
             scoringBreakdown: reportObj.scoringBreakdown,

@@ -6,6 +6,9 @@ import DocumentModel, { DocumentType } from '../models/Profile/Document';
 import ApiUsageModel from '../models/ApiUsageModel/ApiUsage';
 import StartupProfileModel from '../models/Profile/StartupProfile';
 import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
+import ExtendedProfileModel from '../models/Profile/ExtendedProfile';
+import QuestionnaireSubmissionModel from '../models/question/QuestionnaireSubmission';
+import TaskModel from '../models/Task';
 import enhancedDocumentProcessingService from '../services/EnhancedDocumentProcessingService';
 
 // Load environment variables
@@ -369,19 +372,77 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 timePeriod: d.timePeriod || 'Not specified'
             })));
 
-            // Extract financial data using Gemini with enhanced context
+            // Extract financial data using Gemini with enhanced context and forward-looking analysis
             // Using the new approach that extracts raw data first, then sends to Gemini
-            console.log('Extracting financial data using raw extraction first, then Gemini');
+            console.log('Extracting financial data using raw extraction first, then Gemini with forward-looking analysis');
             let financialData;
             try {
-                // Pass the document objects directly to extractFinancialData
+                // Fetch additional data sources for enhanced analysis
+                console.log('Fetching additional data sources for enhanced analysis');
+
+                // Get extended profile data for both startup and investor
+                const startupExtendedProfile = await ExtendedProfileModel.findOne({ userId: startupId });
+                const investorExtendedProfile = await ExtendedProfileModel.findOne({ userId: investorId });
+
+                // Get questionnaire submission data for both startup and investor
+                const startupQuestionnaire = await QuestionnaireSubmissionModel.findOne({
+                    userId: startupId
+                }).sort({ createdAt: -1 });
+
+                const investorQuestionnaire = await QuestionnaireSubmissionModel.findOne({
+                    userId: investorId
+                }).sort({ createdAt: -1 });
+
+                // Get task data to evaluate execution capability
+                const entityIdToAnalyze = perspective === 'startup' ? startupId : investorId;
+                const tasks = await TaskModel.find({
+                    assignedTo: entityIdToAnalyze
+                }).sort({ createdAt: -1 }).limit(50);
+
+                // Get previous financial reports for historical metrics and industry benchmarks
+                const financialReports = await FinancialDueDiligenceReport.find({
+                    $or: [
+                        { startupId: { $exists: true } },
+                        { targetEntityType: perspective }
+                    ]
+                }).sort({ createdAt: -1 }).limit(10);
+
+                // Prepare historical metrics from previous reports if available
+                const historicalMetrics: Record<string, any> = {};
+                if (financialReports && financialReports.length > 0) {
+                    // Extract metrics from previous reports
+                    financialReports.forEach(report => {
+                        if (report.financialAnalysis && report.financialAnalysis.metrics) {
+                            report.financialAnalysis.metrics.forEach((metric: any) => {
+                                if (metric.name && metric.value) {
+                                    historicalMetrics[metric.name] = metric.value;
+                                }
+                            });
+                        }
+                    });
+                }
+
+                // Determine which extended profile and questionnaire to use based on perspective
+                const extendedProfile = perspective === 'startup' ? startupExtendedProfile : investorExtendedProfile;
+                const questionnaireSubmission = perspective === 'startup' ? startupQuestionnaire : investorQuestionnaire;
+
+                console.log('Additional data sources fetched successfully');
+
+                // Pass the document objects directly to extractFinancialData with additional data sources
                 // This will use the new approach that extracts raw data first
                 financialData = await enhancedDocumentProcessingService.extractFinancialData(
                     documentsWithMetadata, // Pass documents directly instead of combined content
                     perspective === 'startup' ? startup.companyName : investor.companyName,
                     startupInfo,
                     investorInfo,
-                    missingDocumentTypes // Pass missing document types to Gemini
+                    missingDocumentTypes, // Pass missing document types to Gemini
+                    { // Pass additional data sources for enhanced analysis
+                        extendedProfile,
+                        questionnaireSubmission,
+                        tasks,
+                        financialReports,
+                        historicalMetrics
+                    }
                 );
             } catch (error) {
                 console.error('Error extracting financial data:', error);

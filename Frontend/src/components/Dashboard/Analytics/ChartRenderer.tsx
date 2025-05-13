@@ -166,44 +166,73 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ chartData, height = 200, 
     }
   };
 
-  // Enhanced radar chart options
+  // Enhanced radar chart options with improved styling
   const radarOptions = {
     ...defaultOptions,
     scales: {
       r: {
-        angleLines: { display: true, color: 'rgba(0, 0, 0, 0.1)' },
+        angleLines: {
+          display: true,
+          color: 'rgba(0, 0, 0, 0.08)',
+          lineWidth: 1
+        },
         suggestedMin: 0,
         suggestedMax: 100,
         ticks: {
           stepSize: 20,
           backdropColor: 'transparent',
           font: {
-            size: 11,
+            size: 10,
             family: "'Inter', 'Helvetica', 'Arial', sans-serif"
           },
-          color: '#6B7280'
+          color: '#9CA3AF',
+          showLabelBackdrop: false,
+          z: 1
         },
         pointLabels: {
           font: {
-            size: 11,
+            size: 12,
             family: "'Inter', 'Helvetica', 'Arial', sans-serif",
-            weight: 500
+            weight: 600
           },
-          color: '#4B5563'
+          color: '#4B5563',
+          padding: 10
         },
         grid: {
-          color: 'rgba(0, 0, 0, 0.05)'
+          circular: true,
+          color: 'rgba(0, 0, 0, 0.03)',
+          lineWidth: 1
+        }
+      }
+    },
+    plugins: {
+      ...defaultOptions.plugins,
+      legend: {
+        ...defaultOptions.plugins.legend,
+        display: false // Hide legend for radar charts
+      },
+      tooltip: {
+        ...defaultOptions.plugins.tooltip,
+        callbacks: {
+          label: function (context: any) {
+            return `${context.label}: ${context.raw}/100`;
+          }
         }
       }
     },
     elements: {
       line: {
-        borderWidth: 2
+        borderWidth: 2,
+        tension: 0.1,
+        fill: true,
+        backgroundColor: 'rgba(79, 70, 229, 0.2)'
       },
       point: {
-        radius: 3,
+        radius: 4,
         hitRadius: 10,
-        hoverRadius: 5
+        hoverRadius: 6,
+        borderWidth: 2,
+        backgroundColor: '#fff'
       }
     }
   };
