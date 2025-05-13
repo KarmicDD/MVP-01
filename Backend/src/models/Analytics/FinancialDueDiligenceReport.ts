@@ -45,11 +45,22 @@ export interface IFinancialRatio {
   }[];
 }
 
+/**
+ * Financial Due Diligence Report Model
+ *
+ * This model implements global caching for financial due diligence reports.
+ * Reports are cached for 30 days and shared across all users.
+ *
+ * The caching is based on targetEntityId and targetEntityType only (not requestedById).
+ * This ensures that all users see the same report for a given entity.
+ *
+ * The requestedById field is still tracked for historical purposes but not used for lookups.
+ */
 export interface IFinancialDueDiligenceReport extends Document {
   // Core fields
   targetEntityId: string; // The entity being analyzed (startup or investor)
   targetEntityType: 'startup' | 'investor'; // Type of entity being analyzed
-  requestedById: string; // User who requested the report
+  requestedById: string; // User who requested the report (for tracking only, not used for lookups)
   companyName: string;
   reportDate: Date;
   generatedBy: string;
@@ -698,9 +709,9 @@ const IndustryBenchmarkingSchema = new Schema({
 
 const FinancialDueDiligenceReportSchema: Schema = new Schema({
   // Core fields
-  targetEntityId: { type: String, required: true, index: true },
+  targetEntityId: { type: String, required: true },
   targetEntityType: { type: String, required: true }, // Accept any string value for targetEntityType
-  requestedById: { type: String, required: true, index: true },
+  requestedById: { type: String, required: true },
   companyName: { type: String, required: true },
   reportDate: { type: Date, default: Date.now },
   generatedBy: { type: String, required: true },
@@ -1085,8 +1096,11 @@ const FinancialDueDiligenceReportSchema: Schema = new Schema({
 });
 
 // Create indexes for faster lookups
-FinancialDueDiligenceReportSchema.index({ targetEntityId: 1, requestedById: 1 });
+// Using only targetEntityId for primary lookups to enable global caching across users
+FinancialDueDiligenceReportSchema.index({ targetEntityId: 1 });
 FinancialDueDiligenceReportSchema.index({ targetEntityType: 1 });
+// Keep an index on requestedById for historical tracking
+FinancialDueDiligenceReportSchema.index({ requestedById: 1 });
 
 // Add TTL index to automatically delete expired documents
 FinancialDueDiligenceReportSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });

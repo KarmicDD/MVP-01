@@ -124,10 +124,10 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
             }
 
             // Look for any existing analysis, regardless of age
+            // Global caching: only look for startupId and investorId, not the perspective
             const oldAnalysis = await FinancialDueDiligenceReport.findOne({
                 startupId: startupId,
-                investorId: investorId,
-                perspective: perspective
+                investorId: investorId
             }).sort({ createdAt: -1 }); // Get the most recent one
 
             if (oldAnalysis) {
@@ -203,13 +203,14 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
         console.log(`Using perspective: ${perspective}`);
 
         try {
-            // Check if we have a recent analysis in MongoDB cache with matching perspective
+            // Check if we have a recent analysis in MongoDB cache
+            // Global caching: only look for startupId and investorId, not the perspective
+            // Use 30 days as cache validity period instead of 7 days
             const existingAnalysis = await FinancialDueDiligenceReport.findOne({
                 startupId: startupId,
                 investorId: investorId,
-                perspective: perspective,
-                // Only use cached results if less than 7 days old
-                createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+                // Only use cached results if less than 30 days old
+                createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
             });
 
             if (existingAnalysis) {
@@ -695,10 +696,10 @@ export const getFinancialDueDiligenceReport = async (req: Request, res: Response
         console.log(`Looking for report with startupId: ${startupId}, investorId: ${investorId}, perspective: ${perspective}`);
 
         // Find the report in MongoDB
+        // Global caching: only look for startupId and investorId, not the perspective
         const report = await FinancialDueDiligenceReport.findOne({
             startupId: startupId,
-            investorId: investorId,
-            perspective: perspective
+            investorId: investorId
         }).sort({ createdAt: -1 });
 
         if (!report) {
@@ -794,6 +795,7 @@ export const shareFinancialDueDiligenceReport = async (req: Request, res: Respon
         }
 
         // Find the report in MongoDB
+        // Global caching: only look for startupId and investorId in any order
         const report = await FinancialDueDiligenceReport.findOne({
             $or: [
                 { startupId: startupId, investorId: investorId },
@@ -842,6 +844,7 @@ export const exportFinancialDueDiligenceReportPdf = async (req: Request, res: Re
         }
 
         // Find the report in MongoDB
+        // Global caching: only look for startupId and investorId in any order
         const report = await FinancialDueDiligenceReport.findOne({
             $or: [
                 { startupId: startupId, investorId: investorId },

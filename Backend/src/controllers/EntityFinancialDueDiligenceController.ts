@@ -215,10 +215,10 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
             const entityType = req.query.entityType as 'startup' | 'investor' || 'startup';
 
             // Look for any existing analysis, regardless of age
+            // Global caching: only look for entity ID and type, not the requesting user
             const oldAnalysis = await FinancialDueDiligenceReport.findOne({
                 targetEntityId: entityId,
-                targetEntityType: entityType,
-                requestedById: req.user.userId
+                targetEntityType: entityType
             }).sort({ createdAt: -1 }); // Get the most recent one
 
             if (oldAnalysis) {
@@ -293,12 +293,13 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
 
         try {
             // Check if we have a recent analysis in MongoDB cache
+            // Global caching: only look for entity ID and type, not the requesting user
+            // Use 30 days as cache validity period instead of 7 days
             const existingAnalysis = await FinancialDueDiligenceReport.findOne({
                 targetEntityId: entityId,
                 targetEntityType: entityType,
-                requestedById: req.user.userId,
-                // Only use cached results if less than 7 days old
-                createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+                // Only use cached results if less than 30 days old
+                createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
             });
 
             if (existingAnalysis) {
@@ -583,11 +584,11 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
             }
 
             // Check if there's an existing report for this entity (regardless of age)
+            // Global caching: only look for entity ID and type, not the requesting user
             // We'll update it instead of creating a new one to avoid duplicate reports
             let financialReport = await FinancialDueDiligenceReport.findOne({
                 targetEntityId: entityId,
-                targetEntityType: entityType,
-                requestedById: req.user.userId
+                targetEntityType: entityType
             });
 
             if (financialReport) {
@@ -977,10 +978,10 @@ export const getFinancialDueDiligenceReport = async (req: Request, res: Response
         }
 
         // Find the report in MongoDB
+        // Global caching: only look for entity ID and type, not the requesting user
         const report = await FinancialDueDiligenceReport.findOne({
             targetEntityId: entityId,
-            targetEntityType: entityType,
-            requestedById: req.user.userId
+            targetEntityType: entityType
         }).sort({ createdAt: -1 });
 
         if (!report) {
@@ -1152,10 +1153,10 @@ export const shareFinancialDueDiligenceReport = async (req: Request, res: Respon
         }
 
         // Find the report in MongoDB
+        // Global caching: only look for entity ID and type, not the requesting user
         const report = await FinancialDueDiligenceReport.findOne({
             targetEntityId: entityId,
-            targetEntityType: entityType,
-            requestedById: req.user.userId
+            targetEntityType: entityType
         }).sort({ createdAt: -1 });
 
         if (!report) {
@@ -1201,10 +1202,10 @@ export const exportFinancialDueDiligenceReportPdf = async (req: Request, res: Re
         }
 
         // Find the report in MongoDB
+        // Global caching: only look for entity ID and type, not the requesting user
         const report = await FinancialDueDiligenceReport.findOne({
             targetEntityId: entityId,
-            targetEntityType: entityType,
-            requestedById: req.user.userId
+            targetEntityType: entityType
         }).sort({ createdAt: -1 });
 
         if (!report) {
