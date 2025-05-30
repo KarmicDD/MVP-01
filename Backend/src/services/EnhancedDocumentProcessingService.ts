@@ -3,14 +3,13 @@ import path from 'path';
 import { promisify } from 'util';
 import axios from 'axios';
 import ExcelJS from 'exceljs';
-import { PDFExtract, PDFExtractOptions } from 'pdf.js-extract';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
 import mammoth from 'mammoth';
-import { createWorker } from 'tesseract.js';
 import { Document } from 'mongoose';
 import { cleanJsonResponse, safeJsonParse } from '../utils/jsonHelper';
 import { FIN_DD_PROMPT, structure } from './document-processing/prompt';
+import { MemoryBasedOcrPdfService, DocumentMetadata } from './MemoryBasedOcrPdfService';
 
 // Load environment variables
 dotenv.config();
@@ -64,7 +63,8 @@ async function executeGeminiWithDynamicRetry<T>(
       }
 
       // For rate limit errors (429), use exponential backoff if no specific delay provided
-      if (error.status === 429 && retryDelayMs === initialDelay) {
+      const status = error?.status ?? error?.response?.status;
+      if (status === 429 && retryDelayMs === initialDelay) {
         retryDelayMs = initialDelay * Math.pow(2, attempt);
         console.log(`Rate limit error (429) with no specific delay. Using exponential backoff: ${retryDelayMs / 1000}s`);
       }
@@ -84,10 +84,10 @@ async function executeGeminiWithDynamicRetry<T>(
  * Interface for document extraction results that includes both raw text and AI-processed content
  */
 export interface DocumentExtractionResult {
-  rawText: string;           // Text extracted using traditional methods
-  aiProcessedText: string;   // Text extracted using AI (Gemini, OCR)
+  rawText: string;           // Text extracted using traditional methods or memory-based OCR
+  aiProcessedText: string;   // Text extracted using AI (Gemini, Memory-based OCR)
   combinedText: string;      // Combined text (typically AI if available, otherwise raw)
-  extractionMethod: string;  // Method used for the combined text (e.g., "gemini", "traditional", "tesseract")
+  extractionMethod: string;  // Method used for the combined text (e.g., "memory-based-ocr", "gemini", "traditional")
   metadata?: {               // Optional metadata about the extraction
     fileType: string;
     fileName: string;
@@ -130,202 +130,22 @@ const readFileAsync = promisify(fs.readFile);
 const writeFileAsync = promisify(fs.writeFile);
 const unlinkAsync = promisify(fs.unlink);
 
-// Promisify PDF extraction
-const pdfExtract = new PDFExtract();
-const pdfExtractAsync = promisify(pdfExtract.extract.bind(pdfExtract));
-
 /**
  * Enhanced service for processing different types of documents and extracting their content
  */
 export class EnhancedDocumentProcessingService {
-  /**
-   * Extract text content from a PDF file using enhanced traditional PDF extraction
-   * This method is optimized for better handling of structured data like tables and financial information
-   * @param filePath Path to the PDF file
-   * @returns Extracted text content with improved structure preservation
-   */
-  async extractPdfText(filePath: string): Promise<string> {
-    try {
-      // First check if the file exists
-      if (!fs.existsSync(filePath)) {
-        console.error(`PDF file not found: ${filePath}`);
-        return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
-      }
+  private memoryBasedOcrService: MemoryBasedOcrPdfService;
 
-      // Enhanced options for better text extraction
-      const options: PDFExtractOptions = {
-        // Use more aggressive content extraction
-        normalizeWhitespace: false,  // Preserve original whitespace for better table detection
-        disableCombineTextItems: true // Don't combine text items to preserve layout
-      };
-
-      const data = await pdfExtractAsync(filePath, options);
-
-      // Enhanced text extraction with better structure preservation
-      let textContent = '';
-      let currentPage = 0;
-
-      if (data && typeof data === 'object' && 'pages' in data && Array.isArray(data.pages)) {
-        // First pass: analyze the document structure to detect tables and columns
-        const tableRegions: Array<{ page: number, x1: number, y1: number, x2: number, y2: number }> = [];
-
-        // Detect potential table regions by looking for grid-like text arrangements
-        data.pages.forEach((page: any, pageIndex: number) => {
-          if (page && typeof page === 'object' && 'content' in page && Array.isArray(page.content)) {
-            // Group text items by their y-position (rows)
-            const rowGroups: { [key: string]: Array<any> } = {};
-
-            page.content.forEach((item: any) => {
-              // Round y position to nearest 2 points to group items in roughly the same row
-              const yKey = Math.round(item.y / 2) * 2;
-              if (!rowGroups[yKey]) {
-                rowGroups[yKey] = [];
-              }
-              rowGroups[yKey].push(item);
-            });
-
-            // Look for rows with multiple items that might be table cells
-            const tableRows = Object.values(rowGroups).filter(row => row.length >= 3);
-
-            // If we have multiple rows with similar structure, it's likely a table
-            if (tableRows.length >= 3) {
-              // Find the bounds of the potential table
-              let minX = Number.MAX_VALUE;
-              let minY = Number.MAX_VALUE;
-              let maxX = 0;
-              let maxY = 0;
-
-              tableRows.forEach(row => {
-                row.forEach((item: any) => {
-                  minX = Math.min(minX, item.x);
-                  minY = Math.min(minY, item.y);
-                  maxX = Math.max(maxX, item.x + item.width);
-                  maxY = Math.max(maxY, item.y + item.height);
-                });
-              });
-
-              // Add this region as a potential table
-              tableRegions.push({
-                page: pageIndex,
-                x1: minX,
-                y1: minY,
-                x2: maxX,
-                y2: maxY
-              });
-            }
-          }
-        });
-
-        // Second pass: extract text with awareness of document structure
-        data.pages.forEach((page: any, pageIndex: number) => {
-          currentPage = pageIndex + 1;
-          textContent += `--- Page ${currentPage} ---\n\n`;
-
-          if (page && typeof page === 'object' && 'content' in page && Array.isArray(page.content)) {
-            // Check if this page contains any detected tables
-            const tablesOnThisPage = tableRegions.filter(region => region.page === pageIndex);
-
-            if (tablesOnThisPage.length > 0) {
-              // Process page with table awareness
-              // Group text items by their y-position (rows)
-              const rowGroups: { [key: string]: Array<any> } = {};
-
-              page.content.forEach((item: any) => {
-                // Check if this item is within any table region
-                const isInTable = tablesOnThisPage.some(table =>
-                  item.x >= table.x1 && item.x <= table.x2 &&
-                  item.y >= table.y1 && item.y <= table.y2
-                );
-
-                if (isInTable) {
-                  // For table content, group precisely by y-coordinate for accurate rows
-                  const yKey = Math.round(item.y * 10) / 10; // More precise grouping for tables
-                  if (!rowGroups[yKey]) {
-                    rowGroups[yKey] = [];
-                  }
-                  rowGroups[yKey].push(item);
-                } else {
-                  // For non-table content, use standard extraction
-                  textContent += item.str + ' ';
-                }
-              });
-
-              // Sort rows by y-position (top to bottom)
-              const sortedYKeys = Object.keys(rowGroups).map(Number).sort((a, b) => a - b);
-
-              // Process each row
-              if (sortedYKeys.length > 0) {
-                textContent += '\n\n';
-
-                sortedYKeys.forEach(yKey => {
-                  const row = rowGroups[yKey];
-
-                  // Sort items in the row by x-position (left to right)
-                  row.sort((a: any, b: any) => a.x - b.x);
-
-                  // Create a table-like row with proper spacing
-                  const rowText = row.map((item: any) => item.str.trim()).join(' | ');
-                  textContent += rowText + '\n';
-                });
-
-                textContent += '\n';
-              }
-            } else {
-              // Standard text extraction for pages without tables
-              // Group text by paragraphs based on y-position
-              const paragraphs: { [key: string]: Array<any> } = {};
-
-              page.content.forEach((item: any) => {
-                // Group by paragraph (items within ~10 points vertically)
-                const yKey = Math.floor(item.y / 10) * 10;
-                if (!paragraphs[yKey]) {
-                  paragraphs[yKey] = [];
-                }
-                paragraphs[yKey].push(item);
-              });
-
-              // Sort paragraphs by y-position
-              const sortedYKeys = Object.keys(paragraphs).map(Number).sort((a, b) => a - b);
-
-              // Process each paragraph
-              sortedYKeys.forEach(yKey => {
-                const paragraph = paragraphs[yKey];
-
-                // Sort items in the paragraph by x-position
-                paragraph.sort((a: any, b: any) => a.x - b.x);
-
-                // Create a paragraph with proper spacing
-                const paragraphText = paragraph.map((item: any) => item.str.trim()).join(' ');
-                textContent += paragraphText + '\n\n';
-              });
-            }
-          }
-        });
-      }
-
-      // Clean up the extracted text
-      // Remove excessive whitespace but preserve paragraph breaks
-      textContent = textContent
-        .replace(/\n{3,}/g, '\n\n')  // Replace 3+ newlines with 2
-        .replace(/[ \t]+/g, ' ')     // Replace multiple spaces/tabs with a single space
-        .trim();                     // Trim leading/trailing whitespace
-
-      return textContent || '[No text content extracted from PDF]';
-    } catch (error) {
-      console.error('Error extracting PDF text:', error);
-      // Return a placeholder message instead of throwing an error
-      return `[Error processing PDF: ${error instanceof Error ? error.message : 'Unknown error'}]`;
-    }
+  constructor() {
+    this.memoryBasedOcrService = new MemoryBasedOcrPdfService();
   }
-
   /**
-   * Extract text content from a PDF file using Gemini AI
-   * This is used for all PDFs to ensure tables and graphs are properly extracted
+   * Extract text content from a PDF file using the new Memory-based OCR service
    * @param filePath Path to the PDF file
    * @param metadata Optional metadata to provide context for extraction
    * @returns Extracted text content with preserved formatting
    */
-  async extractPdfTextWithGemini(filePath: string, metadata?: {
+  async extractPdfText(filePath: string, metadata?: {
     documentType?: string;
     name?: string;
     timePeriod?: string;
@@ -338,99 +158,45 @@ export class EnhancedDocumentProcessingService {
         return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
       }
 
-      // Read the file as a buffer and convert to base64
+      // Read the PDF file as buffer
       const fileBuffer = await readFileAsync(filePath);
 
-      // Format document type for display in prompt
-      let documentTypeInfo = '';
-      if (metadata?.documentType) {
-        const formattedType = metadata.documentType.replace('financial_', '').replace(/_/g, ' ');
-        documentTypeInfo = `Document Type: ${formattedType}\n`;
-      }
+      // Prepare metadata for the new service
+      const documentMetadata = {
+        originalName: metadata?.name || path.basename(filePath),
+        documentType: metadata?.documentType || 'unknown',
+        description: metadata?.description,
+        timePeriod: metadata?.timePeriod,
+        fileType: 'pdf',
+        fileSize: fileBuffer.length
+      };
 
-      // Add time period if available
-      let timePeriodInfo = '';
-      if (metadata?.timePeriod) {
-        timePeriodInfo = `Time Period: ${metadata.timePeriod}\n`;
-      }
+      // Use the new memory-based OCR service
+      const extractedText = await this.memoryBasedOcrService.processPdfDocument(fileBuffer, documentMetadata);
 
-      // Add description if available
-      let descriptionInfo = '';
-      if (metadata?.description && metadata.description !== 'No description') {
-        descriptionInfo = `Description: ${metadata.description}\n`;
-      }
-
-      // Create an enhanced context-aware prompt for Gemini to extract text from the PDF
-      const prompt = `
-      Extract all text content from this PDF document with maximum accuracy and completeness.
-      ${documentTypeInfo}${timePeriodInfo}${descriptionInfo}
-      This document requires precise extraction of all information, including tables and graphs.
-
-      CRITICAL EXTRACTION INSTRUCTIONS:
-      1. Extract ABSOLUTELY ALL text content from the document, including headers, footers, footnotes, and any text in images or charts
-      2. Maintain the original formatting with exact preservation of:
-         - Table structures (preserve rows, columns, and cell alignment)
-         - Section headings and hierarchical structure
-         - Paragraph breaks and indentation
-         - Bullet points and numbered lists
-         - Mathematical formulas and equations
-
-      3. FOR TABLES - EXTREMELY IMPORTANT:
-         - Preserve the exact table structure with proper column alignment
-         - Maintain header rows and column relationships
-         - Format tables using a clear tabular format with column separators (| or tabs)
-         - Include column headers and maintain their relationship to data
-         - Ensure all cells, including empty ones, are properly represented
-         - For financial tables, ensure all numbers, calculations, and totals are precisely captured
-
-      4. FOR GRAPHS AND CHARTS - EXTREMELY IMPORTANT:
-         - Extract and describe all graphs and charts in detail
-         - Include all data points, labels, legends, and axes information
-         - For bar charts: list all categories and their corresponding values
-         - For line graphs: list all data points with their x and y coordinates
-         - For pie charts: list all segments with their labels and percentage values
-         - Include any trend lines, annotations, or other visual elements
-         - Format the extracted graph data in a structured way (tables if appropriate)
-
-      5. Include ALL numbers, dates, currencies, percentages, and special characters exactly as they appear
-      6. Preserve ALL paragraph breaks, section divisions, and page structure
-      7. If there are multiple pages, indicate page breaks with "--- Page X ---"
-      8. If you can't read certain parts, indicate with [unreadable text] but try to infer content from context
-      9. Pay special attention to financial data, ensuring all numbers, calculations, and financial terms are captured with 100% accuracy
-      10. Preserve any headers, footers, watermarks, and marginalia that may contain important information
-
-      Return the extracted content as plain text with formatting preserved through spacing and structure.
-      For tables, use a clear tabular format.
-      For graphs, include both a description and the underlying data in a structured format.
-      `;
-
-      // Call Gemini with the PDF content using dynamic retry logic
-      const result = await executeGeminiWithDynamicRetry(async () => {
-        return await documentExtractionModel.generateContent([
-          prompt,
-          { inlineData: { mimeType: 'application/pdf', data: fileBuffer.toString('base64') } }
-        ]);
-      });
-
-      const response = result.response;
-      const extractedText = response.text();
-
-      if (!extractedText || extractedText.trim().length === 0) {
-        console.warn(`Gemini returned empty or null text for PDF: ${filePath}`);
-        return '[No text content extracted from PDF using Gemini]';
-      }
-
-      return extractedText;
+      return extractedText || '[No text content extracted from PDF]';
     } catch (error) {
-      console.error('Error extracting PDF text with Gemini:', error);
-      // Return a placeholder message instead of throwing an error
-      return `[Error processing PDF with Gemini: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+      console.error('Error extracting PDF text:', error);
+      return `[Error processing PDF: ${error instanceof Error ? error.message : 'Unknown error'}]`;
     }
   }
-
   /**
-   * Extract text content from multiple PDF files using Gemini AI in a single batch request
-   * This method sends multiple PDFs to Gemini together to reduce API calls
+   * Extract text content from a PDF file using Gemini AI (now delegated to MemoryBasedOcrPdfService)
+   * @param filePath Path to the PDF file
+   * @param metadata Optional metadata to provide context for extraction
+   * @returns Extracted text content with preserved formatting
+   */
+  async extractPdfTextWithGemini(filePath: string, metadata?: {
+    documentType?: string;
+    name?: string;
+    timePeriod?: string;
+    description?: string;
+  }): Promise<string> {
+    // Delegate to the new extractPdfText method which uses MemoryBasedOcrPdfService
+    return this.extractPdfText(filePath, metadata);
+  }
+  /**
+   * Extract text content from multiple PDF files using the new Memory-based OCR service
    * @param filePaths Array of PDF file paths
    * @param metadataArray Array of metadata objects corresponding to each PDF
    * @returns Array of extracted text content with preserved formatting
@@ -454,232 +220,33 @@ export class EnhancedDocumentProcessingService {
         return [];
       }
 
-      // Check if all files exist and read them as buffers
-      const fileBuffers: Buffer[] = [];
-      const validIndices: number[] = [];
-      const errorResults: string[] = new Array(filePaths.length).fill('');
+      // Process each PDF individually using the new service
+      const results: string[] = [];
 
       for (let i = 0; i < filePaths.length; i++) {
         const filePath = filePaths[i];
-        if (!fs.existsSync(filePath)) {
-          console.error(`PDF file not found: ${filePath}`);
-          errorResults[i] = `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
-        } else {
-          try {
-            const buffer = await readFileAsync(filePath);
-            fileBuffers.push(buffer);
-            validIndices.push(i);
-          } catch (error) {
-            console.error(`Error reading file ${filePath}:`, error);
-            errorResults[i] = `[Error reading file: ${error instanceof Error ? error.message : 'Unknown error'}]`;
-          }
+        const metadata = metadataArray[i];
+
+        try {
+          const extractedText = await this.extractPdfText(filePath, metadata);
+          results.push(extractedText);
+        } catch (error) {
+          console.error(`Error processing PDF ${filePath}:`, error);
+          results.push(`[Error processing PDF: ${error instanceof Error ? error.message : 'Unknown error'}]`);
         }
       }
 
-      // If no valid files, return error messages
-      if (validIndices.length === 0) {
-        return errorResults;
-      }
-
-      // Create document sections for the prompt
-      const documentSections = validIndices.map((index, i) => {
-        const metadata = metadataArray[index];
-
-        // Format document type for display in prompt
-        let documentTypeInfo = '';
-        if (metadata?.documentType) {
-          const formattedType = metadata.documentType.replace('financial_', '').replace(/_/g, ' ');
-          documentTypeInfo = `Document Type: ${formattedType}\n`;
-        }
-
-        // Add time period if available
-        let timePeriodInfo = '';
-        if (metadata?.timePeriod) {
-          timePeriodInfo = `Time Period: ${metadata.timePeriod}\n`;
-        }
-
-        // Add description if available
-        let descriptionInfo = '';
-        if (metadata?.description && metadata.description !== 'No description') {
-          descriptionInfo = `Description: ${metadata.description}\n`;
-        }
-
-        // Add filename
-        let filenameInfo = '';
-        if (metadata?.name) {
-          filenameInfo = `Filename: ${metadata.name}\n`;
-        }
-
-        return `DOCUMENT ${i + 1}:
-${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
-      }).join('\n\n');
-
-      // Create an enhanced context-aware prompt for Gemini to extract text from multiple PDFs
-      const prompt = `
-      You will be processing ${validIndices.length} PDF documents in this batch. Extract all text content from each PDF document with maximum accuracy and completeness.
-
-      DOCUMENT INFORMATION:
-      ${documentSections}
-
-      CRITICAL EXTRACTION INSTRUCTIONS:
-      1. Process each document separately and return the results in a clearly structured format
-      2. For each document, extract ABSOLUTELY ALL text content, including headers, footers, footnotes, and any text in images or charts
-      3. Maintain the original formatting with exact preservation of:
-         - Table structures (preserve rows, columns, and cell alignment)
-         - Section headings and hierarchical structure
-         - Paragraph breaks and indentation
-         - Bullet points and numbered lists
-         - Mathematical formulas and equations
-
-      4. FOR TABLES - EXTREMELY IMPORTANT:
-         - Preserve the exact table structure with proper column alignment
-         - Maintain header rows and column relationships
-         - Format tables using a clear tabular format with column separators (| or tabs)
-         - Include column headers and maintain their relationship to data
-         - Ensure all cells, including empty ones, are properly represented
-         - For financial tables, ensure all numbers, calculations, and totals are precisely captured
-
-      5. FOR GRAPHS AND CHARTS - EXTREMELY IMPORTANT:
-         - Extract and describe all graphs and charts in detail
-         - Include all data points, labels, legends, and axes information
-         - For bar charts: list all categories and their corresponding values
-         - For line graphs: list all data points with their x and y coordinates
-         - For pie charts: list all segments with their labels and percentage values
-         - Include any trend lines, annotations, or other visual elements
-         - Format the extracted graph data in a structured way (tables if appropriate)
-
-      6. Include ALL numbers, dates, currencies, percentages, and special characters exactly as they appear
-      7. Preserve ALL paragraph breaks, section divisions, and page structure
-      8. If there are multiple pages, indicate page breaks with "--- Page X ---"
-      9. If you can't read certain parts, indicate with [unreadable text] but try to infer content from context
-      10. Pay special attention to financial data, ensuring all numbers, calculations, and financial terms are captured with 100% accuracy
-      11. Preserve any headers, footers, watermarks, and marginalia that may contain important information
-
-      RESPONSE FORMAT:
-      For each document, start with "===== DOCUMENT X =====" (where X is the document number starting from 1),
-      followed by the extracted text for that document, then end with "===== END OF DOCUMENT X =====".
-
-      Example:
-      ===== DOCUMENT 1 =====
-      [All extracted text from document 1]
-      ===== END OF DOCUMENT 1 =====
-
-      ===== DOCUMENT 2 =====
-      [All extracted text from document 2]
-      ===== END OF DOCUMENT 2 =====
-
-      And so on for each document.
-
-      DO NOT return the content as JSON or any other structured format. Just plain text with the document separators.
-      `;
-
-      // Prepare the content parts for Gemini
-      const contentParts: any[] = [prompt];
-
-      // Add each PDF as inline data
-      for (let i = 0; i < validIndices.length; i++) {
-        contentParts.push({
-          inlineData: {
-            mimeType: 'application/pdf',
-            data: fileBuffers[i].toString('base64')
-          }
-        });
-      }
-
-      // Call Gemini with the batch of PDFs using dynamic retry logic
-      const result = await executeGeminiWithDynamicRetry(async () => {
-        return await documentExtractionModel.generateContent(contentParts);
-      });
-
-      const response = result.response;
-      const responseText = response.text();
-
-      if (!responseText || responseText.trim().length === 0) {
-        console.warn(`Gemini returned empty or null text for PDF batch`);
-        // Fill in error messages for valid indices
-        validIndices.forEach(index => {
-          errorResults[index] = '[No text content extracted from PDF using Gemini]';
-        });
-        return errorResults;
-      }
-
-      try {
-        // Parse the text based on document markers
-        const documentTexts: string[] = [];
-
-        // Use regex to extract content between document markers
-        const regex = /===== DOCUMENT (\d+) =====([\s\S]*?)===== END OF DOCUMENT \1 =====/g;
-        let match;
-
-        while ((match = regex.exec(responseText)) !== null) {
-          const documentNumber = parseInt(match[1], 10);
-          const documentContent = match[2].trim();
-
-          // Store the document content at the correct index (document numbers are 1-based)
-          documentTexts[documentNumber - 1] = documentContent;
-        }
-
-        // If we didn't find any documents with the expected format, try a simpler approach
-        if (documentTexts.length === 0) {
-          // Split by document markers without requiring the end markers
-          const simpleSplit = responseText.split(/===== DOCUMENT \d+ =====/);
-
-          // Skip the first split which is empty or contains preamble
-          for (let i = 1; i <= validIndices.length && i < simpleSplit.length; i++) {
-            let content = simpleSplit[i].trim();
-
-            // Remove end marker if present
-            const endMarkerIndex = content.lastIndexOf('===== END OF DOCUMENT');
-            if (endMarkerIndex > 0) {
-              content = content.substring(0, endMarkerIndex).trim();
-            }
-
-            documentTexts[i - 1] = content;
-          }
-        }
-
-        // If we still don't have any documents, try an even simpler approach
-        if (documentTexts.length === 0) {
-          // Just split the text into roughly equal parts
-          const totalLength = responseText.length;
-          const partSize = Math.ceil(totalLength / validIndices.length);
-
-          for (let i = 0; i < validIndices.length; i++) {
-            const start = i * partSize;
-            const end = Math.min(start + partSize, totalLength);
-            documentTexts[i] = responseText.substring(start, end).trim();
-          }
-        }
-
-        // Map the results back to the original indices
-        for (let i = 0; i < documentTexts.length && i < validIndices.length; i++) {
-          const originalIndex = validIndices[i];
-          errorResults[originalIndex] = documentTexts[i] || '[Empty text returned from Gemini]';
-        }
-      } catch (parseError) {
-        console.error('Error parsing Gemini response:', parseError);
-        // If parsing fails, use the entire response for the first document and error messages for the rest
-        if (validIndices.length > 0) {
-          errorResults[validIndices[0]] = responseText;
-          for (let i = 1; i < validIndices.length; i++) {
-            errorResults[validIndices[i]] = `[Error parsing batch response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}]`;
-          }
-        }
-      }
-
-      return errorResults;
+      return results;
     } catch (error) {
-      console.error('Error extracting PDF text with Gemini batch:', error);
-      // Return error messages for all documents
-      return filePaths.map(() => `[Error processing PDF batch with Gemini: ${error instanceof Error ? error.message : 'Unknown error'}]`);
+      console.error('Error extracting PDF text with batch:', error);
+      return filePaths.map(() => `[Error processing PDF batch: ${error instanceof Error ? error.message : 'Unknown error'}]`);
     }
   }
-
   /**
-   * Extract text content from a PDF file using both traditional extraction and Gemini AI
+   * Extract text content from a PDF file using the new Memory-based OCR service
    * @param filePath Path to the PDF file
    * @param metadata Optional metadata to provide context for extraction
-   * @returns DocumentExtractionResult containing both raw and AI-processed text
+   * @returns DocumentExtractionResult containing extraction details
    */
   async extractPdfTextWithBothMethods(filePath: string, metadata?: {
     documentType?: string;
@@ -713,30 +280,13 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
         };
       }
 
-      // Extract text using both methods in parallel
-      const [rawText, aiProcessedText] = await Promise.all([
-        this.extractPdfText(filePath),
-        this.extractPdfTextWithGemini(filePath, metadata)
-      ]);
-
-      // Determine which text to use as the combined result
-      // Prefer AI-processed text if it's available and not an error message
-      let combinedText = aiProcessedText;
-      let extractionMethod = 'gemini';
-
-      if (
-        !aiProcessedText ||
-        aiProcessedText.includes('[Error processing PDF with Gemini:') ||
-        aiProcessedText.includes('[No text content extracted from PDF using Gemini]')
-      ) {
-        combinedText = rawText;
-        extractionMethod = 'traditional';
-      }
+      // Extract text using the new memory-based OCR service
+      const extractedText = await this.extractPdfText(filePath, metadata);
 
       const endTime = new Date();
       const processingTime = endTime.getTime() - startTime.getTime();
 
-      // Create a more comprehensive metadata object
+      // Create a comprehensive metadata object
       const resultMetadata = {
         fileType,
         fileName,
@@ -745,18 +295,18 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
         documentType: metadata?.documentType,
         timePeriod: metadata?.timePeriod,
         description: metadata?.description,
-        extractionQuality: extractionMethod === 'gemini' ? 'high' : 'standard'
+        extractionQuality: 'high' // Memory-based OCR provides high quality
       };
 
       return {
-        rawText,
-        aiProcessedText,
-        combinedText,
-        extractionMethod,
+        rawText: extractedText, // Same as AI processed for the new service
+        aiProcessedText: extractedText,
+        combinedText: extractedText,
+        extractionMethod: 'memory-based-ocr',
         metadata: resultMetadata
       };
     } catch (error) {
-      console.error('Error extracting PDF text with both methods:', error);
+      console.error('Error extracting PDF text:', error);
       const errorMsg = `[Error processing PDF: ${error instanceof Error ? error.message : 'Unknown error'}]`;
 
       return {
@@ -2280,35 +1830,14 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
       return `[Error processing Word document: ${error instanceof Error ? error.message : 'Unknown error'}]`;
     }
   }
-
   /**
-   * Extract text from an image using OCR with Tesseract
+   * Extract text from an image using OCR (now delegated to Gemini AI)
    * @param filePath Path to the image file
    * @returns Extracted text content
    */
   async extractImageTextWithTesseract(filePath: string): Promise<string> {
-    try {
-      // First check if the file exists
-      if (!fs.existsSync(filePath)) {
-        console.error(`Image file not found: ${filePath}`);
-        return `[File not found: The document appears to be missing from the server. It may have been deleted or moved.]`;
-      }
-
-      // Use Tesseract OCR
-      const worker = await createWorker();
-      // Use the correct methods for Tesseract.js v6
-      await worker.reinitialize('eng');
-
-      const result = await worker.recognize(filePath);
-      const text = result.data.text;
-      await worker.terminate();
-
-      return text || '[No text content extracted from image using Tesseract]';
-    } catch (error) {
-      console.error('Error extracting image text with Tesseract:', error);
-      // Return a placeholder message instead of throwing an error
-      return `[Error processing image file with Tesseract: ${error instanceof Error ? error.message : 'Unknown error'}]`;
-    }
+    // Delegate to Gemini-based image extraction for consistency
+    return this.extractImageTextWithGemini(filePath);
   }
 
   /**
@@ -2479,33 +2008,18 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
             error: 'File not found'
           }
         };
-      }
+      }      // Extract text using Gemini AI (simplified from both methods)
+      const aiProcessedText = await this.extractImageTextWithGemini(filePath, metadata);
 
-      // Extract text using both methods in parallel with enhanced metadata handling
-      const [rawText, aiProcessedText] = await Promise.all([
-        this.extractImageTextWithTesseract(filePath),
-        this.extractImageTextWithGemini(filePath, metadata)
-      ]);
-
-      // Determine which text to use as the combined result
-      // Prefer AI-processed text if it's available and not an error message
-      let combinedText = aiProcessedText;
-      let extractionMethod = 'gemini';
-
-      if (
-        !aiProcessedText ||
-        aiProcessedText.includes('[Error processing image file with Gemini:') ||
-        aiProcessedText.includes('[No text content extracted from image using Gemini]')
-      ) {
-        combinedText = rawText;
-        extractionMethod = 'tesseract';
-      }
+      // Since we now only use Gemini, both raw and AI processed are the same
+      const combinedText = aiProcessedText;
+      const extractionMethod = 'gemini';
 
       const endTime = new Date();
       const processingTime = endTime.getTime() - startTime.getTime();
 
       return {
-        rawText,
+        rawText: aiProcessedText, // Same as AI processed
         aiProcessedText,
         combinedText,
         extractionMethod,
@@ -2517,7 +2031,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           documentType: metadata?.documentType,
           timePeriod: metadata?.timePeriod,
           description: metadata?.description,
-          extractionQuality: extractionMethod === 'gemini' ? 'high' : 'standard'
+          extractionQuality: 'high'
         }
       };
     } catch (error) {
@@ -2554,13 +2068,8 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
     timePeriod?: string;
     description?: string;
   }): Promise<string> {
-    try {
-      const result = await this.extractImageTextWithBothMethods(filePath, metadata);
-      return result.combinedText;
-    } catch (error) {
-      console.error('Error in legacy extractImageText method:', error);
-      return `[Error processing image file: ${error instanceof Error ? error.message : 'Unknown error'}]`;
-    }
+    // Delegate to Gemini AI extraction
+    return this.extractImageTextWithGemini(filePath, metadata);
   }
 
   /**
@@ -2875,7 +2384,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
   }
 
   /**
-   * Process a batch of PDF documents together to reduce API calls
+   * Process a batch of PDF documents using memory-based OCR service
    * @param documents Array of PDF document objects
    * @param contentByType Map to store content by document type
    */
@@ -2883,156 +2392,295 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
     documents: Array<any>,
     contentByType: { [key: string]: any[] }
   ): Promise<void> {
-    console.log(`Processing batch of ${documents.length} PDF documents...`);
+    console.log(`Processing batch of ${documents.length} PDF documents with memory-based OCR...`);
 
-    // Process each PDF document with traditional extraction first
-    const traditionalResults = await Promise.all(documents.map(async (doc) => {
-      try {
-        const rawText = await this.extractPdfText(doc.filePath);
-        return {
-          doc,
-          rawText,
-          success: true
-        };
-      } catch (error) {
-        console.error(`Error extracting raw text from PDF ${doc.originalName}:`, error);
-        return {
-          doc,
-          rawText: `[Error extracting text: ${error instanceof Error ? error.message : 'Unknown error'}]`,
-          success: false
-        };
-      }
-    }));
+    try {
+      // Prepare documents for memory-based processing
+      const documentsWithBuffers: Array<{
+        buffer: Buffer;
+        metadata: DocumentMetadata;
+        originalDoc: any;
+      }> = [];
 
-    // Process PDFs in smaller batches if there are many
-    const BATCH_SIZE = 3; // Process 3 PDFs at a time to avoid token limits
-    const batches = [];
+      // Read PDF files into memory
+      for (const doc of documents) {
+        try {
+          if (!fs.existsSync(doc.filePath)) {
+            console.error(`PDF file not found: ${doc.filePath}`);
 
-    for (let i = 0; i < traditionalResults.length; i += BATCH_SIZE) {
-      batches.push(traditionalResults.slice(i, i + BATCH_SIZE));
-    }
+            // Initialize array for this document type if it doesn't exist
+            if (!contentByType[doc.documentType]) {
+              contentByType[doc.documentType] = [];
+            }
 
-    console.log(`Split ${traditionalResults.length} PDFs into ${batches.length} batches of up to ${BATCH_SIZE} documents each`);
+            // Add error document
+            contentByType[doc.documentType].push({
+              metadata: {
+                filename: doc.originalName,
+                type: doc.documentType.replace('financial_', '').replace(/_/g, ' '),
+                description: doc.description || 'No description provided',
+                timePeriod: doc.timePeriod || 'Not specified',
+                status: 'ERROR - File not found'
+              },
+              content: '[File not found: The document appears to be missing from the server.]',
+              error: true
+            });
+            continue;
+          }
 
-    // Process each batch
-    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-      const batch = batches[batchIndex];
-      console.log(`Processing PDF batch ${batchIndex + 1} of ${batches.length} with ${batch.length} documents...`);
-
-      try {
-        // Prepare file paths and metadata arrays for batch processing
-        const filePaths: string[] = [];
-        const metadataArray: Array<{
-          documentType?: string;
-          name?: string;
-          timePeriod?: string;
-          description?: string;
-        }> = [];
-
-        // Collect file paths and metadata for this batch
-        batch.forEach(result => {
-          const { doc } = result;
-          filePaths.push(doc.filePath);
-          metadataArray.push({
+          const buffer = await readFileAsync(doc.filePath);
+          const metadata: DocumentMetadata = {
+            originalName: doc.originalName,
             documentType: doc.documentType,
-            name: doc.originalName,
-            timePeriod: doc.timePeriod || 'Not specified',
-            description: doc.description || 'No description'
-          });
-        });
-
-        // Process the batch of PDFs together with Gemini
-        console.log(`Sending batch of ${batch.length} PDFs to Gemini together...`);
-        const aiProcessedTexts = await this.extractPdfTextWithGeminiBatch(filePaths, metadataArray);
-        console.log(`Successfully processed batch of ${batch.length} PDFs with Gemini`);
-
-        // Process each document in the batch with its corresponding AI-processed text
-        batch.forEach((result, index) => {
-          const { doc, rawText } = result;
-          const {
-            documentType,
-            originalName,
-            description,
-            timePeriod
-          } = doc;
-
-          // Get the AI-processed text for this document
-          const aiProcessedText = aiProcessedTexts[index];
-
-          // Determine which text to use as the combined result
-          // Prefer AI-processed text if it's available and not an error message
-          let combinedText = aiProcessedText;
-          let extractionMethod = 'gemini';
-
-          if (
-            !aiProcessedText ||
-            aiProcessedText.includes('[Error processing PDF') ||
-            aiProcessedText.includes('[No text content extracted from PDF using Gemini]')
-          ) {
-            combinedText = rawText;
-            extractionMethod = 'traditional';
-          }
-
-          // Initialize array for this document type if it doesn't exist
-          if (!contentByType[documentType]) {
-            contentByType[documentType] = [];
-          }
-
-          // Create a structured object for the document data
-          const documentData = {
-            metadata: {
-              filename: originalName,
-              type: documentType.replace('financial_', '').replace(/_/g, ' '),
-              description: description || 'No description provided',
-              timePeriod: timePeriod || 'Not specified'
-            },
-            content: combinedText,
-            rawText: rawText,
-            aiProcessedText: aiProcessedText,
-            extractionMethod: extractionMethod
+            description: doc.description,
+            timePeriod: doc.timePeriod,
+            fileType: 'pdf',
+            fileSize: doc.fileSize
           };
 
-          // Add content with document name and metadata
-          contentByType[documentType].push(documentData);
-        });
-      } catch (error) {
-        console.error(`Error processing PDF batch ${batchIndex + 1}:`, error);
-
-        // Handle the error for each document in the batch
-        for (const result of batch) {
-          const { doc } = result;
-          const { documentType, originalName, description, timePeriod } = doc;
+          documentsWithBuffers.push({ buffer, metadata, originalDoc: doc });
+        } catch (error) {
+          console.error(`Error reading PDF file ${doc.filePath}:`, error);
 
           // Initialize array for this document type if it doesn't exist
-          if (!contentByType[documentType]) {
-            contentByType[documentType] = [];
+          if (!contentByType[doc.documentType]) {
+            contentByType[doc.documentType] = [];
           }
 
-          // Create a structured object for the error document data
-          const errorDocumentData = {
+          // Add error document
+          contentByType[doc.documentType].push({
             metadata: {
-              filename: originalName,
-              type: documentType.replace('financial_', '').replace(/_/g, ' '),
-              description: description || 'No description provided',
-              timePeriod: timePeriod || 'Not specified',
-              status: 'ERROR - Document processing failed'
+              filename: doc.originalName,
+              type: doc.documentType.replace('financial_', '').replace(/_/g, ' '),
+              description: doc.description || 'No description provided',
+              timePeriod: doc.timePeriod || 'Not specified',
+              status: 'ERROR - File read error'
             },
-            content: `Error: Failed to process this document. ${error instanceof Error ? error.message : 'Unknown error'}`,
+            content: `[Error reading file: ${error instanceof Error ? error.message : 'Unknown error'}]`,
             error: true
-          };
+          });
+        }
+      }      // Process PDFs with memory-based OCR service using the new combine-first approach
+      if (documentsWithBuffers.length > 0) {
+        console.log(`Processing ${documentsWithBuffers.length} PDFs using combine-first approach...`);        try {
+          // Use the new processMultiplePdfDocuments method which combines first, then chunks
+          const combinedResult = await this.memoryBasedOcrService.processMultiplePdfDocuments(
+            documentsWithBuffers.map(item => ({ buffer: item.buffer, metadata: item.metadata }))
+          );          // Store the full combined OCR result for reference
+          contentByType['__combinedPdfText'] = [combinedResult];
 
-          // Add error content
-          contentByType[documentType].push(errorDocumentData);
+          // The combined result contains the full text from all documents
+          // We need to parse the document mapping information to create individual document entries
+          const lines = combinedResult.split('\n');
+          const documentMappingStart = lines.findIndex(line => line.includes('Document Mapping:'));
+          const contentStart = lines.findIndex(line => line.includes('=== COMBINED CONTENT ==='));
+          const contentEnd = lines.findIndex(line => line.includes('=== END OF COMBINED CONTENT ==='));          // Store the full combined OCR result for reference and further processing
+          contentByType['__combinedPdfText'] = [{
+            metadata: {
+              type: 'Combined PDF OCR Result',
+              totalDocuments: documentsWithBuffers.length,
+              processingMethod: 'memory-based-ocr-combined',
+              timestamp: new Date().toISOString(),
+              documentList: documentsWithBuffers.map(item => item.originalDoc.originalName)
+            },
+            content: combinedResult,
+            fullOcrOutput: true
+          }];
+
+          // Extract document mapping information
+          const mappingLines = lines.slice(documentMappingStart + 1, contentStart);
+          const documentMappings: Array<{ index: number, name: string, pages: string, startPage: number, endPage: number }> = [];
+
+          mappingLines.forEach(line => {
+            const match = line.match(/Document (\d+): (.+) \(Pages (\d+)-(\d+)\)/);
+            if (match) {
+              documentMappings.push({
+                index: parseInt(match[1]) - 1, // Convert to 0-based index
+                name: match[2],
+                pages: `${match[3]}-${match[4]}`,
+                startPage: parseInt(match[3]),
+                endPage: parseInt(match[4])
+              });
+            }
+          });
+
+          // Extract the actual combined content text
+          const combinedContentLines = lines.slice(contentStart + 1, contentEnd > 0 ? contentEnd : lines.length);
+          const fullCombinedText = combinedContentLines.join('\n').trim();
+
+          // Improved function to extract individual document content
+          const extractDocumentContent = (documentIndex: number, mapping: any): string => {
+            if (!mapping || !fullCombinedText) {
+              return fullCombinedText || '[No content available]';
+            }
+
+            // Try to find document-specific markers in the combined text
+            const documentName = mapping.name;
+            const searchPattern = new RegExp(`(?:Document\\s+${documentIndex + 1}|${documentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'i');
+            
+            // Look for natural document boundaries in the text
+            const paragraphs = fullCombinedText.split(/\n\s*\n/);
+            let documentStart = -1;
+            let documentEnd = -1;
+
+            // Find paragraphs that might belong to this document
+            for (let i = 0; i < paragraphs.length; i++) {
+              if (searchPattern.test(paragraphs[i]) || 
+                  paragraphs[i].toLowerCase().includes(documentName.toLowerCase().substring(0, 10))) {
+                if (documentStart === -1) documentStart = i;
+                documentEnd = i;
+              }
+            }
+
+            // If we found document-specific content, extract it
+            if (documentStart !== -1 && documentEnd !== -1) {
+              // Include some context around the identified sections
+              const contextStart = Math.max(0, documentStart - 1);
+              const contextEnd = Math.min(paragraphs.length - 1, documentEnd + 3);
+              const extractedParagraphs = paragraphs.slice(contextStart, contextEnd + 1);
+              const extractedContent = extractedParagraphs.join('\n\n');
+              
+              if (extractedContent.length > 200) {
+                return extractedContent;
+              }
+            }
+
+            // Fallback: Use page-based estimation with improved logic
+            const totalPages = documentMappings[documentMappings.length - 1]?.endPage || 1;
+            const docStartPage = mapping.startPage;
+            const docEndPage = mapping.endPage;
+            
+            // Calculate more accurate position based on page distribution
+            const startRatio = (docStartPage - 1) / totalPages;
+            const endRatio = docEndPage / totalPages;
+            
+            const startPos = Math.floor(fullCombinedText.length * startRatio);
+            const endPos = Math.floor(fullCombinedText.length * endRatio);
+            
+            // Ensure we get a reasonable amount of content
+            const minContentLength = Math.max(500, fullCombinedText.length / documentsWithBuffers.length * 0.5);
+            const adjustedEndPos = Math.max(endPos, startPos + minContentLength);
+            
+            return fullCombinedText.substring(startPos, Math.min(adjustedEndPos, fullCombinedText.length)) || fullCombinedText;
+          };          // Create document entries for each original document
+          documentsWithBuffers.forEach((item, index) => {
+            const { originalDoc } = item;
+
+            // Initialize array for this document type if it doesn't exist
+            if (!contentByType[originalDoc.documentType]) {
+              contentByType[originalDoc.documentType] = [];
+            }
+
+            // Find the mapping for this document
+            const mapping = documentMappings.find(m => m.index === index);
+            const documentInfo = mapping ? ` (${mapping.pages})` : '';
+
+            // Extract individual document content from the combined result
+            let documentContent: string;
+            if (mapping && fullCombinedText) {
+              documentContent = extractDocumentContent(index, mapping);
+              
+              // Additional fallback if content is still too short
+              if (documentContent.length < 200) {
+                // Try to get a larger section based on document position
+                const docsPerSection = Math.ceil(documentsWithBuffers.length / 3);
+                const sectionIndex = Math.floor(index / docsPerSection);
+                const totalSections = Math.ceil(documentsWithBuffers.length / docsPerSection);
+                
+                const sectionStart = Math.floor((fullCombinedText.length * sectionIndex) / totalSections);
+                const sectionEnd = Math.floor((fullCombinedText.length * (sectionIndex + 1)) / totalSections);
+                
+                const sectionContent = fullCombinedText.substring(sectionStart, sectionEnd);
+                if (sectionContent.length > documentContent.length) {
+                  documentContent = sectionContent;
+                }
+              }
+              
+              // Final fallback: use a portion of the full text
+              if (documentContent.length < 100) {
+                const contentPerDoc = Math.floor(fullCombinedText.length / documentsWithBuffers.length);
+                const startPos = index * contentPerDoc;
+                const endPos = (index + 1) * contentPerDoc;
+                documentContent = fullCombinedText.substring(startPos, endPos) || fullCombinedText;
+              }
+            } else {
+              // Fallback: distribute content evenly
+              const contentPerDoc = Math.floor(fullCombinedText.length / documentsWithBuffers.length);
+              const startPos = index * contentPerDoc;
+              const endPos = (index + 1) * contentPerDoc;
+              documentContent = fullCombinedText.substring(startPos, endPos) || fullCombinedText;
+            }
+
+            // Create document data object with actual extracted content
+            const documentData = {
+              metadata: {
+                filename: originalDoc.originalName,
+                type: originalDoc.documentType.replace('financial_', '').replace(/_/g, ' '),
+                description: originalDoc.description || 'No description provided',
+                timePeriod: originalDoc.timePeriod || 'Not specified',
+                processingNote: `Processed as part of combined document set${documentInfo}`,
+                combinedProcessing: true,
+                documentMapping: mapping
+              },
+              content: documentContent,
+              extractionMethod: 'memory-based-ocr-combined',
+              combinedResult: true
+            };
+
+            contentByType[originalDoc.documentType].push(documentData);
+          });
+
+        } catch (ocrError) {
+          console.error('Error in memory-based OCR processing:', ocrError);
+
+          // Handle OCR error for all documents
+          documentsWithBuffers.forEach(({ originalDoc }) => {
+            // Initialize array for this document type if it doesn't exist
+            if (!contentByType[originalDoc.documentType]) {
+              contentByType[originalDoc.documentType] = [];
+            }
+
+            contentByType[originalDoc.documentType].push({
+              metadata: {
+                filename: originalDoc.originalName,
+                type: originalDoc.documentType.replace('financial_', '').replace(/_/g, ' '),
+                description: originalDoc.description || 'No description provided',
+                timePeriod: originalDoc.timePeriod || 'Not specified',
+                status: 'ERROR - OCR processing failed'
+              },
+              content: `[OCR processing failed: ${ocrError instanceof Error ? ocrError.message : 'Unknown error'}]`,
+              error: true
+            });
+          });
         }
       }
 
-      // Add a delay between batches to avoid rate limits
-      if (batchIndex < batches.length - 1) {
-        console.log('Waiting 2 seconds before processing next batch to avoid rate limits...');
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
+    } catch (error) {
+      console.error('Error in PDF batch processing:', error);
+
+      // Handle general error for all documents
+      documents.forEach((doc) => {
+        // Initialize array for this document type if it doesn't exist
+        if (!contentByType[doc.documentType]) {
+          contentByType[doc.documentType] = [];
+        }
+
+        contentByType[doc.documentType].push({
+          metadata: {
+            filename: doc.originalName,
+            type: doc.documentType.replace('financial_', '').replace(/_/g, ' '),
+            description: doc.description || 'No description provided',
+            timePeriod: doc.timePeriod || 'Not specified',
+            status: 'ERROR - Batch processing failed'
+          },
+          content: `[Batch processing failed: ${error instanceof Error ? error.message : 'Unknown error'}]`,
+          error: true
+        });
+      });
     }
   }
+
+
 
   /**
    * Process a batch of PowerPoint documents together to reduce API calls
@@ -3055,7 +2703,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           success: true
         };
       } catch (error) {
-        console.error(`Error extracting raw text from PowerPoint ${doc.originalName}:`, error);
+        console.error(`Error extracting raw text from PowerPoint ${doc.originalName}: `, error);
         return {
           doc,
           rawText: `[Error extracting text: ${error instanceof Error ? error.message : 'Unknown error'}]`,
@@ -3102,9 +2750,9 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           let aiProcessedText;
           try {
             aiProcessedText = await this.extractPptTextWithGemini(doc.filePath, metadata);
-            console.log(`Successfully processed PowerPoint with Gemini: ${originalName}`);
+            console.log(`Successfully processed PowerPoint with Gemini: ${originalName} `);
           } catch (error) {
-            console.error(`Error processing PowerPoint with Gemini: ${originalName}`, error);
+            console.error(`Error processing PowerPoint with Gemini: ${originalName} `, error);
             aiProcessedText = `[Error processing with Gemini: ${error instanceof Error ? error.message : 'Unknown error'}]`;
           }
 
@@ -3144,7 +2792,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           contentByType[documentType].push(documentData);
         }
       } catch (error) {
-        console.error(`Error processing PowerPoint batch ${batchIndex + 1}:`, error);
+        console.error(`Error processing PowerPoint batch ${batchIndex + 1}: `, error);
 
         // Handle the error for each document in the batch
         for (const result of batch) {
@@ -3165,7 +2813,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
               timePeriod: timePeriod || 'Not specified',
               status: 'ERROR - Document processing failed'
             },
-            content: `Error: Failed to process this document. ${error instanceof Error ? error.message : 'Unknown error'}`,
+            content: `Error: Failed to process this document.${error instanceof Error ? error.message : 'Unknown error'} `,
             error: true
           };
 
@@ -3245,7 +2893,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
         // Add content with document name and metadata
         contentByType[documentType].push(documentData);
       } catch (error) {
-        console.error(`Error processing ${originalName}:`, error);
+        console.error(`Error processing ${originalName}: `, error);
 
         // Initialize array for this document type if it doesn't exist
         if (!contentByType[documentType]) {
@@ -3261,7 +2909,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
             timePeriod: timePeriod || 'Not specified',
             status: 'ERROR - Document processing failed'
           },
-          content: `Error: Failed to process this document. ${error instanceof Error ? error.message : 'Unknown error'}`,
+          content: `Error: Failed to process this document.${error instanceof Error ? error.message : 'Unknown error'} `,
           error: true
         };
 
@@ -3376,7 +3024,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           aiProcessedText: returnBothExtractions ? aiProcessedText : undefined
         };
       } catch (error) {
-        console.error(`Error processing ${originalName}:`, error);
+        console.error(`Error processing ${originalName}: `, error);
 
         // Initialize array for this document type if it doesn't exist
         if (!contentByType[documentType]) {
@@ -3434,7 +3082,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
         try {
           return JSON.parse(content);
         } catch (error) {
-          console.error(`Error parsing JSON content for ${docType}:`, error);
+          console.error(`Error parsing JSON content for ${docType}: `, error);
           return { error: true, content: content };
         }
       });
@@ -3468,7 +3116,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
       let documentType = 'other';
       const match = filePath.match(/financial_([a-z_]+)/);
       if (match && match[1]) {
-        documentType = `financial_${match[1]}`;
+        documentType = `financial_${match[1]} `;
       }
 
       // Create basic metadata from filename and path
@@ -3535,7 +3183,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           aiProcessedText: returnBothExtractions ? aiProcessedText : undefined
         };
       } catch (error) {
-        console.error(`Error processing ${fileName}:`, error);
+        console.error(`Error processing ${fileName}: `, error);
 
         // Initialize array for this document type if it doesn't exist
         if (!contentByType[documentType]) {
@@ -3587,7 +3235,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
         try {
           return JSON.parse(content);
         } catch (error) {
-          console.error(`Error parsing JSON content for ${docType}:`, error);
+          console.error(`Error parsing JSON content for ${docType}: `, error);
           return { error: true, content: content };
         }
       });
@@ -3663,7 +3311,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
             if (ratio && ratio.status) {
               // If status is 'N/A' or any other non-standard value, normalize it to 'warning'
               if (!['good', 'warning', 'critical', 'moderate', 'low'].includes(ratio.status)) {
-                console.log(`Normalizing non-standard ratio status "${ratio.status}" in ${category} at index ${index} to "warning".`);
+                console.log(`Normalizing non - standard ratio status "${ratio.status}" in ${category} at index ${index} to "warning".`);
                 ratio.status = 'warning';
               }
             } else if (ratio) {
@@ -3694,13 +3342,13 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
 
       // Ensure rating is a string
       if (!data.totalCompanyScore.rating || typeof data.totalCompanyScore.rating !== 'string') {
-        console.log(`Missing or invalid totalCompanyScore.rating. Setting default.`);
+        console.log(`Missing or invalid totalCompanyScore.rating.Setting default.`);
         data.totalCompanyScore.rating = 'Moderate';
       }
 
       // Ensure description is a string
       if (!data.totalCompanyScore.description || typeof data.totalCompanyScore.description !== 'string') {
-        console.log(`Missing or invalid totalCompanyScore.description. Setting default.`);
+        console.log(`Missing or invalid totalCompanyScore.description.Setting default.`);
         data.totalCompanyScore.description = 'Financial health assessment based on available documents.';
       }
     }
@@ -3727,19 +3375,19 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
 
       // Ensure justification is a string
       if (!data.investmentDecision.justification || typeof data.investmentDecision.justification !== 'string') {
-        console.log(`Missing or invalid investmentDecision.justification. Setting default.`);
+        console.log(`Missing or invalid investmentDecision.justification.Setting default.`);
         data.investmentDecision.justification = 'Investment decision based on financial analysis of available documents.';
       }
 
       // Ensure keyConsiderations is an array
       if (!data.investmentDecision.keyConsiderations || !Array.isArray(data.investmentDecision.keyConsiderations)) {
-        console.log(`Missing or invalid investmentDecision.keyConsiderations. Setting default.`);
+        console.log(`Missing or invalid investmentDecision.keyConsiderations.Setting default.`);
         data.investmentDecision.keyConsiderations = ['Financial performance', 'Market potential', 'Risk assessment'];
       }
 
       // Ensure suggestedTerms is an array
       if (!data.investmentDecision.suggestedTerms || !Array.isArray(data.investmentDecision.suggestedTerms)) {
-        console.log(`Missing or invalid investmentDecision.suggestedTerms. Setting default.`);
+        console.log(`Missing or invalid investmentDecision.suggestedTerms.Setting default.`);
         data.investmentDecision.suggestedTerms = [];
       }
     }
@@ -3766,36 +3414,36 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
 
       // Ensure dimensions is an array
       if (!data.compatibilityAnalysis.dimensions || !Array.isArray(data.compatibilityAnalysis.dimensions)) {
-        console.log(`Missing or invalid compatibilityAnalysis.dimensions. Setting default.`);
+        console.log(`Missing or invalid compatibilityAnalysis.dimensions.Setting default.`);
         data.compatibilityAnalysis.dimensions = [];
       } else {
         // Validate each dimension
         data.compatibilityAnalysis.dimensions.forEach((dimension: any, index: number) => {
           if (!dimension.name) {
             console.log(`Missing name for dimension at index ${index}. Adding placeholder.`);
-            dimension.name = `Dimension ${index + 1}`;
+            dimension.name = `Dimension ${index + 1} `;
           }
 
           if (typeof dimension.score !== 'number' || dimension.score < 0 || dimension.score > 100) {
-            console.log(`Invalid score for dimension ${dimension.name}. Setting default.`);
+            console.log(`Invalid score for dimension ${dimension.name}.Setting default.`);
             dimension.score = 50;
           }
 
           // Validate status field - ensure it's a valid value
           const validStatusValues = ['excellent', 'good', 'moderate', 'poor', 'critical'];
           if (!dimension.status || !validStatusValues.includes(dimension.status)) {
-            console.log(`Invalid status for dimension ${dimension.name}. Setting default.`);
+            console.log(`Invalid status for dimension ${dimension.name}.Setting default.`);
             dimension.status = 'moderate'; // Use 'moderate' as a safe default
           }
 
           if (!dimension.description || typeof dimension.description !== 'string') {
-            console.log(`Missing or invalid description for dimension ${dimension.name}. Setting default.`);
+            console.log(`Missing or invalid description for dimension ${dimension.name}.Setting default.`);
             dimension.description = `Assessment of ${dimension.name.toLowerCase()}.`;
           }
 
           const validStatuses = ['excellent', 'good', 'moderate', 'poor'];
           if (!dimension.status || !validStatuses.includes(dimension.status)) {
-            console.log(`Invalid status for dimension ${dimension.name}. Setting default.`);
+            console.log(`Invalid status for dimension ${dimension.name}.Setting default.`);
             dimension.status = 'moderate';
           }
         });
@@ -3803,19 +3451,19 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
 
       // Ensure keyInvestmentStrengths is an array
       if (!data.compatibilityAnalysis.keyInvestmentStrengths || !Array.isArray(data.compatibilityAnalysis.keyInvestmentStrengths)) {
-        console.log(`Missing or invalid compatibilityAnalysis.keyInvestmentStrengths. Setting default.`);
+        console.log(`Missing or invalid compatibilityAnalysis.keyInvestmentStrengths.Setting default.`);
         data.compatibilityAnalysis.keyInvestmentStrengths = [];
       }
 
       // Ensure keyInvestmentChallenges is an array
       if (!data.compatibilityAnalysis.keyInvestmentChallenges || !Array.isArray(data.compatibilityAnalysis.keyInvestmentChallenges)) {
-        console.log(`Missing or invalid compatibilityAnalysis.keyInvestmentChallenges. Setting default.`);
+        console.log(`Missing or invalid compatibilityAnalysis.keyInvestmentChallenges.Setting default.`);
         data.compatibilityAnalysis.keyInvestmentChallenges = [];
       }
 
       // Ensure investmentRecommendations is an array
       if (!data.compatibilityAnalysis.investmentRecommendations || !Array.isArray(data.compatibilityAnalysis.investmentRecommendations)) {
-        console.log(`Missing or invalid compatibilityAnalysis.investmentRecommendations. Setting default.`);
+        console.log(`Missing or invalid compatibilityAnalysis.investmentRecommendations.Setting default.`);
         data.compatibilityAnalysis.investmentRecommendations = [];
       }
     }
@@ -3875,8 +3523,8 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           // Validate each recommendation
           data.forwardLookingAnalysis.marketPotential.goToMarketRecommendations.forEach((rec: any, index: number) => {
             if (!rec.recommendation) {
-              console.log(`Missing recommendation for go-to-market recommendation at index ${index}. Adding placeholder.`);
-              rec.recommendation = `Recommendation ${index + 1}`;
+              console.log(`Missing recommendation for go - to - market recommendation at index ${index}. Adding placeholder.`);
+              rec.recommendation = `Recommendation ${index + 1} `;
             }
 
             if (!rec.implementationSteps || !Array.isArray(rec.implementationSteps)) {
@@ -3945,13 +3593,13 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           // Validate each roadmap item
           data.forwardLookingAnalysis.innovationAssessment.rdRoadmap.forEach((item: any, index: number) => {
             if (!item.priority) {
-              console.log(`Missing priority for R&D roadmap item at index ${index}. Setting default.`);
+              console.log(`Missing priority for R & D roadmap item at index ${index}. Setting default.`);
               item.priority = "Medium";
             }
 
             if (!item.initiative) {
-              console.log(`Missing initiative for R&D roadmap item at index ${index}. Adding placeholder.`);
-              item.initiative = `R&D Initiative ${index + 1}`;
+              console.log(`Missing initiative for R & D roadmap item at index ${index}. Adding placeholder.`);
+              item.initiative = `R & D Initiative ${index + 1} `;
             }
 
             if (!item.timeline) {
@@ -4017,7 +3665,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           data.forwardLookingAnalysis.teamCapability.hiringPriorities.forEach((priority: any, index: number) => {
             if (!priority.role) {
               console.log(`Missing role for hiring priority at index ${index}. Adding placeholder.`);
-              priority.role = `Role ${index + 1}`;
+              priority.role = `Role ${index + 1} `;
             }
 
             if (!priority.responsibilities || !Array.isArray(priority.responsibilities)) {
@@ -4042,7 +3690,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           data.forwardLookingAnalysis.teamCapability.organizationalImprovements.forEach((improvement: any, index: number) => {
             if (!improvement.area) {
               console.log(`Missing area for organizational improvement at index ${index}. Adding placeholder.`);
-              improvement.area = `Improvement Area ${index + 1}`;
+              improvement.area = `Improvement Area ${index + 1} `;
             }
 
             if (!improvement.recommendation) {
@@ -4136,7 +3784,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           data.forwardLookingAnalysis.growthTrajectory.scalingStrategies.forEach((strategy: any, index: number) => {
             if (!strategy.strategy) {
               console.log(`Missing strategy for scaling strategy at index ${index}. Adding placeholder.`);
-              strategy.strategy = `Scaling Strategy ${index + 1}`;
+              strategy.strategy = `Scaling Strategy ${index + 1} `;
             }
 
             if (!strategy.implementationSteps || !Array.isArray(strategy.implementationSteps)) {
@@ -4180,12 +3828,12 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
         // Validate each dimension
         data.forwardLookingAnalysis.dimensions.forEach((dimension: any, index: number) => {
           if (!dimension.name) {
-            console.log(`Missing name for forward-looking dimension at index ${index}. Adding placeholder.`);
-            dimension.name = `Dimension ${index + 1}`;
+            console.log(`Missing name for forward - looking dimension at index ${index}. Adding placeholder.`);
+            dimension.name = `Dimension ${index + 1} `;
           }
 
           if (typeof dimension.score !== 'number' || dimension.score < 0 || dimension.score > 100) {
-            console.log(`Invalid score for forward-looking dimension ${dimension.name}. Setting default.`);
+            console.log(`Invalid score for forward - looking dimension ${dimension.name}. Setting default.`);
             dimension.score = 50;
           }
 
@@ -4215,47 +3863,47 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
 
       // Ensure overview is a string
       if (!data.scoringBreakdown.overview || typeof data.scoringBreakdown.overview !== 'string') {
-        console.log(`Missing or invalid scoringBreakdown.overview. Setting default.`);
+        console.log(`Missing or invalid scoringBreakdown.overview.Setting default.`);
         data.scoringBreakdown.overview = 'Scoring breakdown across key operational and financial dimensions.';
       }
 
       // Ensure categories is an array
       if (!data.scoringBreakdown.categories || !Array.isArray(data.scoringBreakdown.categories)) {
-        console.log(`Missing or invalid scoringBreakdown.categories. Setting default.`);
+        console.log(`Missing or invalid scoringBreakdown.categories.Setting default.`);
         data.scoringBreakdown.categories = [];
       } else {
         // Validate each category
         data.scoringBreakdown.categories.forEach((category: any, index: number) => {
           if (!category.name) {
             console.log(`Missing name for category at index ${index}. Adding placeholder.`);
-            category.name = `Category ${index + 1}`;
+            category.name = `Category ${index + 1} `;
           }
 
           if (typeof category.score !== 'number' || category.score < 0 || category.score > 100) {
-            console.log(`Invalid score for category ${category.name}. Setting default.`);
+            console.log(`Invalid score for category ${category.name}.Setting default.`);
             category.score = 50;
           }
 
           // Validate status field - ensure it's a valid value
           const validStatusValues = ['excellent', 'good', 'moderate', 'poor', 'critical'];
           if (!category.status || !validStatusValues.includes(category.status)) {
-            console.log(`Invalid status for category ${category.name}. Setting default.`);
+            console.log(`Invalid status for category ${category.name}.Setting default.`);
             category.status = 'moderate'; // Use 'moderate' as a safe default
           }
 
           if (!category.description || typeof category.description !== 'string') {
-            console.log(`Missing or invalid description for category ${category.name}. Setting default.`);
+            console.log(`Missing or invalid description for category ${category.name}.Setting default.`);
             category.description = `Assessment of ${category.name.toLowerCase()}.`;
           }
 
           const validStatuses = ['excellent', 'good', 'moderate', 'poor'];
           if (!category.status || !validStatuses.includes(category.status)) {
-            console.log(`Invalid status for category ${category.name}. Setting default.`);
+            console.log(`Invalid status for category ${category.name}.Setting default.`);
             category.status = 'moderate';
           }
 
           if (!category.keyPoints || !Array.isArray(category.keyPoints)) {
-            console.log(`Missing or invalid keyPoints for category ${category.name}. Setting default.`);
+            console.log(`Missing or invalid keyPoints for category ${category.name}.Setting default.`);
             category.keyPoints = [];
           }
         });
@@ -4307,7 +3955,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
       data.shareholdersTable.shareholders.forEach((shareholder: any, index: number) => {
         if (!shareholder.name) {
           console.log(`Missing name for shareholder at index ${index}. Adding placeholder.`);
-          shareholder.name = `Shareholder ${index + 1}`;
+          shareholder.name = `Shareholder ${index + 1} `;
         }
 
         // Ensure equityPercentage is a string
@@ -4316,14 +3964,14 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
         } else if (typeof shareholder.equityPercentage !== 'string') {
           // If it's a number, convert to percentage string
           if (typeof shareholder.equityPercentage === 'number') {
-            shareholder.equityPercentage = `${shareholder.equityPercentage}%`;
+            shareholder.equityPercentage = `${shareholder.equityPercentage}% `;
           } else {
             shareholder.equityPercentage = String(shareholder.equityPercentage);
           }
 
           // Add % sign if not present
           if (!shareholder.equityPercentage.includes('%')) {
-            shareholder.equityPercentage = `${shareholder.equityPercentage}%`;
+            shareholder.equityPercentage = `${shareholder.equityPercentage}% `;
           }
         }
 
@@ -4462,7 +4110,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
       data.directorsTable.directors.forEach((director: any, index: number) => {
         if (!director.name) {
           console.log(`Missing name for director at index ${index}. Adding placeholder.`);
-          director.name = `Director ${index + 1}`;
+          director.name = `Director ${index + 1} `;
         }
 
         if (!director.position) {
@@ -4495,7 +4143,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           if (!director.shareholding.includes('%') &&
             !isNaN(parseFloat(director.shareholding)) &&
             parseFloat(director.shareholding) <= 100) {
-            director.shareholding = `${director.shareholding}%`;
+            director.shareholding = `${director.shareholding}% `;
           }
         }
 
@@ -4613,7 +4261,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
       data.keyBusinessAgreements.agreements.forEach((agreement: any, index: number) => {
         if (!agreement.type && !agreement.agreementType) {
           console.log(`Missing type for agreement at index ${index}. Adding placeholder.`);
-          agreement.type = `Agreement ${index + 1}`;
+          agreement.type = `Agreement ${index + 1} `;
         }
 
         // Convert agreementType to type if needed for consistency
@@ -4806,7 +4454,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
       data.leavePolicy.policies.forEach((policy: any, index: number) => {
         if (!policy.type) {
           console.log(`Missing type for leave policy at index ${index}. Adding placeholder.`);
-          policy.type = `Leave Type ${index + 1}`;
+          policy.type = `Leave Type ${index + 1} `;
         }
 
         // Ensure type is a string
@@ -4940,12 +4588,12 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
       // Ensure each item has required fields
       data.provisionsAndPrepayments.items.forEach((item: any, index: number) => {
         if (!item.name) {
-          console.log(`Missing name for provision/prepayment at index ${index}. Adding placeholder.`);
-          item.name = `Item ${index + 1}`;
+          console.log(`Missing name for provision / prepayment at index ${index}. Adding placeholder.`);
+          item.name = `Item ${index + 1} `;
         }
 
         if (!item.type) {
-          console.log(`Missing type for provision/prepayment at index ${index}. Adding placeholder.`);
+          console.log(`Missing type for provision / prepayment at index ${index}. Adding placeholder.`);
           item.type = 'Provision';
         }
 
@@ -5031,7 +4679,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
       data.deferredTaxAssets.items.forEach((item: any, index: number) => {
         if (!item.name) {
           console.log(`Missing name for deferred tax asset at index ${index}. Adding placeholder.`);
-          item.name = `Asset ${index + 1}`;
+          item.name = `Asset ${index + 1} `;
         }
 
         if (!item.riskLevel) {
@@ -5174,7 +4822,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
         const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, '../..', filePath);
 
         if (!fs.existsSync(absolutePath)) {
-          console.error(`File not found: ${absolutePath}`);
+          console.error(`File not found: ${absolutePath} `);
           return {
             documentType,
             originalName,
@@ -5241,13 +4889,12 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           case '.json':
           case '.xml':
             rawContent = await this.extractTextFileContent(absolutePath);
-            break;
-          case '.jpg':
+            break; case '.jpg':
           case '.jpeg':
           case '.png':
           case '.gif':
           case '.bmp':
-            // Use Tesseract directly instead of Gemini
+            // Use image OCR extraction (delegated to Gemini AI)
             rawContent = await this.extractImageTextWithTesseract(absolutePath);
             break;
           case '.ppt':
@@ -5311,7 +4958,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           formattedContent: documentContent
         };
       } catch (error) {
-        console.error(`Error processing ${originalName}:`, error);
+        console.error(`Error processing ${originalName}: `, error);
 
         // Initialize array for this document type if it doesn't exist
         if (!documentsByType[documentType]) {
@@ -5368,7 +5015,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
               timePeriod: doc.timePeriod || 'Not specified',
               status: 'ERROR - Document processing failed'
             },
-            content: `Error: Failed to process this document. ${doc.errorMessage || 'Please check the file format and try again.'}`,
+            content: `Error: Failed to process this document.${doc.errorMessage || 'Please check the file format and try again.'} `,
             error: true
           };
         } else {
@@ -5465,8 +5112,9 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
                    Name: ${member.name || 'Not specified'}
                    Role: ${member.role || 'Not specified'}
                    Bio: ${member.bio || 'Not specified'}`
-          ).join('\n                ')}
-                `;
+          ).join('\n                ')
+            }
+`;
         }
 
         // Extract vision and mission from questionnaire if available
@@ -5479,10 +5127,10 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           if (responsesObj.vision || responsesObj.mission || responsesObj.longTermGoals) {
             visionMissionInfo = `
                 VISION AND MISSION:
-                Vision: ${responsesObj.vision || 'Not specified'}
-                Mission: ${responsesObj.mission || 'Not specified'}
-                Long-term Goals: ${responsesObj.longTermGoals || 'Not specified'}
-                `;
+Vision: ${responsesObj.vision || 'Not specified'}
+Mission: ${responsesObj.mission || 'Not specified'}
+Long - term Goals: ${responsesObj.longTermGoals || 'Not specified'}
+`;
           }
         }
 
@@ -5496,8 +5144,8 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
           executionInfo = `
                 EXECUTION CAPABILITY:
                 Task Completion Rate: ${completionRate}%
-                Completed Tasks: ${completedTasks}/${totalTasks}
-                `;
+  Completed Tasks: ${completedTasks}/${totalTasks}
+    `;
         }
 
         // Extract historical metrics if available
@@ -5507,29 +5155,30 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
                 HISTORICAL METRICS:
                 ${Object.entries(additionalDataSources.historicalMetrics).map(([key, value]) =>
             `${key}: ${value}`
-          ).join('\n                ')}
-                `;
+          ).join('\n                ')
+            }
+`;
         }
 
         // Combine all startup information
         startupContext = `
                 STARTUP INFORMATION:
                 Company Name: ${startupInfo.companyName || companyName}
-                Industry: ${startupInfo.industry || 'Not specified'}
-                Stage: ${startupInfo.stage || 'Not specified'}
-                Founded: ${startupInfo.foundingDate || 'Not specified'}
-                Description: ${startupInfo.description || 'Not specified'}
+Industry: ${startupInfo.industry || 'Not specified'}
+Stage: ${startupInfo.stage || 'Not specified'}
+Founded: ${startupInfo.foundingDate || 'Not specified'}
+Description: ${startupInfo.description || 'Not specified'}
                 Team Size: ${startupInfo.teamSize || 'Not specified'}
-                Location: ${startupInfo.location || 'Not specified'}
-                Website: ${startupInfo.website || 'Not specified'}
+Location: ${startupInfo.location || 'Not specified'}
+Website: ${startupInfo.website || 'Not specified'}
                 Funding Round: ${startupInfo.fundingRound || 'Not specified'}
                 Funding Amount: ${startupInfo.fundingAmount || 'Not specified'}
-                Valuation: ${startupInfo.valuation || 'Not specified'}
+Valuation: ${startupInfo.valuation || 'Not specified'}
                 ${teamInfo}
                 ${visionMissionInfo}
                 ${executionInfo}
                 ${historicalMetricsInfo}
-            `;
+`;
       }
 
       // Prepare missing documents information
@@ -5540,8 +5189,9 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
         // Convert document type to readable format
         const readableType = type.replace('financial_', '').replace(/_/g, ' ');
         return `- ${readableType.charAt(0).toUpperCase() + readableType.slice(1)}`;
-      }).join('\n                ')}
-            ` : '';
+      }).join('\n                ')
+        }
+` : '';
 
       // Enhance investor context with more detailed information
       let investorContext = '';
@@ -5561,21 +5211,21 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
                 Return Expectations: ${responsesObj.returnExpectations || 'Not specified'}
                 Risk Tolerance: ${responsesObj.riskTolerance || 'Not specified'}
                 Investment Horizon: ${responsesObj.investmentHorizon || 'Not specified'}
-                `;
+`;
           }
         }
 
         // Combine all investor information
         investorContext = `
                 INVESTOR INFORMATION:
-                Name: ${investorInfo.name || 'Not specified'}
+Name: ${investorInfo.name || 'Not specified'}
                 Investment Stage: ${investorInfo.investmentStage || 'Not specified'}
                 Investment Size: ${investorInfo.investmentSize || 'Not specified'}
-                Sectors: ${Array.isArray(investorInfo.sectors) ? investorInfo.sectors.join(', ') : (investorInfo.sectors || 'Not specified')}
-                Location: ${investorInfo.location || 'Not specified'}
-                Portfolio: ${Array.isArray(investorInfo.portfolio) ? investorInfo.portfolio.join(', ') : (investorInfo.portfolio || 'Not specified')}
+Sectors: ${Array.isArray(investorInfo.sectors) ? investorInfo.sectors.join(', ') : (investorInfo.sectors || 'Not specified')}
+Location: ${investorInfo.location || 'Not specified'}
+Portfolio: ${Array.isArray(investorInfo.portfolio) ? investorInfo.portfolio.join(', ') : (investorInfo.portfolio || 'Not specified')}
                 ${additionalPreferences}
-            `;
+`;
       }
 
       // Add industry benchmarks and success patterns if available
@@ -5592,14 +5242,15 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
                 INDUSTRY BENCHMARKS:
                 ${industryBenchmarks.map((metric: any) =>
             `${metric.name}: ${metric.industryAverage} (Industry Average)`
-          ).join('\n                ')}
-                `;
+          ).join('\n                ')
+            }
+`;
         }
       }
 
       // Combine all context information for enhanced analysis
       const enhancedStartupContext = `${startupContext}
-                ${benchmarksContext}`;
+                ${benchmarksContext} `;
 
       const PROMPT = FIN_DD_PROMPT(companyName, enhancedStartupContext, investorContext, missingDocumentsContext, documentContent, structure);
 
@@ -5628,7 +5279,7 @@ ${filenameInfo}${documentTypeInfo}${timePeriodInfo}${descriptionInfo}`;
 
         const logFilePath = path.join(logDir, `gemini_raw_response_${timestamp}.json`);
         fs.writeFileSync(logFilePath, text);
-        console.log(`Raw Gemini response logged to: ${logFilePath}`);
+        console.log(`Raw Gemini response logged to: ${logFilePath} `);
       } catch (logError) {
         console.error('Error logging raw Gemini response:', logError);
       }

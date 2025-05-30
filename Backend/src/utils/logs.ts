@@ -1,4 +1,6 @@
 import { NextFunction, Request, Response } from "express";
+import { emptyDirectoryContents } from './fileUtils';
+import * as path from 'path';
 
 interface RequestStats {
     count: number;
@@ -42,6 +44,15 @@ const countRequest = (req: Request, res: Response, next: NextFunction): void => 
 
     console.log(`Request #${stats.count} [${req.method}] ${route}`);
     console.log("-----Request starts-----");
+
+    // Clear directories every 2 requests
+    if (stats.count % 2 === 0) {
+        console.log(`Request count is ${stats.count}, clearing directories...`);
+        const logsDir = path.join(__dirname, '..', '..', 'logs');
+        const ocrOutputDir = path.join(__dirname, '..', '..', 'ocr_outputs');
+        emptyDirectoryContents(logsDir).catch(err => console.error("Error clearing logs directory:", err));
+        emptyDirectoryContents(ocrOutputDir).catch(err => console.error("Error clearing ocr_outputs directory:", err));
+    }
 
     next();
 };

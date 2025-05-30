@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import BeliefSystemAnalytics from '../Analytics/BeliefSystemAnalytics';
 import FinancialDueDiligence from '../Analytics/FinancialDueDiligence';
+import NewFinancialDueDiligence from '../Analytics/NewFinancialDueDiligence';
 import { UserProfile } from '../../../types/Dashboard.types';
 
 interface AnalyticsTabsProps {
@@ -46,7 +47,8 @@ const AnalyticsTabs: React.FC<AnalyticsTabsProps> = ({
             <nav className="flex space-x-1 overflow-x-auto scrollbar-hide">
               {[
                 { id: 'belief', label: 'Belief System Analysis' },
-                { id: 'financial', label: 'Financial Due Diligence' },
+                // { id: 'financial', label: 'Draft-Financial Due Diligence' },
+                { id: 'new-financial', label: 'Financial Due Diligence' },
                 { id: 'performance', label: 'Performance Metrics' },
                 { id: 'coming-soon', label: 'More Coming Soon' }
               ].map((tab) => (
@@ -85,10 +87,24 @@ const AnalyticsTabs: React.FC<AnalyticsTabsProps> = ({
         </motion.div>
       )}
 
-      {analyticsTab === 'financial' && (
+      {/* {analyticsTab === 'financial' && (
         <motion.div variants={itemVariants} className="financial-dd-container">
           {userProfile && (
             <FinancialDueDiligence
+              userProfile={{
+                ...userProfile,
+                role: userProfile.role as "startup" | "investor"
+              }}
+              selectedMatchId={selectedMatchId}
+            />
+          )}
+        </motion.div>
+      )} */}
+
+      {analyticsTab === 'new-financial' && (
+        <motion.div variants={itemVariants} className="new-financial-dd-container">
+          {userProfile && (
+            <NewFinancialDueDiligence
               userProfile={{
                 ...userProfile,
                 role: userProfile.role as "startup" | "investor"

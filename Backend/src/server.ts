@@ -14,13 +14,19 @@ import RecommendationService from './services/RecommendationService';
 import { resolve } from 'path';
 import { countRequest, statsMiddleware, trackTime } from './utils/logs';
 import { specs } from './config/swagger';
-
-// Import custom middlewares
+import { emptyDirectoryContents } from './utils/fileUtils';
+import * as path from 'path';
 
 dotenv.config({ path: resolve(__dirname, '../.env') });
 
 const startServer = async () => {
     try {
+        // Clean up directories on startup
+        const logsDir = path.join(__dirname, '..', 'logs');
+        const ocrOutputDir = path.join(__dirname, '..', 'ocr_outputs');
+        await emptyDirectoryContents(logsDir);
+        await emptyDirectoryContents(ocrOutputDir);
+
         // Initialize database connections with retry logic
         await Promise.all([
             testPostgressConnection(),

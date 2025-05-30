@@ -10,6 +10,7 @@ import beliefSystemRoutes from './BelifSystemRoutes';
 import emailRoutes from './emailRoutes';
 import searchRoutes from './searchRoutes';
 import financialDueDiligenceRoutes from './financialDueDiligenceRoutes';
+import newFinancialDueDiligenceRoutes from './newFinancialDueDiligenceRoutes';
 import recommendationRoutes from './recommendationRoutes';
 import analyticsRoutes from './analyticsRoutes';
 import dashboardRoutes from './dashboardRoutes';
@@ -36,6 +37,10 @@ router.use('/search', searchRoutes);
 // Financial due diligence routes
 console.log('Registering financial due diligence routes');
 router.use('/financial', financialDueDiligenceRoutes);
+
+// New Financial due diligence routes
+console.log('Registering new financial due diligence routes');
+router.use('/new-financial', newFinancialDueDiligenceRoutes);
 
 // Recommendation routes
 console.log('Registering recommendation routes');

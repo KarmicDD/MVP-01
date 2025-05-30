@@ -348,20 +348,18 @@ export function useFinancialDueDiligence(startupId: string | null, investorId: s
         // If perspective is 'investor', we want to analyze the investor's documents (investorId)
         const entityIdToCheck = perspective === 'startup' ? startupId : investorId;
 
-        console.log(`Checking documents for entity ID: ${entityIdToCheck} with perspective: ${perspective}`);
-
-        // Fetch documents for the selected entity
+        console.log(`Checking documents for entity ID: ${entityIdToCheck} with perspective: ${perspective}`);        // Fetch documents for the selected entity
         const response = await api.get(`/profile/documents?userId=${entityIdToCheck}`);
 
-        // Filter for financial documents (any document type starting with 'financial_')
-        const financialDocuments = response.data.documents ?
-          response.data.documents.filter((doc: any) => doc.documentType.startsWith('financial_')) : [];
+        // Include ALL documents for comprehensive financial analysis
+        // No filtering based on document type - all documents are valuable for analysis
+        const allDocuments = response.data.documents || [];
 
         // Store the documents for display
-        setEntityDocuments(financialDocuments);
+        setEntityDocuments(allDocuments);
 
         // Check if documents are available
-        const hasDocuments = financialDocuments.length > 0;
+        const hasDocuments = allDocuments.length > 0;
         setDocumentsAvailable(hasDocuments);
 
         if (!hasDocuments) {

@@ -139,7 +139,7 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
   if (!selectedMatchId) {
     return (
       <div className="text-center py-10">
-        <h3 className="text-xl font-medium text-gray-700 mb-2">Select a match to view financial due diligence</h3>
+        <h3 className="text-xl font-medium text-gray-700 mb-2">Select a match to view draft-financial due diligence</h3>
         <p className="text-gray-500">Click on any match card to see financial analysis</p>
       </div>
     );
@@ -229,7 +229,7 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
       // Show processing error UI with our new ErrorDisplay component
       return (
         <div className="bg-white rounded-xl shadow-lg overflow-hidden p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Financial Due Diligence</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Draft-Financial Due Diligence</h3>
 
           <ErrorDisplay
             error={errorObj}
@@ -304,7 +304,7 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
             <div className="bg-indigo-50 rounded-lg p-6 border border-indigo-100">
               <h3 className="text-lg font-semibold text-indigo-800 mb-3 flex items-center">
                 <FiFileText className="mr-2" />
-                Financial Due Diligence
+                Draft-Financial Due Diligence
               </h3>
               <p className="text-gray-700 mb-4">
                 Our AI-powered financial due diligence tool analyzes financial documents uploaded by {entityName} to provide comprehensive insights and recommendations compliant with Indian company standards.
@@ -331,7 +331,7 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
 
             {/* Report Description */}
             <div className="bg-white rounded-lg p-6 border border-gray-200 analysis-types-section">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Comprehensive Financial Due Diligence</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Comprehensive Draft-Financial Due Diligence</h3>
 
               <div className="p-4 rounded-lg border border-indigo-100 bg-indigo-50">
                 <div className="flex items-start">
@@ -460,7 +460,7 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
                 ) : (
                   <>
                     <FiBarChart2 className="mr-2" />
-                    Generate Comprehensive Report
+                    Generate Draft-Financial Due Diligence Report
                   </>
                 )}
               </motion.button>

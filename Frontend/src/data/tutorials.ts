@@ -141,9 +141,55 @@ export const beliefSystemTutorial: Tutorial = {
   ]
 };
 
+// New Financial Due Diligence tutorial
+export const newFinancialDueDiligenceTutorial: Tutorial = {
+  id: 'new-financial-dd-tutorial',
+  title: 'Financial Due Diligence Tutorial',
+  description: 'Learn how to use the enhanced financial due diligence tools',
+  steps: [
+    {
+      id: 'welcome',
+      title: 'Enhanced Financial Due Diligence',
+      content: 'Our enhanced AI-powered financial due diligence tool provides comprehensive analysis of financial documents with detailed insights tailored for both startups and investors.',
+      image: '/images/tutorials/financial-dd-overview.png'
+    },
+    {
+      id: 'document-processing',
+      title: 'Document Processing',
+      content: 'Documents are processed in batches of 2 for optimal analysis. Our system extracts text from all document types including PDFs, Excel files, and presentations.',
+      image: '/images/tutorials/document-upload.png'
+    },
+    {
+      id: 'analysis-process',
+      title: 'Analysis Process',
+      content: 'Our advanced AI analyzes your documents following Indian auditing standards (SA 240, SA 500, SA 530, CARO 2020, Ind AS) to generate a detailed, professional report.',
+      image: '/images/tutorials/analysis-process.png'
+    },
+    {
+      id: 'investment-decision',
+      title: 'Investment Decision',
+      content: 'Each report includes a clear investment recommendation with success probability percentage and key considerations to help you make informed decisions.',
+      image: '/images/tutorials/financial-metrics.png'
+    },
+    {
+      id: 'risk-assessment',
+      title: 'Risk Assessment',
+      content: 'The report provides a detailed risk assessment with severity levels and mitigation strategies for each identified risk factor.',
+      image: '/images/tutorials/financial-insights.png'
+    },
+    {
+      id: 'download-share',
+      title: 'Download & Share',
+      content: 'Reports can be downloaded as PDFs or shared directly with your matches. You control who has access to your financial information.',
+      image: '/images/tutorials/download-share.png'
+    }
+  ]
+};
+
 // Export all tutorials as a record for easy registration
 export const allTutorials: Record<string, Tutorial> = {
   [dashboardTutorial.id]: dashboardTutorial,
   [financialDueDiligenceTutorial.id]: financialDueDiligenceTutorial,
-  [beliefSystemTutorial.id]: beliefSystemTutorial
+  [beliefSystemTutorial.id]: beliefSystemTutorial,
+  [newFinancialDueDiligenceTutorial.id]: newFinancialDueDiligenceTutorial
 };

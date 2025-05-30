@@ -18,7 +18,7 @@ interface ErrorDisplayProps {
 const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onRetry, onDismiss }) => {
   const [showDetails, setShowDetails] = useState(false);
 
-  const hasValidationDetails = error.validationDetails && Object.keys(error.validationDetails).length > 0;
+  const hasValidationDetails = error && error.validationDetails && Object.keys(error.validationDetails).length > 0;
 
   return (
     <motion.div
@@ -34,14 +34,14 @@ const ErrorDisplay: React.FC<ErrorDisplayProps> = ({ error, onRetry, onDismiss }
           </div>
           <div className="ml-3">
             <h3 className="text-lg font-medium text-red-800">
-              {error.message}
+              {error && error.message ? error.message : "An error occurred"}
             </h3>
-            {error.errorCode && (
+            {error && error.errorCode && (
               <p className="text-sm text-red-700 mt-1">
                 Error Code: {error.errorCode}
               </p>
             )}
-            {error.suggestedAction && (
+            {error && error.suggestedAction && (
               <p className="text-sm text-red-700 mt-2">
                 {error.suggestedAction}
               </p>

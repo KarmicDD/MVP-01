@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import FinancialDueDiligenceReport from '../models/Analytics/FinancialDueDiligenceReport';
+import NewFinancialDueDiligenceReport from '../models/Analytics/NewFinancialDueDiligenceReport';
 import DocumentModel, { DocumentType } from '../models/Profile/Document';
 import ApiUsageModel from '../models/ApiUsageModel/ApiUsage';
 import StartupProfileModel from '../models/Profile/StartupProfile';
@@ -9,6 +10,7 @@ import ExtendedProfileModel from '../models/Profile/ExtendedProfile';
 import QuestionnaireSubmissionModel from '../models/question/QuestionnaireSubmission';
 import TaskModel from '../models/Task';
 import enhancedDocumentProcessingService from '../services/EnhancedDocumentProcessingService';
+import newFinancialDueDiligenceService from '../services/NewFinancialDueDiligenceService';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import path from 'path';
 
@@ -165,12 +167,14 @@ async function getEntityDocuments(entityId: string, entityType: 'startup' | 'inv
         ...requiredFinancialDocumentTypes,
         ...(entityType === 'startup' ? startupSpecificDocumentTypes : []),
         ...(entityType === 'investor' ? investorSpecificDocumentTypes : [])
-    ];
-
-    // Fetch all financial documents for the entity
+    ];    // Fetch ALL documents for the entity that are public OR financial documents
+    // This ensures public documents (including "other" and "miscellaneous" types) are included in analysis
     const documents = await DocumentModel.find({
         userId: entityId,
-        documentType: { $regex: /^financial_/ }
+        $or: [
+            { documentType: { $regex: /^financial_/ } }, // All financial documents
+            { isPublic: true } // All public documents regardless of type
+        ]
     });
 
     // Check which required documents are missing
@@ -213,63 +217,100 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
             // If limit reached, check for any existing analysis regardless of age
             const { entityId } = req.params;
             const entityType = req.query.entityType as 'startup' | 'investor' || 'startup';
+            const version = req.query.version as string;
 
             // Look for any existing analysis, regardless of age
             // Global caching: only look for entity ID and type, not the requesting user
-            const oldAnalysis = await FinancialDueDiligenceReport.findOne({
-                targetEntityId: entityId,
-                targetEntityType: entityType
-            }).sort({ createdAt: -1 }); // Get the most recent one
+            if (version === 'new') {
+                // For new version, use the NewFinancialDueDiligenceReport model
+                const oldNewAnalysis = await NewFinancialDueDiligenceReport.findOne({
+                    targetEntityId: entityId,
+                    targetEntityType: entityType
+                }).sort({ createdAt: -1 }); // Get the most recent one
 
-            if (oldAnalysis) {
-                // Return old analysis with a flag indicating it's old data
-                res.json({
-                    // Include the report type and perspective
-                    reportType: oldAnalysis.reportType,
-                    reportPerspective: oldAnalysis.reportPerspective,
+                if (oldNewAnalysis) {
+                    // Return old analysis with a flag indicating it's old data
+                    const oldReportObj = oldNewAnalysis.toObject() as any;
+                    res.json({
+                        // Core fields
+                        companyName: oldReportObj.companyName,
+                        reportDate: oldReportObj.reportDate,
 
-                    // Include the total company score
-                    totalCompanyScore: oldAnalysis.totalCompanyScore,
+                        // Report content based on FINALREPORT.MD structure
+                        introduction: oldReportObj.introduction,
+                        items: oldReportObj.items,
+                        missingDocuments: oldReportObj.missingDocuments,
+                        riskScore: oldReportObj.riskScore,
+                        disclaimer: oldReportObj.disclaimer,
 
-                    // Include the investment decision
-                    investmentDecision: oldAnalysis.investmentDecision,
+                        // Document tracking
+                        availableDocuments: oldReportObj.availableDocuments,
 
-                    // Include the compatibility analysis
-                    compatibilityAnalysis: oldAnalysis.compatibilityAnalysis,
+                        // Metadata
+                        generatedDate: oldReportObj.createdAt,
+                        reportCalculated: oldReportObj.reportCalculated,
+                        isOldData: true,
+                        message: 'Daily request limit reached. Showing previously generated data.'
+                    });
+                    return;
+                }
+            } else {
+                // For standard version, use the legacy FinancialDueDiligenceReport model
+                const oldAnalysis = await FinancialDueDiligenceReport.findOne({
+                    targetEntityId: entityId,
+                    targetEntityType: entityType
+                }).sort({ createdAt: -1 }); // Get the most recent one
 
-                    // Include the Forward-Looking Analysis
-                    forwardLookingAnalysis: oldAnalysis.forwardLookingAnalysis,
+                if (oldAnalysis) {
+                    // Return old analysis with a flag indicating it's old data
+                    res.json({
+                        // Include the report type and perspective
+                        reportType: oldAnalysis.reportType,
+                        reportPerspective: oldAnalysis.reportPerspective,
 
-                    // Include the scoring breakdown
-                    scoringBreakdown: oldAnalysis.scoringBreakdown,
+                        // Include the total company score
+                        totalCompanyScore: oldAnalysis.totalCompanyScore,
 
-                    // Standard sections
-                    executiveSummary: oldAnalysis.executiveSummary,
-                    financialAnalysis: oldAnalysis.financialAnalysis,
-                    recommendations: oldAnalysis.recommendations,
-                    riskFactors: oldAnalysis.riskFactors,
-                    complianceItems: oldAnalysis.complianceItems,
-                    financialStatements: oldAnalysis.financialStatements,
-                    ratioAnalysis: oldAnalysis.ratioAnalysis,
-                    taxCompliance: oldAnalysis.taxCompliance,
-                    auditFindings: oldAnalysis.auditFindings,
-                    documentAnalysis: oldAnalysis.documentAnalysis,
+                        // Include the investment decision
+                        investmentDecision: oldAnalysis.investmentDecision,
 
-                    // Add the table sections
-                    directorsTable: oldAnalysis.directorsTable,
-                    keyBusinessAgreements: oldAnalysis.keyBusinessAgreements,
-                    leavePolicy: oldAnalysis.leavePolicy,
-                    provisionsAndPrepayments: oldAnalysis.provisionsAndPrepayments,
-                    deferredTaxAssets: oldAnalysis.deferredTaxAssets,
+                        // Include the compatibility analysis
+                        compatibilityAnalysis: oldAnalysis.compatibilityAnalysis,
 
-                    availableDocuments: oldAnalysis.availableDocuments,
-                    missingDocumentTypes: oldAnalysis.missingDocumentTypes,
-                    generatedDate: oldAnalysis.createdAt,
-                    reportCalculated: oldAnalysis.reportCalculated,
-                    isOldData: true,
-                    message: 'Daily request limit reached. Showing previously generated data.'
-                });
-                return;
+                        // Include the Forward-Looking Analysis
+                        forwardLookingAnalysis: oldAnalysis.forwardLookingAnalysis,
+
+                        // Include the scoring breakdown
+                        scoringBreakdown: oldAnalysis.scoringBreakdown,
+
+                        // Standard sections
+                        executiveSummary: oldAnalysis.executiveSummary,
+                        financialAnalysis: oldAnalysis.financialAnalysis,
+                        recommendations: oldAnalysis.recommendations,
+                        riskFactors: oldAnalysis.riskFactors,
+                        complianceItems: oldAnalysis.complianceItems,
+                        financialStatements: oldAnalysis.financialStatements,
+                        ratioAnalysis: oldAnalysis.ratioAnalysis,
+                        taxCompliance: oldAnalysis.taxCompliance,
+                        auditFindings: oldAnalysis.auditFindings,
+                        documentAnalysis: oldAnalysis.documentAnalysis,
+
+                        // Add the table sections
+                        directorsTable: oldAnalysis.directorsTable,
+                        keyBusinessAgreements: oldAnalysis.keyBusinessAgreements,
+                        leavePolicy: oldAnalysis.leavePolicy,
+                        provisionsAndPrepayments: oldAnalysis.provisionsAndPrepayments,
+                        deferredTaxAssets: oldAnalysis.deferredTaxAssets,
+
+                        availableDocuments: oldAnalysis.availableDocuments,
+                        missingDocumentTypes: oldAnalysis.missingDocumentTypes,
+                        generatedDate: oldAnalysis.createdAt,
+                        reportCalculated: oldAnalysis.reportCalculated,
+                        isOldData: true,
+                        message: 'Daily request limit reached. Showing previously generated data.'
+                    });
+                    return;
+                }
             }
 
             // If no old data exists, return the rate limit error
@@ -283,8 +324,9 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
 
         const { entityId } = req.params;
         const entityType = req.query.entityType as 'startup' | 'investor' || 'startup';
+        const version = req.query.version as string;
 
-        console.log(`Processing request for entityId: ${entityId}, entityType: ${entityType}`);
+        console.log(`Processing request for entityId: ${entityId}, entityType: ${entityType}, version: ${version || 'standard'}`);
 
         if (!entityId) {
             res.status(400).json({ message: 'Entity ID is required' });
@@ -295,61 +337,100 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
             // Check if we have a recent analysis in MongoDB cache
             // Global caching: only look for entity ID and type, not the requesting user
             // Use 30 days as cache validity period instead of 7 days
-            const existingAnalysis = await FinancialDueDiligenceReport.findOne({
-                targetEntityId: entityId,
-                targetEntityType: entityType,
-                // Only use cached results if less than 30 days old
-                createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
-            });
 
-            if (existingAnalysis) {
-                // Return cached analysis
-                console.log('Found existing analysis, returning cached result');
-                res.json({
-                    // Include the report type and perspective
-                    reportType: existingAnalysis.reportType,
-                    reportPerspective: existingAnalysis.reportPerspective,
-
-                    // Include the total company score
-                    totalCompanyScore: existingAnalysis.totalCompanyScore,
-
-                    // Include the investment decision
-                    investmentDecision: existingAnalysis.investmentDecision,
-
-                    // Include the compatibility analysis
-                    compatibilityAnalysis: existingAnalysis.compatibilityAnalysis,
-
-                    // Include the Forward-Looking Analysis
-                    forwardLookingAnalysis: existingAnalysis.forwardLookingAnalysis,
-
-                    // Include the scoring breakdown
-                    scoringBreakdown: existingAnalysis.scoringBreakdown,
-
-                    // Standard sections
-                    executiveSummary: existingAnalysis.executiveSummary,
-                    financialAnalysis: existingAnalysis.financialAnalysis,
-                    recommendations: existingAnalysis.recommendations,
-                    riskFactors: existingAnalysis.riskFactors,
-                    complianceItems: existingAnalysis.complianceItems,
-                    financialStatements: existingAnalysis.financialStatements,
-                    ratioAnalysis: existingAnalysis.ratioAnalysis,
-                    taxCompliance: existingAnalysis.taxCompliance,
-                    auditFindings: existingAnalysis.auditFindings,
-                    documentAnalysis: existingAnalysis.documentAnalysis,
-
-                    // Add the table sections
-                    directorsTable: existingAnalysis.directorsTable,
-                    keyBusinessAgreements: existingAnalysis.keyBusinessAgreements,
-                    leavePolicy: existingAnalysis.leavePolicy,
-                    provisionsAndPrepayments: existingAnalysis.provisionsAndPrepayments,
-                    deferredTaxAssets: existingAnalysis.deferredTaxAssets,
-
-                    availableDocuments: existingAnalysis.availableDocuments,
-                    missingDocumentTypes: existingAnalysis.missingDocumentTypes,
-                    generatedDate: existingAnalysis.createdAt,
-                    reportCalculated: existingAnalysis.reportCalculated
+            // Use the appropriate model based on the version parameter
+            if (version === 'new') {
+                // For new version, use the NewFinancialDueDiligenceReport model
+                console.log('Checking for cached new financial due diligence report');
+                const existingNewAnalysis = await NewFinancialDueDiligenceReport.findOne({
+                    targetEntityId: entityId,
+                    targetEntityType: entityType,
+                    // Only use cached results if less than 30 days old
+                    createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
                 });
-                return;
+
+                if (existingNewAnalysis) {
+                    // Return cached new analysis
+                    console.log('Found existing new analysis, returning cached result');
+                    res.json({
+                        // Core fields
+                        companyName: existingNewAnalysis.companyName,
+                        reportDate: existingNewAnalysis.reportDate,
+
+                        // Report content based on FINALREPORT.MD structure
+                        introduction: existingNewAnalysis.introduction,
+                        items: existingNewAnalysis.items,
+                        missingDocuments: existingNewAnalysis.missingDocuments,
+                        riskScore: existingNewAnalysis.riskScore,
+                        disclaimer: existingNewAnalysis.disclaimer,
+
+                        // Document tracking
+                        availableDocuments: existingNewAnalysis.availableDocuments,
+
+                        // Metadata
+                        generatedDate: existingNewAnalysis.createdAt,
+                        reportCalculated: existingNewAnalysis.reportCalculated
+                    });
+                    return;
+                }
+            } else {
+                // For standard version, use the legacy FinancialDueDiligenceReport model
+                const existingAnalysis = await FinancialDueDiligenceReport.findOne({
+                    targetEntityId: entityId,
+                    targetEntityType: entityType,
+                    // Only use cached results if less than 30 days old
+                    createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+                });
+
+                if (existingAnalysis) {
+                    // Return cached analysis
+                    console.log('Found existing analysis, returning cached result');
+                    res.json({
+                        // Include the report type and perspective
+                        reportType: existingAnalysis.reportType,
+                        reportPerspective: existingAnalysis.reportPerspective,
+
+                        // Include the total company score
+                        totalCompanyScore: existingAnalysis.totalCompanyScore,
+
+                        // Include the investment decision
+                        investmentDecision: existingAnalysis.investmentDecision,
+
+                        // Include the compatibility analysis
+                        compatibilityAnalysis: existingAnalysis.compatibilityAnalysis,
+
+                        // Include the Forward-Looking Analysis
+                        forwardLookingAnalysis: existingAnalysis.forwardLookingAnalysis,
+
+                        // Include the scoring breakdown
+                        scoringBreakdown: existingAnalysis.scoringBreakdown,
+
+                        // Standard sections
+                        executiveSummary: existingAnalysis.executiveSummary,
+                        financialAnalysis: existingAnalysis.financialAnalysis,
+                        recommendations: existingAnalysis.recommendations,
+                        riskFactors: existingAnalysis.riskFactors,
+                        complianceItems: existingAnalysis.complianceItems,
+                        financialStatements: existingAnalysis.financialStatements,
+                        ratioAnalysis: existingAnalysis.ratioAnalysis,
+                        taxCompliance: existingAnalysis.taxCompliance,
+                        auditFindings: existingAnalysis.auditFindings,
+                        documentAnalysis: existingAnalysis.documentAnalysis,
+
+                        // Add the table sections
+                        directorsTable: existingAnalysis.directorsTable,
+                        keyBusinessAgreements: existingAnalysis.keyBusinessAgreements,
+                        leavePolicy: existingAnalysis.leavePolicy,
+                        provisionsAndPrepayments: existingAnalysis.provisionsAndPrepayments,
+                        deferredTaxAssets: existingAnalysis.deferredTaxAssets,
+
+                        availableDocuments: existingAnalysis.availableDocuments,
+                        missingDocumentTypes: existingAnalysis.missingDocumentTypes,
+                        generatedDate: existingAnalysis.createdAt,
+                        reportCalculated: existingAnalysis.reportCalculated
+                    });
+                    return;
+                }
             }
 
             // Fetch entity data from MongoDB
@@ -432,64 +513,88 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
             })));
 
             // Extract financial data using Gemini with enhanced context
-            // Using the new approach that extracts raw data first, then sends to Gemini
-            console.log('Extracting financial data using raw extraction first, then Gemini with forward-looking analysis');
+            // Choose the appropriate service based on the version parameter
+            console.log(`Using ${version === 'new' ? 'new' : 'standard'} financial due diligence service`);
             let financialData;
             try {
-                // Fetch additional data sources for enhanced analysis
-                console.log('Fetching additional data sources for enhanced analysis');
+                // If version is 'new', use the NewFinancialDueDiligenceService
+                if (version === 'new') {
+                    console.log('Using NewFinancialDueDiligenceService for financial data extraction');
+                    // First process the documents to get the combined content
+                    console.log('Processing documents in batches of maximum 3 documents...');
 
-                // Get extended profile data
-                const extendedProfile = await ExtendedProfileModel.findOne({ userId: entityId });
+                    // Use the existing documentsWithMetadata variable instead of redeclaring it
+                    // This avoids variable shadowing
+                    const combinedDocumentContent = await newFinancialDueDiligenceService.processDocumentsInBatches(
+                        documentsWithMetadata
+                    );
 
-                // Get questionnaire submission data
-                const questionnaireSubmission = await QuestionnaireSubmissionModel.findOne({
-                    userId: entityId
-                }).sort({ createdAt: -1 });
+                    // Then generate the financial due diligence report
+                    financialData = await newFinancialDueDiligenceService.generateFinancialDueDiligenceReport(
+                        combinedDocumentContent,
+                        companyName,
+                        entityType,
+                        missingDocumentTypes
+                    );
+                    console.log('Successfully extracted financial data using NewFinancialDueDiligenceService');
+                } else {
+                    // Otherwise use the standard approach
+                    console.log('Using standard approach for financial data extraction');
+                    // Fetch additional data sources for enhanced analysis
+                    console.log('Fetching additional data sources for enhanced analysis');
 
-                // Get task data to evaluate execution capability
-                const tasks = await TaskModel.find({
-                    assignedTo: entityId
-                }).sort({ createdAt: -1 }).limit(50);
+                    // Get extended profile data
+                    const extendedProfile = await ExtendedProfileModel.findOne({ userId: entityId });
 
-                // Get previous financial reports for historical metrics and industry benchmarks
-                const financialReports = await FinancialDueDiligenceReport.find({
-                    targetEntityType: entityType
-                }).sort({ createdAt: -1 }).limit(10);
+                    // Get questionnaire submission data
+                    const questionnaireSubmission = await QuestionnaireSubmissionModel.findOne({
+                        userId: entityId
+                    }).sort({ createdAt: -1 });
 
-                // Prepare historical metrics from previous reports if available
-                const historicalMetrics: Record<string, any> = {};
-                if (financialReports && financialReports.length > 0) {
-                    // Extract metrics from previous reports
-                    financialReports.forEach(report => {
-                        if (report.financialAnalysis && report.financialAnalysis.metrics) {
-                            report.financialAnalysis.metrics.forEach((metric: any) => {
-                                if (metric.name && metric.value) {
-                                    historicalMetrics[metric.name] = metric.value;
-                                }
-                            });
-                        }
-                    });
-                }
+                    // Get task data to evaluate execution capability
+                    const tasks = await TaskModel.find({
+                        assignedTo: entityId
+                    }).sort({ createdAt: -1 }).limit(50);
 
-                console.log('Additional data sources fetched successfully');
+                    // Get previous financial reports for historical metrics and industry benchmarks
+                    const financialReports = await FinancialDueDiligenceReport.find({
+                        targetEntityType: entityType
+                    }).sort({ createdAt: -1 }).limit(10);
 
-                // Pass the document objects directly to extractFinancialData with additional data sources
-                // This will use the new approach that extracts raw data first
-                financialData = await enhancedDocumentProcessingService.extractFinancialData(
-                    documentsWithMetadata, // Pass documents directly instead of combined content
-                    companyName,
-                    entityProfile,
-                    null, // No counterparty info needed
-                    missingDocumentTypes, // Pass missing document types to Gemini
-                    { // Pass additional data sources for enhanced analysis
-                        extendedProfile,
-                        questionnaireSubmission,
-                        tasks,
-                        financialReports,
-                        historicalMetrics
+                    // Prepare historical metrics from previous reports if available
+                    const historicalMetrics: Record<string, any> = {};
+                    if (financialReports && financialReports.length > 0) {
+                        // Extract metrics from previous reports
+                        financialReports.forEach(report => {
+                            if (report.financialAnalysis && report.financialAnalysis.metrics) {
+                                report.financialAnalysis.metrics.forEach((metric: any) => {
+                                    if (metric.name && metric.value) {
+                                        historicalMetrics[metric.name] = metric.value;
+                                    }
+                                });
+                            }
+                        });
                     }
-                );
+
+                    console.log('Additional data sources fetched successfully');
+
+                    // Pass the document objects directly to extractFinancialData with additional data sources
+                    // This will use the new approach that extracts raw data first
+                    financialData = await enhancedDocumentProcessingService.extractFinancialData(
+                        documentsWithMetadata, // Pass documents directly instead of combined content
+                        companyName,
+                        entityProfile,
+                        null, // No counterparty info needed
+                        missingDocumentTypes, // Pass missing document types to Gemini
+                        { // Pass additional data sources for enhanced analysis
+                            extendedProfile,
+                            questionnaireSubmission,
+                            tasks,
+                            financialReports,
+                            historicalMetrics
+                        }
+                    );
+                }
             } catch (error) {
                 console.error('Error extracting financial data:', error);
 
@@ -583,189 +688,180 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 console.log('Saving partial financial data to database');
             }
 
-            // Check if there's an existing report for this entity (regardless of age)
-            // Global caching: only look for entity ID and type, not the requesting user
-            // We'll update it instead of creating a new one to avoid duplicate reports
-            let financialReport = await FinancialDueDiligenceReport.findOne({
-                targetEntityId: entityId,
-                targetEntityType: entityType
-            });
+            // Declare the financialReport variable that will hold the report to save
+            let financialReport;
 
-            if (financialReport) {
-                console.log('Found existing report, updating it instead of creating a new one');
+            // Choose the appropriate model based on the version parameter
+            if (version === 'new') {
+                // For new version, use the NewFinancialDueDiligenceReport model
+                console.log('Using NewFinancialDueDiligenceReport model for storing data');
 
-                // Update the existing report with new data
-                financialReport.companyName = companyName;
-
-                // Report Type and Perspective
-                financialReport.reportType = financialData.reportType;
-                financialReport.reportPerspective = financialData.reportPerspective;
-
-                // Total Company Score
-                financialReport.totalCompanyScore = financialData.totalCompanyScore;
-
-                // Investment Decision
-                financialReport.investmentDecision = financialData.investmentDecision;
-
-                // Compatibility Analysis
-                financialReport.compatibilityAnalysis = financialData.compatibilityAnalysis;
-
-                // Forward-Looking Analysis
-                financialReport.forwardLookingAnalysis = financialData.forwardLookingAnalysis;
-
-                // Scoring Breakdown
-                financialReport.scoringBreakdown = financialData.scoringBreakdown;
-
-                financialReport.availableDocuments = availableDocuments;
-                financialReport.missingDocumentTypes = missingDocumentTypes;
-                financialReport.reportCalculated = reportCalculated;
-                financialReport.executiveSummary = financialData.executiveSummary || {
-                    headline: "Financial Due Diligence Report",
-                    summary: financialData.summary || "Financial analysis of the provided documents.",
-                    keyFindings: [],
-                    recommendedActions: [],
-                    keyMetrics: financialData.metrics || []
-                };
-                financialReport.financialAnalysis = financialData.financialAnalysis || {
-                    metrics: financialData.metrics || [],
-                    trends: []
-                };
-                financialReport.recommendations = financialData.recommendations || [];
-                financialReport.riskFactors = financialData.riskFactors || [];
-                financialReport.complianceItems = financialData.complianceItems || [];
-                financialReport.financialStatements = financialData.financialStatements || {};
-                financialReport.ratioAnalysis = processedRatioAnalysis;
-                financialReport.taxCompliance = financialData.taxCompliance || {
-                    gst: { status: 'compliant', details: 'Not evaluated' },
-                    incomeTax: { status: 'compliant', details: 'Not evaluated' },
-                    tds: { status: 'compliant', details: 'Not evaluated' }
-                };
-                financialReport.auditFindings = financialData.auditFindings || {
-                    findings: [],
-                    overallAssessment: "No audit findings available."
-                };
-                financialReport.documentAnalysis = financialData.documentAnalysis || {
-                    availableDocuments: availableDocuments.map(doc => ({
-                        documentType: doc.documentType,
-                        quality: "moderate",
-                        completeness: "partial",
-                        keyInsights: ["Document was processed but detailed analysis not available"]
-                    })),
-                    missingDocuments: {
-                        list: missingDocumentTypes,
-                        impact: "Missing documents may limit the completeness of the financial analysis.",
-                        recommendations: ["Upload the missing documents to improve analysis quality."]
-                    }
-                };
-                financialReport.directorsTable = financialData.directorsTable || {
-                    overview: "No directors information available in the provided documents.",
-                    directors: [],
-                    analysis: "Unable to analyze directors information due to lack of data.",
-                    recommendations: ["Provide company incorporation documents or annual returns to analyze the board of directors."]
-                };
-                financialReport.keyBusinessAgreements = financialData.keyBusinessAgreements || {
-                    overview: "No key business agreements information available in the provided documents.",
-                    agreements: [],
-                    analysis: "Unable to analyze key business agreements due to lack of data.",
-                    recommendations: ["Provide contracts and business agreements for analysis."]
-                };
-                financialReport.leavePolicy = financialData.leavePolicy || {
-                    overview: "No leave policy information available in the provided documents.",
-                    policies: [],
-                    analysis: "Unable to analyze leave policy due to lack of data.",
-                    recommendations: ["Provide HR policy documents for analysis."]
-                };
-                financialReport.provisionsAndPrepayments = financialData.provisionsAndPrepayments || {
-                    overview: "No provisions and prepayments information available in the provided documents.",
-                    items: [],
-                    analysis: "Unable to analyze provisions and prepayments due to lack of data.",
-                    recommendations: ["Provide detailed balance sheet and notes to accounts for analysis."]
-                };
-                financialReport.deferredTaxAssets = financialData.deferredTaxAssets || {
-                    overview: "No deferred tax assets information available in the provided documents.",
-                    items: [],
-                    analysis: "Unable to analyze deferred tax assets due to lack of data.",
-                    recommendations: ["Provide tax computation documents and notes to accounts for analysis."]
-                };
-                financialReport.documentSources = documents.map(doc => doc._id ? doc._id.toString() : '');
-                financialReport.updatedAt = new Date();
-                financialReport.expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Expire after 30 days
-            } else {
-                console.log('No existing report found, creating a new one');
-
-                // Create a new financial due diligence report with all available data
-                financialReport = new FinancialDueDiligenceReport({
+                // Check if there's an existing report for this entity (regardless of age)
+                let newFinancialReport = await NewFinancialDueDiligenceReport.findOne({
                     targetEntityId: entityId,
-                    targetEntityType: entityType,
-                    requestedById: req.user.userId,
-                    companyName,
-                    generatedBy: 'KarmicDD AI',
+                    targetEntityType: entityType
+                });
 
-                    // Report Type and Perspective
-                    reportType: financialData.reportType,
-                    reportPerspective: financialData.reportPerspective,
+                if (newFinancialReport) {
+                    console.log('Found existing new report, updating it instead of creating a new one');
 
-                    // Total Company Score
-                    totalCompanyScore: financialData.totalCompanyScore,
+                    // Update the existing report with new data
+                    newFinancialReport.companyName = companyName;
+                    newFinancialReport.reportDate = new Date();
 
-                    // Investment Decision
-                    investmentDecision: financialData.investmentDecision,
+                    // Report content based on FINALREPORT.MD structure
+                    newFinancialReport.introduction = financialData.introduction ||
+                        `This report presents the findings of the financial due diligence conducted on ${companyName} as of ${new Date().toISOString().split('T')[0]}.`;
 
-                    // Compatibility Analysis
-                    compatibilityAnalysis: financialData.compatibilityAnalysis,
+                    newFinancialReport.items = financialData.items || [];
 
-                    // Forward-Looking Analysis
-                    forwardLookingAnalysis: financialData.forwardLookingAnalysis,
+                    newFinancialReport.missingDocuments = financialData.missingDocuments || {
+                        documentList: missingDocumentTypes.map(docType => ({
+                            documentCategory: 'Financial',
+                            specificDocument: docType.replace('financial_', '').replace(/_/g, ' '),
+                            requirementReference: 'Standard financial due diligence'
+                        })),
+                        note: 'The following documents were not available for analysis.'
+                    };
 
-                    // Scoring Breakdown
-                    scoringBreakdown: financialData.scoringBreakdown,
+                    newFinancialReport.riskScore = financialData.riskScore || {
+                        score: '5/10',
+                        riskLevel: 'Moderate',
+                        justification: 'Based on available documents and analysis.'
+                    };
+
+                    newFinancialReport.disclaimer = financialData.disclaimer;
 
                     // Document tracking
-                    availableDocuments,
-                    missingDocumentTypes,
+                    newFinancialReport.availableDocuments = availableDocuments;
+                    newFinancialReport.documentSources = documents.map(doc => doc._id ? doc._id.toString() : '');
 
-                    // Report calculation status
-                    reportCalculated: reportCalculated,
+                    // Metadata
+                    newFinancialReport.reportCalculated = reportCalculated;
+                    newFinancialReport.updatedAt = new Date();
+                    newFinancialReport.expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Expire after 30 days
 
-                    // Executive Summary Section
-                    executiveSummary: financialData.executiveSummary || {
+                    // Save the updated report
+                    financialReport = newFinancialReport;
+                } else {
+                    console.log('No existing new report found, creating a new one');
+
+                    // Create a new financial due diligence report with the new model
+                    newFinancialReport = new NewFinancialDueDiligenceReport({
+                        // Core fields
+                        targetEntityId: entityId,
+                        targetEntityType: entityType,
+                        requestedById: req.user.userId,
+                        companyName: companyName,
+                        reportDate: new Date(),
+                        generatedBy: 'KarmicDD AI',
+
+                        // Report content based on FINALREPORT.MD structure
+                        introduction: financialData.introduction ||
+                            `This report presents the findings of the financial due diligence conducted on ${companyName} as of ${new Date().toISOString().split('T')[0]}.`,
+
+                        items: financialData.items || [],
+
+                        missingDocuments: financialData.missingDocuments || {
+                            documentList: missingDocumentTypes.map(docType => ({
+                                documentCategory: 'Financial',
+                                specificDocument: docType.replace('financial_', '').replace(/_/g, ' '),
+                                requirementReference: 'Standard financial due diligence'
+                            })),
+                            note: 'The following documents were not available for analysis.'
+                        },
+
+                        riskScore: financialData.riskScore || {
+                            score: '5/10',
+                            riskLevel: 'Moderate',
+                            justification: 'Based on available documents and analysis.'
+                        },
+
+                        disclaimer: financialData.disclaimer,
+
+                        // Document tracking
+                        availableDocuments: availableDocuments,
+                        documentSources: documents.map(doc => doc._id ? doc._id.toString() : ''),
+
+                        // Metadata
+                        status: 'final',
+                        reportCalculated: reportCalculated,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Expire after 30 days
+                    });
+
+                    // Set the financial report to the new report
+                    financialReport = newFinancialReport;
+                }
+            } else {
+                // For standard version, use the legacy FinancialDueDiligenceReport model
+                console.log('Using legacy FinancialDueDiligenceReport model for storing data');
+
+                // Check if there's an existing report for this entity (regardless of age)
+                let legacyFinancialReport = await FinancialDueDiligenceReport.findOne({
+                    targetEntityId: entityId,
+                    targetEntityType: entityType
+                });
+
+                if (legacyFinancialReport) {
+                    console.log('Found existing legacy report, updating it instead of creating a new one');
+
+                    // Update the existing report with new data
+                    legacyFinancialReport.companyName = companyName;
+
+                    // Report Type and Perspective
+                    legacyFinancialReport.reportType = financialData.reportType;
+                    legacyFinancialReport.reportPerspective = financialData.reportPerspective;
+
+                    // Total Company Score
+                    legacyFinancialReport.totalCompanyScore = financialData.totalCompanyScore;
+
+                    // Investment Decision
+                    legacyFinancialReport.investmentDecision = financialData.investmentDecision;
+
+                    // Compatibility Analysis
+                    legacyFinancialReport.compatibilityAnalysis = financialData.compatibilityAnalysis;
+
+                    // Forward-Looking Analysis
+                    legacyFinancialReport.forwardLookingAnalysis = financialData.forwardLookingAnalysis;
+
+                    // Scoring Breakdown
+                    legacyFinancialReport.scoringBreakdown = financialData.scoringBreakdown;
+
+                    legacyFinancialReport.availableDocuments = availableDocuments;
+                    legacyFinancialReport.missingDocumentTypes = missingDocumentTypes;
+                    legacyFinancialReport.reportCalculated = reportCalculated;
+                    legacyFinancialReport.executiveSummary = financialData.executiveSummary || {
                         headline: "Financial Due Diligence Report",
                         summary: financialData.summary || "Financial analysis of the provided documents.",
                         keyFindings: [],
                         recommendedActions: [],
                         keyMetrics: financialData.metrics || []
-                    },
-
-                    // Financial Analysis Section
-                    financialAnalysis: financialData.financialAnalysis || {
+                    };
+                    legacyFinancialReport.financialAnalysis = financialData.financialAnalysis || {
                         metrics: financialData.metrics || [],
                         trends: []
-                    },
-
-                    // Other sections
-                    recommendations: financialData.recommendations || [],
-                    riskFactors: financialData.riskFactors || [],
-                    complianceItems: financialData.complianceItems || [],
-                    financialStatements: financialData.financialStatements || {},
-                    ratioAnalysis: processedRatioAnalysis,
-                    taxCompliance: financialData.taxCompliance || {
+                    };
+                    legacyFinancialReport.recommendations = financialData.recommendations || [];
+                    legacyFinancialReport.riskFactors = financialData.riskFactors || [];
+                    legacyFinancialReport.complianceItems = financialData.complianceItems || [];
+                    legacyFinancialReport.financialStatements = financialData.financialStatements || {};
+                    legacyFinancialReport.ratioAnalysis = processedRatioAnalysis;
+                    legacyFinancialReport.taxCompliance = financialData.taxCompliance || {
                         gst: { status: 'compliant', details: 'Not evaluated' },
                         incomeTax: { status: 'compliant', details: 'Not evaluated' },
                         tds: { status: 'compliant', details: 'Not evaluated' }
-                    },
-
-                    // Audit Findings
-                    auditFindings: financialData.auditFindings || {
+                    };
+                    legacyFinancialReport.auditFindings = financialData.auditFindings || {
                         findings: [],
                         overallAssessment: "No audit findings available."
-                    },
-
-                    // Document Analysis - new section
-                    documentAnalysis: financialData.documentAnalysis || {
+                    };
+                    legacyFinancialReport.documentAnalysis = financialData.documentAnalysis || {
                         availableDocuments: availableDocuments.map(doc => ({
                             documentType: doc.documentType,
                             quality: "moderate",
-                            completeness: "partial", // Using valid enum value: 'complete', 'partial', or 'incomplete'
+                            completeness: "partial",
                             keyInsights: ["Document was processed but detailed analysis not available"]
                         })),
                         missingDocuments: {
@@ -773,55 +869,179 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                             impact: "Missing documents may limit the completeness of the financial analysis.",
                             recommendations: ["Upload the missing documents to improve analysis quality."]
                         }
-                    },
-
-                    // Directors Table Section
-                    directorsTable: financialData.directorsTable || {
+                    };
+                    legacyFinancialReport.directorsTable = financialData.directorsTable || {
                         overview: "No directors information available in the provided documents.",
                         directors: [],
                         analysis: "Unable to analyze directors information due to lack of data.",
                         recommendations: ["Provide company incorporation documents or annual returns to analyze the board of directors."]
-                    },
-
-                    // Key Business Agreements Section
-                    keyBusinessAgreements: financialData.keyBusinessAgreements || {
+                    };
+                    legacyFinancialReport.keyBusinessAgreements = financialData.keyBusinessAgreements || {
                         overview: "No key business agreements information available in the provided documents.",
                         agreements: [],
                         analysis: "Unable to analyze key business agreements due to lack of data.",
                         recommendations: ["Provide contracts and business agreements for analysis."]
-                    },
-
-                    // Leave Policy Section
-                    leavePolicy: financialData.leavePolicy || {
+                    };
+                    legacyFinancialReport.leavePolicy = financialData.leavePolicy || {
                         overview: "No leave policy information available in the provided documents.",
                         policies: [],
                         analysis: "Unable to analyze leave policy due to lack of data.",
                         recommendations: ["Provide HR policy documents for analysis."]
-                    },
-
-                    // Provisions & Prepayments Section
-                    provisionsAndPrepayments: financialData.provisionsAndPrepayments || {
+                    };
+                    legacyFinancialReport.provisionsAndPrepayments = financialData.provisionsAndPrepayments || {
                         overview: "No provisions and prepayments information available in the provided documents.",
                         items: [],
                         analysis: "Unable to analyze provisions and prepayments due to lack of data.",
                         recommendations: ["Provide detailed balance sheet and notes to accounts for analysis."]
-                    },
-
-                    // Deferred Tax Assets Section
-                    deferredTaxAssets: financialData.deferredTaxAssets || {
+                    };
+                    legacyFinancialReport.deferredTaxAssets = financialData.deferredTaxAssets || {
                         overview: "No deferred tax assets information available in the provided documents.",
                         items: [],
                         analysis: "Unable to analyze deferred tax assets due to lack of data.",
                         recommendations: ["Provide tax computation documents and notes to accounts for analysis."]
-                    },
+                    };
+                    legacyFinancialReport.documentSources = documents.map(doc => doc._id ? doc._id.toString() : '');
+                    legacyFinancialReport.updatedAt = new Date();
+                    legacyFinancialReport.expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Expire after 30 days
 
-                    // Metadata
-                    documentSources: documents.map(doc => doc._id ? doc._id.toString() : ''),
-                    status: 'final',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Expire after 30 days
-                });
+                    // Set the financial report to the legacy report
+                    financialReport = legacyFinancialReport;
+                } else {
+                    console.log('No existing legacy report found, creating a new one');
+
+                    // Create a new financial due diligence report with all available data
+                    legacyFinancialReport = new FinancialDueDiligenceReport({
+                        targetEntityId: entityId,
+                        targetEntityType: entityType,
+                        requestedById: req.user.userId,
+                        companyName,
+                        generatedBy: 'KarmicDD AI',
+
+                        // Report Type and Perspective
+                        reportType: financialData.reportType,
+                        reportPerspective: financialData.reportPerspective,
+
+                        // Total Company Score
+                        totalCompanyScore: financialData.totalCompanyScore,
+
+                        // Investment Decision
+                        investmentDecision: financialData.investmentDecision,
+
+                        // Compatibility Analysis
+                        compatibilityAnalysis: financialData.compatibilityAnalysis,
+
+                        // Forward-Looking Analysis
+                        forwardLookingAnalysis: financialData.forwardLookingAnalysis,
+
+                        // Scoring Breakdown
+                        scoringBreakdown: financialData.scoringBreakdown,
+
+                        // Document tracking
+                        availableDocuments,
+                        missingDocumentTypes,
+
+                        // Report calculation status
+                        reportCalculated: reportCalculated,
+
+                        // Executive Summary Section
+                        executiveSummary: financialData.executiveSummary || {
+                            headline: "Financial Due Diligence Report",
+                            summary: financialData.summary || "Financial analysis of the provided documents.",
+                            keyFindings: [],
+                            recommendedActions: [],
+                            keyMetrics: financialData.metrics || []
+                        },
+
+                        // Financial Analysis Section
+                        financialAnalysis: financialData.financialAnalysis || {
+                            metrics: financialData.metrics || [],
+                            trends: []
+                        },
+
+                        // Other sections
+                        recommendations: financialData.recommendations || [],
+                        riskFactors: financialData.riskFactors || [],
+                        complianceItems: financialData.complianceItems || [],
+                        financialStatements: financialData.financialStatements || {},
+                        ratioAnalysis: processedRatioAnalysis,
+                        taxCompliance: financialData.taxCompliance || {
+                            gst: { status: 'compliant', details: 'Not evaluated' },
+                            incomeTax: { status: 'compliant', details: 'Not evaluated' },
+                            tds: { status: 'compliant', details: 'Not evaluated' }
+                        },
+
+                        // Audit Findings
+                        auditFindings: financialData.auditFindings || {
+                            findings: [],
+                            overallAssessment: "No audit findings available."
+                        },
+
+                        // Document Analysis - new section
+                        documentAnalysis: financialData.documentAnalysis || {
+                            availableDocuments: availableDocuments.map(doc => ({
+                                documentType: doc.documentType,
+                                quality: "moderate",
+                                completeness: "partial", // Using valid enum value: 'complete', 'partial', or 'incomplete'
+                                keyInsights: ["Document was processed but detailed analysis not available"]
+                            })),
+                            missingDocuments: {
+                                list: missingDocumentTypes,
+                                impact: "Missing documents may limit the completeness of the financial analysis.",
+                                recommendations: ["Upload the missing documents to improve analysis quality."]
+                            }
+                        },
+
+                        // Directors Table Section
+                        directorsTable: financialData.directorsTable || {
+                            overview: "No directors information available in the provided documents.",
+                            directors: [],
+                            analysis: "Unable to analyze directors information due to lack of data.",
+                            recommendations: ["Provide company incorporation documents or annual returns to analyze the board of directors."]
+                        },
+
+                        // Key Business Agreements Section
+                        keyBusinessAgreements: financialData.keyBusinessAgreements || {
+                            overview: "No key business agreements information available in the provided documents.",
+                            agreements: [],
+                            analysis: "Unable to analyze key business agreements due to lack of data.",
+                            recommendations: ["Provide contracts and business agreements for analysis."]
+                        },
+
+                        // Leave Policy Section
+                        leavePolicy: financialData.leavePolicy || {
+                            overview: "No leave policy information available in the provided documents.",
+                            policies: [],
+                            analysis: "Unable to analyze leave policy due to lack of data.",
+                            recommendations: ["Provide HR policy documents for analysis."]
+                        },
+
+                        // Provisions & Prepayments Section
+                        provisionsAndPrepayments: financialData.provisionsAndPrepayments || {
+                            overview: "No provisions and prepayments information available in the provided documents.",
+                            items: [],
+                            analysis: "Unable to analyze provisions and prepayments due to lack of data.",
+                            recommendations: ["Provide detailed balance sheet and notes to accounts for analysis."]
+                        },
+
+                        // Deferred Tax Assets Section
+                        deferredTaxAssets: financialData.deferredTaxAssets || {
+                            overview: "No deferred tax assets information available in the provided documents.",
+                            items: [],
+                            analysis: "Unable to analyze deferred tax assets due to lack of data.",
+                            recommendations: ["Provide tax computation documents and notes to accounts for analysis."]
+                        },
+
+                        // Metadata
+                        documentSources: documents.map(doc => doc._id ? doc._id.toString() : ''),
+                        status: 'final',
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Expire after 30 days
+                    });
+
+                    // Set the financial report to the legacy report
+                    financialReport = legacyFinancialReport;
+                }
             }
 
             // Log and process Forward-Looking Analysis data
@@ -889,55 +1109,84 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
             await financialReport.save();
             console.log('Saved financial report to database');
 
-            // Convert the Mongoose document to a plain JavaScript object
-            const reportObj = financialReport.toObject();
-
             // Return complete analysis data with current date as generation date
-            res.json({
-                // Include the report type and perspective
-                reportType: reportObj.reportType,
-                reportPerspective: reportObj.reportPerspective,
+            // Format the response based on the version parameter
+            if (version === 'new') {
+                // For new version, return the new model structure
+                // Use type assertion to tell TypeScript this is a NewFinancialDueDiligenceReport
+                const newReportObj = financialReport.toObject() as any;
 
-                // Include the total company score
-                totalCompanyScore: reportObj.totalCompanyScore,
+                res.json({
+                    // Core fields
+                    companyName: newReportObj.companyName,
+                    reportDate: newReportObj.reportDate,
 
-                // Include the investment decision
-                investmentDecision: reportObj.investmentDecision,
+                    // Report content based on FINALREPORT.MD structure
+                    introduction: newReportObj.introduction,
+                    items: newReportObj.items,
+                    missingDocuments: newReportObj.missingDocuments,
+                    riskScore: newReportObj.riskScore,
+                    disclaimer: newReportObj.disclaimer,
 
-                // Include the compatibility analysis
-                compatibilityAnalysis: reportObj.compatibilityAnalysis,
+                    // Document tracking
+                    availableDocuments: newReportObj.availableDocuments,
 
-                // Include the Forward-Looking Analysis
-                forwardLookingAnalysis: reportObj.forwardLookingAnalysis,
+                    // Metadata
+                    generatedDate: newReportObj.createdAt,
+                    reportCalculated: newReportObj.reportCalculated,
+                    entityProfile
+                });
+            } else {
+                // For standard version, return the legacy model structure
+                // Use type assertion to tell TypeScript this is a FinancialDueDiligenceReport
+                const legacyReportObj = financialReport.toObject() as any;
 
-                // Include the scoring breakdown
-                scoringBreakdown: reportObj.scoringBreakdown,
+                res.json({
+                    // Include the report type and perspective
+                    reportType: legacyReportObj.reportType,
+                    reportPerspective: legacyReportObj.reportPerspective,
 
-                // Standard sections
-                executiveSummary: reportObj.executiveSummary,
-                financialAnalysis: reportObj.financialAnalysis,
-                recommendations: reportObj.recommendations,
-                riskFactors: reportObj.riskFactors,
-                complianceItems: reportObj.complianceItems,
-                financialStatements: reportObj.financialStatements,
-                ratioAnalysis: reportObj.ratioAnalysis,
-                taxCompliance: reportObj.taxCompliance,
-                auditFindings: reportObj.auditFindings,
-                documentAnalysis: reportObj.documentAnalysis,
+                    // Include the total company score
+                    totalCompanyScore: legacyReportObj.totalCompanyScore,
 
-                // Add the table sections
-                directorsTable: reportObj.directorsTable,
-                keyBusinessAgreements: reportObj.keyBusinessAgreements,
-                leavePolicy: reportObj.leavePolicy,
-                provisionsAndPrepayments: reportObj.provisionsAndPrepayments,
-                deferredTaxAssets: reportObj.deferredTaxAssets,
+                    // Include the investment decision
+                    investmentDecision: legacyReportObj.investmentDecision,
 
-                availableDocuments: reportObj.availableDocuments,
-                missingDocumentTypes: reportObj.missingDocumentTypes,
-                generatedDate: reportObj.createdAt,
-                reportCalculated: reportObj.reportCalculated,
-                entityProfile
-            });
+                    // Include the compatibility analysis
+                    compatibilityAnalysis: legacyReportObj.compatibilityAnalysis,
+
+                    // Include the Forward-Looking Analysis
+                    forwardLookingAnalysis: legacyReportObj.forwardLookingAnalysis,
+
+                    // Include the scoring breakdown
+                    scoringBreakdown: legacyReportObj.scoringBreakdown,
+
+                    // Standard sections
+                    executiveSummary: legacyReportObj.executiveSummary,
+                    financialAnalysis: legacyReportObj.financialAnalysis,
+                    recommendations: legacyReportObj.recommendations,
+                    riskFactors: legacyReportObj.riskFactors,
+                    complianceItems: legacyReportObj.complianceItems,
+                    financialStatements: legacyReportObj.financialStatements,
+                    ratioAnalysis: legacyReportObj.ratioAnalysis,
+                    taxCompliance: legacyReportObj.taxCompliance,
+                    auditFindings: legacyReportObj.auditFindings,
+                    documentAnalysis: legacyReportObj.documentAnalysis,
+
+                    // Add the table sections
+                    directorsTable: legacyReportObj.directorsTable,
+                    keyBusinessAgreements: legacyReportObj.keyBusinessAgreements,
+                    leavePolicy: legacyReportObj.leavePolicy,
+                    provisionsAndPrepayments: legacyReportObj.provisionsAndPrepayments,
+                    deferredTaxAssets: legacyReportObj.deferredTaxAssets,
+
+                    availableDocuments: legacyReportObj.availableDocuments,
+                    missingDocumentTypes: legacyReportObj.missingDocumentTypes,
+                    generatedDate: legacyReportObj.createdAt,
+                    reportCalculated: legacyReportObj.reportCalculated,
+                    entityProfile
+                });
+            }
         } catch (error) {
             handleControllerError(
                 res,
@@ -963,6 +1212,7 @@ export const getFinancialDueDiligenceReport = async (req: Request, res: Response
     try {
         console.log('Received request for financial due diligence report');
         console.log('Params:', req.params);
+        console.log('Query:', req.query);
 
         if (!req.user?.userId) {
             res.status(401).json({ message: 'Unauthorized' });
@@ -971,6 +1221,7 @@ export const getFinancialDueDiligenceReport = async (req: Request, res: Response
 
         const { entityId } = req.params;
         const entityType = req.query.entityType as 'startup' | 'investor' || 'startup';
+        const version = req.query.version as string;
 
         if (!entityId) {
             res.status(400).json({ message: 'Entity ID is required' });
@@ -990,7 +1241,18 @@ export const getFinancialDueDiligenceReport = async (req: Request, res: Response
             return;
         }
 
-        console.log('Found report, returning data');
+        // Check if the report was successfully calculated (for new version)
+        if (version === 'new' && report.reportCalculated === false) {
+            console.log('Report exists but was not successfully calculated');
+            res.status(422).json({
+                message: 'Financial due diligence report exists but was not successfully calculated',
+                reportId: report._id,
+                reportCalculated: false
+            });
+            return;
+        }
+
+        console.log(`Found report (version: ${version || 'standard'}), returning data`);
 
         // Convert the Mongoose document to a plain JavaScript object
         const reportObj = report.toObject();
@@ -1091,6 +1353,7 @@ export const generateFinancialDueDiligenceReport = async (req: Request, res: Res
     try {
         console.log('Received request to generate financial due diligence report');
         console.log('Params:', req.params);
+        console.log('Query:', req.query);
 
         if (!req.user?.userId) {
             res.status(401).json({ message: 'Unauthorized' });
@@ -1099,6 +1362,7 @@ export const generateFinancialDueDiligenceReport = async (req: Request, res: Res
 
         const { entityId } = req.params;
         const entityType = req.body.entityType as 'startup' | 'investor' || 'startup';
+        const version = req.query.version as string;
 
         if (!entityId) {
             res.status(400).json({ message: 'Entity ID is required' });
@@ -1109,7 +1373,11 @@ export const generateFinancialDueDiligenceReport = async (req: Request, res: Res
         const modifiedReq = {
             ...req,
             params: { entityId },
-            query: { entityType }
+            query: {
+                entityType,
+                // Preserve the version parameter if it exists
+                ...(version ? { version } : {})
+            }
         };
 
         // Forward to the analyze endpoint to generate a new report
@@ -1344,6 +1612,7 @@ export const getEntityDocumentDetails = async (req: Request, res: Response): Pro
     try {
         console.log('Received request for entity document details');
         console.log('Params:', req.params);
+        console.log('Query:', req.query);
 
         if (!req.user?.userId) {
             res.status(401).json({ message: 'Unauthorized' });
@@ -1358,13 +1627,47 @@ export const getEntityDocumentDetails = async (req: Request, res: Response): Pro
             return;
         }
 
+        // Get entity profile information
+        let entityProfile;
+        if (entityType === 'startup') {
+            entityProfile = await StartupProfileModel.findOne({ userId: entityId });
+        } else {
+            entityProfile = await InvestorProfileModel.findOne({ userId: entityId });
+        }
+
+        // Find financial documents for the entity
+        const documents = await DocumentModel.find({
+            userId: entityId,
+            documentType: { $regex: /^financial_/ }
+        });
+
         // Get document information for the entity
         const { availableDocuments, missingDocumentTypes } = await getEntityDocuments(entityId, entityType);
 
-        // Return document information
-        res.json({
+        // Check if documents are available
+        const hasDocuments = documents.length > 0;
+
+        // Return document availability status with more details
+        res.status(200).json({
+            documentsAvailable: hasDocuments,
+            documentCount: documents.length,
+            documents: documents.map(doc => ({
+                id: doc._id,
+                documentType: doc.documentType,
+                originalName: doc.originalName,
+                description: doc.description,
+                timePeriod: doc.timePeriod,
+                fileType: doc.fileType,
+                fileSize: doc.fileSize,
+                createdAt: doc.createdAt,
+                updatedAt: doc.updatedAt
+            })),
             availableDocuments,
-            missingDocumentTypes
+            missingDocumentTypes,
+            entityProfile: entityProfile ? {
+                companyName: entityProfile.companyName,
+                entityType
+            } : null
         });
     } catch (error) {
         handleControllerError(

@@ -293,18 +293,15 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 ...(perspective === 'investor' ? investorSpecificDocumentTypes : [])
             ];
 
-            // Fetch all financial documents for the selected entity (not the logged-in user)
-            // If perspective is 'startup', we want to analyze the startup's documents
-            // If perspective is 'investor', we want to analyze the investor's documents
-            // This ensures we're always analyzing the selected entity's documents, not the logged-in user's
+            // Fetch all documents for the selected entity for analysis
             const entityIdToAnalyze = perspective === 'startup' ? startupId : investorId;
 
             console.log(`Analyzing financial documents for entity ID: ${entityIdToAnalyze} with perspective: ${perspective}`);
 
-            // Fetch documents for the selected entity
             const documents = await DocumentModel.find({
-                userId: entityIdToAnalyze,
-                documentType: { $regex: /^financial_/ }
+                userId: entityIdToAnalyze
+                // No documentType filter here, to include all types (e.g., 'other', 'legal', etc.)
+                // This ensures all documents are available for the analysis process.
             });
 
             // Gather all available information about the startup and investor

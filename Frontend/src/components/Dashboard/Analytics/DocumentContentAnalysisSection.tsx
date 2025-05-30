@@ -192,9 +192,9 @@ const DocumentContentAnalysisSection: React.FC<DocumentContentAnalysisSectionPro
                   word.charAt(0).toUpperCase() + word.slice(1)
                 ).join(' ')}
               </h5>
-              
+
               <p className="text-gray-700 mb-3">{doc.contentSummary}</p>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                 <div>
                   <h6 className="font-medium text-blue-700 mb-1">Due Diligence Insights</h6>
@@ -207,7 +207,7 @@ const DocumentContentAnalysisSection: React.FC<DocumentContentAnalysisSectionPro
                     ))}
                   </ul>
                 </div>
-                
+
                 <div>
                   <h6 className="font-medium text-green-700 mb-1">Audit Insights</h6>
                   <ul className="space-y-1">
@@ -220,7 +220,7 @@ const DocumentContentAnalysisSection: React.FC<DocumentContentAnalysisSectionPro
                   </ul>
                 </div>
               </div>
-              
+
               <div className="mb-3">
                 <h6 className="font-medium text-purple-700 mb-1">Key Financial Data</h6>
                 <ul className="space-y-1">
@@ -232,7 +232,7 @@ const DocumentContentAnalysisSection: React.FC<DocumentContentAnalysisSectionPro
                   ))}
                 </ul>
               </div>
-              
+
               {doc.inconsistencies && doc.inconsistencies.length > 0 && (
                 <div className="mb-3">
                   <h6 className="font-medium text-red-700 mb-1">Inconsistencies</h6>
@@ -246,7 +246,7 @@ const DocumentContentAnalysisSection: React.FC<DocumentContentAnalysisSectionPro
                   </ul>
                 </div>
               )}
-              
+
               <div>
                 <h6 className="font-medium text-indigo-700 mb-1">Recommendations</h6>
                 <ul className="space-y-1">

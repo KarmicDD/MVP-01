@@ -554,40 +554,76 @@ router.get('/check-profile', authenticateJWT, async (req, res): Promise<void> =>
         }
         const userId = req.user.userId;
         let profileComplete = false;
+        let role = 'unknown';
 
-        // Get user details including role
-        const user = await prisma.user.findUnique({
-            where: {
-                user_id: req.user.userId,
-            },
-            select: {
-                user_id: true,
-                email: true,
-                role: true,
-            },
-        });
+        try {
+            // Get user details including role
+            const user = await prisma.user.findUnique({
+                where: {
+                    user_id: req.user.userId,
+                },
+                select: {
+                    user_id: true,
+                    email: true,
+                    role: true,
+                },
+            });
 
-        if (user?.role === 'startup') {
-            // Check if startup profile exists and is complete
-            const startupProfile = await StartupProfileModel.findOne({ userId });
-            profileComplete = !!startupProfile &&
-                !!startupProfile.companyName &&
-                !!startupProfile.industry &&
-                !!startupProfile.fundingStage;
-        } else if (user?.role === 'investor') {
-            // Check if investor profile exists and is complete
-            const investorProfile = await InvestorProfileModel.findOne({ userId });
-            profileComplete = !!investorProfile &&
-                investorProfile.industriesOfInterest.length > 0 &&
-                investorProfile.preferredStages.length > 0;
+            if (!user) {
+                console.log('User not found in database:', req.user.userId);
+                res.status(404).json({ message: 'User not found', profileComplete: false });
+                return;
+            }
+
+            role = user.role || 'unknown';
+
+            if (role === 'startup') {
+                // Check if startup profile exists and is complete
+                try {
+                    const startupProfile = await StartupProfileModel.findOne({ userId });
+                    profileComplete = !!startupProfile &&
+                        !!startupProfile.companyName &&
+                        !!startupProfile.industry &&
+                        !!startupProfile.fundingStage;
+                } catch (profileError) {
+                    console.error('Error fetching startup profile:', profileError);
+                    // Continue with profileComplete = false
+                }
+            } else if (role === 'investor') {
+                // Check if investor profile exists and is complete
+                try {
+                    const investorProfile = await InvestorProfileModel.findOne({ userId });
+                    profileComplete = !!investorProfile &&
+                        Array.isArray(investorProfile.industriesOfInterest) &&
+                        investorProfile.industriesOfInterest.length > 0 &&
+                        Array.isArray(investorProfile.preferredStages) &&
+                        investorProfile.preferredStages.length > 0;
+                } catch (profileError) {
+                    console.error('Error fetching investor profile:', profileError);
+                    // Continue with profileComplete = false
+                }
+            }
+
+            res.json({
+                profileComplete,
+                role,
+                userId
+            });
+        } catch (dbError) {
+            console.error('Database error when checking profile:', dbError);
+            // Return a partial response instead of an error
+            res.json({
+                profileComplete: false,
+                error: 'Error checking profile status',
+                role: 'unknown'
+            });
         }
-
-        res.json({ profileComplete });
-        return;
     } catch (error) {
         console.error('Error checking profile:', error);
-        res.status(500).json({ message: 'Server error checking profile' });
-        return;
+        res.status(500).json({
+            message: 'Server error checking profile',
+            profileComplete: false
+        });
     }
 });
 
