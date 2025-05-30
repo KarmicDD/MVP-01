@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticateJWT } from '../middleware/auth';
+import { authenticateJWT } from '../../middleware/auth';
 import {
     getDashboardStats,
     getRecentMatches,
@@ -7,7 +7,7 @@ import {
     getUpcomingTasks,
     getAllDashboardData,
     getInsights
-} from '../controllers/dashboardController';
+} from '../../controllers/dashboardController';
 
 const router = express.Router();
 

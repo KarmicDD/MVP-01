@@ -1,6 +1,6 @@
 import express from 'express';
-import { getUserProfile, getStartupDashboard, getInvestorDashboard } from '../controllers/userController';
-import { authenticateJWT, authorizeRole } from '../middleware/auth';
+import { getUserProfile, getStartupDashboard, getInvestorDashboard } from '../../controllers/userController';
+import { authenticateJWT, authorizeRole } from '../../middleware/auth';
 
 const router = express.Router();
 

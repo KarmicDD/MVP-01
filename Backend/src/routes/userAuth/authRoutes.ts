@@ -1,8 +1,8 @@
 import express from 'express';
 // @ts-ignore
 import { body } from 'express-validator';
-import passport from '../config/passport';
-import { register, login, updateOAuthUserRole, handleOAuthCallback } from '../controllers/authController';
+import passport from '../../config/passport';
+import { register, login, updateOAuthUserRole, handleOAuthCallback } from '../../controllers/authController';
 
 const router = express.Router();
 

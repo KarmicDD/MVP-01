@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticateJWT } from '../middleware/auth';
+import { authenticateJWT } from '../../middleware/auth';
 import {
     upload,
     uploadFinancialDocuments,
@@ -7,13 +7,13 @@ import {
     getFinancialReports,
     getFinancialReport,
     generatePdfReport
-} from '../controllers/financialDueDiligenceController';
+} from '../../controllers/financialDueDiligenceController';
 import {
     analyzeFinancialDueDiligence as analyzeMatchFinancialDueDiligence,
     getFinancialDueDiligenceReport as getMatchFinancialDueDiligenceReport,
     shareFinancialDueDiligenceReport as shareMatchFinancialDueDiligenceReport,
     exportFinancialDueDiligenceReportPdf as exportMatchFinancialDueDiligenceReportPdf
-} from '../controllers/FinancialDueDiligenceMatchController';
+} from '../../controllers/FinancialDueDiligenceMatchController';
 import {
     analyzeFinancialDueDiligence,
     getFinancialDueDiligenceReport,
@@ -21,7 +21,7 @@ import {
     shareFinancialDueDiligenceReport,
     exportFinancialDueDiligenceReportPdf,
     getEntityDocumentDetails
-} from '../controllers/EntityFinancialDueDiligenceController';
+} from '../../controllers/EntityFinancialDueDiligenceController';
 
 const router = express.Router();
 

@@ -1,6 +1,6 @@
 import express from 'express';
-import { authenticateJWT, authorizeRole } from '../middleware/auth';
-import { batchAnalyzeCompatibility, getStartupInvestorCompatibility } from '../controllers/compatibilityController';
+import { authenticateJWT, authorizeRole } from '../../middleware/auth';
+import { batchAnalyzeCompatibility, getStartupInvestorCompatibility } from '../../controllers/compatibilityController';
 
 const router = express.Router();
 

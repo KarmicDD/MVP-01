@@ -1,6 +1,6 @@
 import express from 'express';
-import { getMatchRecommendations, getBatchRecommendations, testRecommendationCache } from '../controllers/recommendationController';
-import { authenticateJWT } from '../middleware/auth';
+import { getMatchRecommendations, getBatchRecommendations, testRecommendationCache } from '../../controllers/recommendationController';
+import { authenticateJWT } from '../../middleware/auth';
 
 const router = express.Router();
 

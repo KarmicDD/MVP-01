@@ -1,11 +1,11 @@
 import express from 'express';
-import { authenticateJWT } from '../middleware/auth';
-import { asyncHandler } from '../utils/asyncHandler';
+import { authenticateJWT } from '../../middleware/auth';
+import { asyncHandler } from '../../utils/asyncHandler';
 
 // Import document details controller for reuse
 import {
   getEntityDocumentDetails
-} from '../controllers/EntityFinancialDueDiligenceController';
+} from '../../controllers/EntityFinancialDueDiligenceController';
 
 // Import all the new controller functions
 import {
@@ -13,7 +13,7 @@ import {
   getNewFinancialDueDiligenceReport,
   generateNewFinancialDueDiligenceReport,
   checkDocumentsAvailability
-} from '../controllers/NewFinancialDueDiligenceController';
+} from '../../controllers/NewFinancialDueDiligenceController';
 
 const router = express.Router();
 

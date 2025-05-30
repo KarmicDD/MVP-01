@@ -1,16 +1,16 @@
 import express from 'express';
-import { authenticateJWT } from '../middleware/auth';
+import { authenticateJWT } from '../../middleware/auth';
 import {
     recordDocumentView,
     recordDocumentDownload,
     getDocumentAnalytics,
     getUserDocumentAnalytics
-} from '../controllers/documentAnalyticsController';
+} from '../../controllers/documentAnalyticsController';
 import {
     recordDailyAnalytics,
     getDailyAnalytics,
     getAnalyticsChanges
-} from '../controllers/dailyAnalyticsController';
+} from '../../controllers/dailyAnalyticsController';
 
 const router = express.Router();
 

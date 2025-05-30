@@ -4,8 +4,8 @@ import {
     saveDraftResponses,
     submitQuestionnaire,
     getQuestionnaireStatus
-} from '../controllers/questionnaireController';
-import { authenticateJWT } from '../middleware/auth';
+} from '../../controllers/questionnaireController';
+import { authenticateJWT } from '../../middleware/auth';
 
 const router = express.Router();
 

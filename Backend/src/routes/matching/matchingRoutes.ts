@@ -3,8 +3,8 @@ import express from 'express';
 import {
     findMatchesForStartup,
     findMatchesForInvestor
-} from '../controllers/matchingController';
-import { authenticateJWT, authorizeRole } from '../middleware/auth';
+} from '../../controllers/matchingController';
+import { authenticateJWT, authorizeRole } from '../../middleware/auth';
 
 const router = express.Router();
 

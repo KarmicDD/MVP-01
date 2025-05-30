@@ -1,7 +1,7 @@
 import express from 'express';
-import { authenticateJWT } from '../middleware/auth';
-import { analyzeBeliefSystemAlignment } from '../controllers/BeliefSystemAnalysisController';
-import QuestionnaireSubmissionModel from '../models/question/QuestionnaireSubmission';
+import { authenticateJWT } from '../../middleware/auth';
+import { analyzeBeliefSystemAlignment } from '../../controllers/BeliefSystemAnalysisController';
+import QuestionnaireSubmissionModel from '../../models/question/QuestionnaireSubmission';
 
 const router = express.Router();
 
