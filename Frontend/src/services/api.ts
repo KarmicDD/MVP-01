@@ -441,10 +441,8 @@ export const profileService = {
             console.error('Error sharing profile via email:', error);
             throw error;
         }
-    },
-
-    // Document management methods
-    uploadDocument: async (file: File, metadata: { description?: string, documentType?: string, timePeriod?: string, isPublic?: boolean }) => {
+    },    // Document management methods
+    uploadDocument: async (file: File, metadata: { description?: string, documentType?: string, category?: string, timePeriod?: string, isPublic?: boolean }) => {
         try {
             const formData = new FormData();
             formData.append('document', file);
@@ -455,6 +453,10 @@ export const profileService = {
 
             if (metadata.documentType) {
                 formData.append('documentType', metadata.documentType);
+            }
+
+            if (metadata.category) {
+                formData.append('category', metadata.category);
             }
 
             if (metadata.timePeriod) {
@@ -498,7 +500,7 @@ export const profileService = {
         }
     },
 
-    updateDocumentMetadata: async (documentId: string, metadata: { description?: string, documentType?: string, timePeriod?: string, isPublic?: boolean }) => {
+    updateDocumentMetadata: async (documentId: string, metadata: { description?: string, documentType?: string, category?: string, timePeriod?: string, isPublic?: boolean }) => {
         try {
             const response = await api.put(`/profile/documents/${documentId}`, metadata);
             return response.data;

@@ -601,9 +601,7 @@ export const uploadDocument = async (req: Request & { file?: any }, res: Respons
             if (!req.file) {
                 res.status(400).json({ message: 'No file uploaded' });
                 return;
-            }
-
-            const { description, documentType, isPublic, timePeriod } = req.body;
+            } const { description, documentType, category, isPublic, timePeriod } = req.body;
 
             // Store relative path instead of absolute path
             const relativePath = path.relative(path.join(__dirname, '../..'), req.file.path);
@@ -618,13 +616,12 @@ export const uploadDocument = async (req: Request & { file?: any }, res: Respons
                 filePath: relativePath, // Store relative path
                 description: description || '',
                 documentType: documentType || 'other',
+                category: category || 'other', // Add category field
                 timePeriod: timePeriod || '', // Add time period field
                 isPublic: isPublic === 'true'
             });
 
-            await document.save();
-
-            res.status(201).json({
+            await document.save(); res.status(201).json({
                 message: 'Document uploaded successfully',
                 document: {
                     id: document._id,
@@ -634,6 +631,7 @@ export const uploadDocument = async (req: Request & { file?: any }, res: Respons
                     fileSize: document.fileSize,
                     description: document.description,
                     documentType: document.documentType,
+                    category: document.category, // Include category in response
                     timePeriod: document.timePeriod, // Include time period in response
                     isPublic: document.isPublic,
                     createdAt: document.createdAt
@@ -661,24 +659,23 @@ export const getUserDocuments = async (req: Request, res: Response): Promise<voi
 
         const documents = await DocumentModel.find({ userId: requestedUserId })
             .select('-filePath')
-            .sort({ createdAt: -1 });
-
-        res.status(200).json({
-            documents: documents.map(doc => ({
-                id: doc._id,
-                userId: doc.userId,
-                fileName: doc.fileName,
-                originalName: doc.originalName,
-                fileType: doc.fileType,
-                fileSize: doc.fileSize,
-                description: doc.description,
-                documentType: doc.documentType,
-                timePeriod: doc.timePeriod || '', // Include time period in response
-                isPublic: doc.isPublic,
-                createdAt: doc.createdAt,
-                uploadDate: doc.createdAt
-            }))
-        });
+            .sort({ createdAt: -1 }); res.status(200).json({
+                documents: documents.map(doc => ({
+                    id: doc._id,
+                    userId: doc.userId,
+                    fileName: doc.fileName,
+                    originalName: doc.originalName,
+                    fileType: doc.fileType,
+                    fileSize: doc.fileSize,
+                    description: doc.description,
+                    documentType: doc.documentType,
+                    category: doc.category, // Include category in response
+                    timePeriod: doc.timePeriod || '', // Include time period in response
+                    isPublic: doc.isPublic,
+                    createdAt: doc.createdAt,
+                    uploadDate: doc.createdAt
+                }))
+            });
     } catch (error) {
         console.error('Get user documents error:', error);
         res.status(500).json({ message: 'Server error' });
@@ -901,8 +898,7 @@ export const updateDocumentMetadata = async (req: Request, res: Response): Promi
             return;
         }
 
-        const { documentId } = req.params;
-        const { description, documentType, isPublic, timePeriod } = req.body;
+        const { documentId } = req.params; const { description, documentType, category, isPublic, timePeriod } = req.body;
 
         // Find the document
         const document = await DocumentModel.findById(documentId);
@@ -925,12 +921,15 @@ export const updateDocumentMetadata = async (req: Request, res: Response): Promi
             const validDocType = documentType as import('../models/Profile/Document').DocumentType;
             document.documentType = validDocType;
         }
+        if (category) {
+            // Import DocumentCategory from the Document model to ensure type compatibility
+            const validCategory = category as import('../models/Profile/Document').DocumentCategory;
+            document.category = validCategory;
+        }
         if (timePeriod !== undefined) document.timePeriod = timePeriod;
         if (isPublic !== undefined) document.isPublic = isPublic === true || isPublic === 'true';
 
-        await document.save();
-
-        res.status(200).json({
+        await document.save(); res.status(200).json({
             message: 'Document updated successfully',
             document: {
                 id: document._id,
@@ -940,6 +939,7 @@ export const updateDocumentMetadata = async (req: Request, res: Response): Promi
                 fileSize: document.fileSize,
                 description: document.description,
                 documentType: document.documentType,
+                category: document.category, // Include category in response
                 timePeriod: document.timePeriod || '',
                 isPublic: document.isPublic,
                 createdAt: document.createdAt,

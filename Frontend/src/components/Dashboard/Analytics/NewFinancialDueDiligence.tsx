@@ -232,7 +232,7 @@ const NewFinancialDueDiligence: React.FC<NewFinancialDueDiligenceProps> = ({ use
               {/* Generate Report Button */}
               <div className="mt-8 flex justify-center">
                 <button
-                  onClick={generateReport}
+                  onClick={() => generateReport()}
                   className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center"
                 >
                   <FiBarChart2 className="mr-2" />
