@@ -498,14 +498,24 @@ export const profileService = {
             console.error('Error deleting document:', error);
             throw error;
         }
-    },
-
-    updateDocumentMetadata: async (documentId: string, metadata: { description?: string, documentType?: string, category?: string, timePeriod?: string, isPublic?: boolean }) => {
+    }, updateDocumentMetadata: async (documentId: string, metadata: { description?: string, documentType?: string, category?: string, timePeriod?: string, isPublic?: boolean }) => {
         try {
             const response = await api.put(`/profile/documents/${documentId}`, metadata);
             return response.data;
         } catch (error) {
             console.error('Error updating document metadata:', error);
+            throw error;
+        }
+    },
+
+    downloadDocument: async (documentId: string): Promise<Blob> => {
+        try {
+            const response = await api.get(`/profile/documents/${documentId}/download`, {
+                responseType: 'blob'
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error downloading document:', error);
             throw error;
         }
     },

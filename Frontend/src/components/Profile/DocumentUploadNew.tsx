@@ -400,8 +400,8 @@ const DocumentUpload: React.FC = () => {
                                                 <motion.div
                                                     key={docDef.type}
                                                     className={`p-4 rounded-lg border transition-all cursor-pointer ${hasDoc
-                                                            ? `bg-${color}-50 border-${color}-200`
-                                                            : `bg-white border-gray-200 hover:border-${color}-300 hover:bg-${color}-25`
+                                                        ? `bg-${color}-50 border-${color}-200`
+                                                        : `bg-white border-gray-200 hover:border-${color}-300 hover:bg-${color}-25`
                                                         }`}
                                                     whileHover={{ scale: 1.02 }}
                                                     onClick={() => openUploadModal(category, docDef.type)}
@@ -537,10 +537,132 @@ const DocumentUpload: React.FC = () => {
                     <SimpleSpinner size="lg" />
                 </div>
             ) : (
-                <div>
-                    <CategorySection category="financial" title="Financial Documents" />
+                <div>                    <CategorySection category="financial" title="Financial Documents" />
                     <CategorySection category="legal" title="Legal Documents" />
                     <CategorySection category="other" title="Other Documents" />
+
+                    {/* All Uploaded Documents Section */}
+                    {documents.length > 0 && (
+                        <div className="mt-8">
+                            <div className="flex items-center mb-6">
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center mr-3">
+                                    <FiFileText className="text-indigo-600" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-800">All Uploaded Documents ({documents.length})</h3>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                {documents.map(doc => (
+                                    <motion.div
+                                        key={doc.id}
+                                        className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300"
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.3 }}
+                                    >
+                                        <div className="border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white p-4 flex items-center">
+                                            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center mr-3 flex-shrink-0">
+                                                <div className="text-xl text-indigo-600">{getFileIcon(doc.fileType)}</div>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="text-sm font-medium text-gray-800 truncate" title={doc.originalName}>
+                                                    {doc.originalName}
+                                                </h3>
+                                                <p className="text-xs text-gray-500">
+                                                    {formatFileSize(doc.fileSize)}
+                                                </p>
+                                            </div>
+                                            <div className="ml-2">
+                                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${doc.isPublic
+                                                        ? 'bg-green-100 text-green-800 border border-green-200'
+                                                        : 'bg-gray-100 text-gray-800 border border-gray-200'
+                                                    }`}>
+                                                    {doc.isPublic ? (
+                                                        <>
+                                                            <FiEye className="w-3 h-3 mr-1" />
+                                                            Public
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <FiEyeOff className="w-3 h-3 mr-1" />
+                                                            Private
+                                                        </>
+                                                    )}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-4">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="flex flex-wrap gap-1">
+                                                    <span className="text-xs font-medium text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md">
+                                                        {DocumentConfigService.getDocumentDefinition(doc.documentType)?.label || doc.documentType}
+                                                    </span>
+                                                    <span className="text-xs font-medium text-blue-700 bg-blue-50 px-2 py-1 rounded-md capitalize">
+                                                        {doc.category}
+                                                    </span>
+                                                    {doc.timePeriod && (
+                                                        <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-1 rounded-md">
+                                                            {doc.timePeriod}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {doc.description && (
+                                                <p className="text-xs text-gray-600 mb-3 line-clamp-2">
+                                                    {doc.description}
+                                                </p>
+                                            )}
+
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs text-gray-500">
+                                                    Uploaded {new Date(doc.createdAt).toLocaleDateString()}
+                                                </span>
+                                                <div className="flex space-x-1">
+                                                    <motion.button
+                                                        onClick={() => handleDownload(doc.id)}
+                                                        className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                                                        whileHover={{ scale: 1.1 }}
+                                                        whileTap={{ scale: 0.9 }}
+                                                        title="View & Download"
+                                                    >
+                                                        <FiEye size={16} />
+                                                    </motion.button>
+                                                    <motion.button
+                                                        onClick={() => {
+                                                            setSelectedDocument(doc);
+                                                            setDescription(doc.description);
+                                                            setDocumentType(doc.documentType);
+                                                            setSelectedCategory(doc.category);
+                                                            setTimePeriod(doc.timePeriod || '');
+                                                            setIsPublic(doc.isPublic);
+                                                            setEditModalOpen(true);
+                                                        }}
+                                                        className="p-1.5 text-gray-600 hover:bg-gray-50 rounded-lg"
+                                                        whileHover={{ scale: 1.1 }}
+                                                        whileTap={{ scale: 0.9 }}
+                                                        title="Edit"
+                                                    >
+                                                        <FiEdit size={16} />
+                                                    </motion.button>
+                                                    <motion.button
+                                                        onClick={() => handleDelete(doc.id)}
+                                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"
+                                                        whileHover={{ scale: 1.1 }}
+                                                        whileTap={{ scale: 0.9 }}
+                                                        title="Delete"
+                                                    >
+                                                        <FiTrash2 size={16} />
+                                                    </motion.button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {documents.length === 0 && (
                         <div className="text-center py-16 bg-gradient-to-b from-gray-50 to-white rounded-xl border border-gray-200 shadow-sm">
@@ -690,8 +812,8 @@ const DocumentUpload: React.FC = () => {
                                     onClick={handleUpload}
                                     disabled={isUploading || !selectedFile}
                                     className={`w-full py-3 px-4 rounded-lg flex items-center justify-center space-x-2 font-medium ${isUploading || !selectedFile
-                                            ? 'bg-gray-400 cursor-not-allowed'
-                                            : `bg-${getCategoryColor(selectedCategory)}-600 hover:bg-${getCategoryColor(selectedCategory)}-700 text-white`
+                                        ? 'bg-gray-400 cursor-not-allowed'
+                                        : `bg-${getCategoryColor(selectedCategory)}-600 hover:bg-${getCategoryColor(selectedCategory)}-700 text-white`
                                         }`}
                                 >
                                     {isUploading ? (

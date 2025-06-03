@@ -8,6 +8,7 @@ import SocialMediaLinks from './SocialMediaLinks';
 import TeamMembers from './TeamMembers';
 import InvestmentHistory from './InvestmentHistory';
 import DocumentUpload from './DocumentUpload';
+import NewDocumentUploadSystem from './NewDocumentUploadSystem';
 // import { FiSave } from 'react-icons/fi'; // Imported but not used
 // import LoadingSpinner from '../Loading'; // Imported but not used
 
@@ -156,16 +157,14 @@ const ProfileContent: React.FC<ProfileContentProps> = ({
                 onInvestmentChange={handleInvestmentChange}
               />
             </motion.div>
-          )}
-
-          {/* Documents Tab */}
+          )}          {/* Documents Tab */}
           {activeTab === 'documents' && !isViewOnly && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
             >
-              <DocumentUpload />
+              <NewDocumentUploadSystem />
             </motion.div>
           )}
 

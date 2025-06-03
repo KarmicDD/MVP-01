@@ -485,30 +485,31 @@ const DocumentUpload: React.FC = () => {
                           ? 'bg-green-100 text-green-800 border border-green-200'
                           : 'bg-gray-100 text-gray-800 border border-gray-200'
                           }`}>
-                          {doc.isPublic ? (
-                            <>
-                              <FiEye className="mr-1" size={10} />
-                              Public
-                            </>
-                          ) : (
-                            <>
-                              <FiEyeOff className="mr-1" size={10} />
-                              Private
-                            </>
-                          )}
+                          {doc.isPublic ? <FiEye className="mr-1" /> : <FiEyeOff className="mr-1" />}
+                          {doc.isPublic ? 'Public' : 'Private'}
                         </span>
                       </div>
                     </div>
+
                     <div className="p-4">
-                      <div className="mb-3">
-                        <p className="text-xs font-medium text-gray-600 mb-1">Description:</p>
-                        <p className="text-sm text-gray-800">{doc.description || 'No description provided'}</p>
+                      <div className="flex items-center mb-3">
+                        <span className="text-xs font-medium text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md">
+                          {getDocumentTypeLabel(doc.documentType)}
+                        </span>
+                        {doc.timePeriod && (
+                          <span className="text-xs font-medium text-blue-700 bg-blue-50 px-2 py-1 rounded-md ml-2">
+                            {doc.timePeriod}
+                          </span>
+                        )}
                       </div>
-                      <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-                        <span>Type: {doc.documentType}</span>
-                        {doc.timePeriod && <span>Period: {doc.timePeriod}</span>}
-                      </div>
-                      <div className="flex items-center justify-between">
+
+                      {doc.description && (
+                        <p className="text-xs text-gray-600 mb-4 line-clamp-2" title={doc.description}>
+                          {doc.description}
+                        </p>
+                      )}
+
+                      <div className="flex justify-between items-center mt-2 pt-3 border-t border-gray-100">
                         <span className="text-xs text-gray-500">
                           Uploaded {new Date(doc.createdAt).toLocaleDateString()}
                         </span>

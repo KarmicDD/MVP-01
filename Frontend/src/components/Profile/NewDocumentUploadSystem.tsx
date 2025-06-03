@@ -365,6 +365,104 @@ const NewDocumentUploadSystem: React.FC = () => {
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };    // Document management state
+    const [editingDoc, setEditingDoc] = useState<Document | null>(null);
+    const [deletingDoc, setDeletingDoc] = useState<Document | null>(null);
+
+    // Document management handlers
+    const handleEdit = (doc: Document) => {
+        setEditingDoc(doc);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingDoc) return;
+
+        try {
+            await profileService.updateDocumentMetadata(editingDoc.id, {
+                description: editingDoc.description,
+                documentType: editingDoc.documentType,
+                timePeriod: editingDoc.timePeriod,
+                isPublic: editingDoc.isPublic,
+                category: editingDoc.category
+            });
+
+            toast.success('Document updated successfully');
+            setEditingDoc(null);
+            await loadDocuments();
+        } catch (error) {
+            console.error('Error updating document:', error);
+            toast.error('Failed to update document');
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setEditingDoc(null);
+    };
+
+    const handleDelete = async (doc: Document) => {
+        setDeletingDoc(doc);
+    };
+
+    const confirmDelete = async () => {
+        if (!deletingDoc) return;
+
+        try {
+            await profileService.deleteDocument(deletingDoc.id);
+            toast.success('Document deleted successfully');
+            setDeletingDoc(null);
+            await loadDocuments();
+        } catch (error) {
+            console.error('Error deleting document:', error);
+            toast.error('Failed to delete document');
+        }
+    };
+
+    const handleDownload = async (doc: Document) => {
+        try {
+            const blob = await profileService.downloadDocument(doc.id);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = doc.originalName;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            toast.success('Document downloaded successfully');
+        } catch (error) {
+            console.error('Error downloading document:', error);
+            toast.error('Failed to download document');
+        }
+    };
+
+    const togglePublicStatus = async (doc: Document) => {
+        try {
+            await profileService.updateDocumentMetadata(doc.id, {
+                description: doc.description,
+                documentType: doc.documentType,
+                timePeriod: doc.timePeriod,
+                isPublic: !doc.isPublic,
+                category: doc.category
+            });
+
+            toast.success(`Document ${!doc.isPublic ? 'made public' : 'made private'}`);
+            await loadDocuments();
+        } catch (error) {
+            console.error('Error updating document visibility:', error);
+            toast.error('Failed to update document visibility');
+        }
+    };
+
+    const getDocumentTypeLabel = (documentType: DocumentType) => {
+        for (const category of documentCategories) {
+            const docConfig = category.documents.find(doc => doc.type === documentType);
+            if (docConfig) return docConfig.label;
+        }
+        return documentType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    };
+
+    const getCategoryInfo = (category: DocumentCategory) => {
+        return documentCategories.find(cat => cat.id === category);
     };
 
     // Close modal handler
@@ -420,12 +518,10 @@ const NewDocumentUploadSystem: React.FC = () => {
                         </div>
                     </motion.button>
                 ))}
-            </div>
-
-            {/* Uploaded Documents Summary */}
+            </div>            {/* Uploaded Documents Summary */}
             {documents.length > 0 && (
                 <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Uploaded Documents ({documents.length})</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Overview ({documents.length} documents)</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {documents.slice(0, 6).map((doc) => (
                             <div key={doc.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
@@ -445,10 +541,141 @@ const NewDocumentUploadSystem: React.FC = () => {
                 </div>
             )}
 
-            {/* Upload Modal */}
-            <AnimatePresence>
+            {/* All Uploaded Documents Section */}
+            {documents.length > 0 && (
+                <div className="bg-white rounded-lg shadow-sm border mb-8">
+                    <div className="p-6 border-b border-gray-200">
+                        <h3 className="text-xl font-semibold text-gray-900 flex items-center">
+                            <FiFolder className="w-6 h-6 mr-3 text-blue-600" />
+                            All Uploaded Documents ({documents.length})
+                        </h3>
+                        <p className="text-gray-600 mt-2">Manage, edit, and organize all your uploaded documents</p>
+                    </div>
+
+                    <div className="divide-y divide-gray-200">
+                        {documents.map((doc) => (
+                            <div key={doc.id} className="p-6 hover:bg-gray-50 transition-colors">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-start space-x-4 flex-1 min-w-0">
+                                        {/* Category Icon */}
+                                        <div className={`p-2 rounded-lg ${getCategoryInfo(doc.category)?.bgColor || 'bg-gray-100'}`}>
+                                            <div className={getCategoryInfo(doc.category)?.color || 'text-gray-600'}>
+                                                {getCategoryInfo(doc.category)?.icon || <FiFile className="w-5 h-5" />}
+                                            </div>
+                                        </div>
+
+                                        {/* Document Info */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center space-x-2 mb-2">
+                                                <h4 className="text-lg font-medium text-gray-900 truncate">{doc.originalName}</h4>
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${doc.isPublic
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : 'bg-red-100 text-red-800'
+                                                    }`}>
+                                                    {doc.isPublic ? (
+                                                        <>
+                                                            <FiEye className="w-3 h-3 mr-1" />
+                                                            Public
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <FiShield className="w-3 h-3 mr-1" />
+                                                            Private
+                                                        </>
+                                                    )}
+                                                </span>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
+                                                <div>
+                                                    <span className="font-medium">Type:</span>
+                                                    <div className="mt-1">{getDocumentTypeLabel(doc.documentType)}</div>
+                                                </div>
+                                                <div>
+                                                    <span className="font-medium">Category:</span>
+                                                    <div className="mt-1 capitalize">{doc.category}</div>
+                                                </div>
+                                                <div>
+                                                    <span className="font-medium">Size:</span>
+                                                    <div className="mt-1">{formatFileSize(doc.fileSize)}</div>
+                                                </div>
+                                                <div>
+                                                    <span className="font-medium">Uploaded:</span>
+                                                    <div className="mt-1">{new Date(doc.createdAt).toLocaleDateString()}</div>
+                                                </div>
+                                            </div>
+
+                                            {doc.description && (
+                                                <div className="mt-3">
+                                                    <span className="font-medium text-sm text-gray-600">Description:</span>
+                                                    <p className="text-sm text-gray-700 mt-1">{doc.description}</p>
+                                                </div>
+                                            )}
+
+                                            {doc.timePeriod && (
+                                                <div className="mt-2">
+                                                    <span className="font-medium text-sm text-gray-600">Time Period:</span>
+                                                    <span className="text-sm text-gray-700 ml-2">{doc.timePeriod}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="flex items-center space-x-2 ml-4">
+                                        <motion.button
+                                            onClick={() => handleEdit(doc)}
+                                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            title="Edit document"
+                                        >
+                                            <FiEdit className="w-4 h-4" />
+                                        </motion.button>
+
+                                        <motion.button
+                                            onClick={() => handleDownload(doc)}
+                                            className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            title="Download document"
+                                        >
+                                            <FiDownload className="w-4 h-4" />
+                                        </motion.button>
+
+                                        <motion.button
+                                            onClick={() => togglePublicStatus(doc)}
+                                            className={`p-2 rounded-lg transition-colors ${doc.isPublic
+                                                    ? 'text-green-600 hover:text-red-600 hover:bg-red-50'
+                                                    : 'text-red-600 hover:text-green-600 hover:bg-green-50'
+                                                }`}
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            title={doc.isPublic ? 'Make private' : 'Make public'}
+                                        >
+                                            {doc.isPublic ? <FiShield className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+                                        </motion.button>
+
+                                        <motion.button
+                                            onClick={() => handleDelete(doc)}
+                                            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            title="Delete document"
+                                        >
+                                            <FiTrash2 className="w-4 h-4" />
+                                        </motion.button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Upload Modal */}                <AnimatePresence>
                 {uploadState.isOpen && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center p-4 z-50">
                         <motion.div
                             className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
                             initial={{ opacity: 0, scale: 0.9 }}
@@ -625,6 +852,165 @@ const NewDocumentUploadSystem: React.FC = () => {
                                                 Upload {uploadState.selectedFiles.length} File{uploadState.selectedFiles.length !== 1 ? 's' : ''}
                                             </>
                                         )}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>)}
+            </AnimatePresence>
+
+            {/* Edit Document Modal */}
+            <AnimatePresence>
+                {editingDoc && (
+                    <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center p-4 z-50">
+                        <motion.div
+                            className="bg-white rounded-2xl shadow-xl max-w-lg w-full"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <div className="p-6 border-b border-gray-200">
+                                <h3 className="text-xl font-bold text-gray-900">Edit Document</h3>
+                                <p className="text-gray-600 mt-1">{editingDoc.originalName}</p>
+                            </div>
+
+                            <div className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Document Type
+                                    </label>
+                                    <select
+                                        value={editingDoc.documentType}
+                                        onChange={(e) => setEditingDoc(prev => prev ? { ...prev, documentType: e.target.value as DocumentType } : null)}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        {documentCategories.flatMap(cat =>
+                                            cat.documents.filter(doc => doc.userType === 'both' || doc.userType === userType)
+                                                .map(doc => (
+                                                    <option key={doc.type} value={doc.type}>
+                                                        {doc.label}
+                                                    </option>
+                                                ))
+                                        )}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Category
+                                    </label>
+                                    <select
+                                        value={editingDoc.category}
+                                        onChange={(e) => setEditingDoc(prev => prev ? { ...prev, category: e.target.value as DocumentCategory } : null)}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        {documentCategories.map(cat => (
+                                            <option key={cat.id} value={cat.id}>
+                                                {cat.title}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Description
+                                    </label>
+                                    <textarea
+                                        value={editingDoc.description}
+                                        onChange={(e) => setEditingDoc(prev => prev ? { ...prev, description: e.target.value } : null)}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        rows={3}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Time Period
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={editingDoc.timePeriod || ''}
+                                        onChange={(e) => setEditingDoc(prev => prev ? { ...prev, timePeriod: e.target.value } : null)}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="editIsPublic"
+                                        checked={editingDoc.isPublic}
+                                        onChange={(e) => setEditingDoc(prev => prev ? { ...prev, isPublic: e.target.checked } : null)}
+                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                    />
+                                    <label htmlFor="editIsPublic" className="ml-2 block text-sm text-gray-700">
+                                        Make this document publicly visible on my profile
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 rounded-b-2xl">
+                                <button
+                                    onClick={handleCancelEdit}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSaveEdit}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                                >
+                                    <FiCheck className="w-4 h-4 mr-2" />
+                                    Save Changes
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Delete Confirmation Modal */}
+            <AnimatePresence>
+                {deletingDoc && (
+                    <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center p-4 z-50">
+                        <motion.div
+                            className="bg-white rounded-2xl shadow-xl max-w-md w-full"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <div className="p-6">
+                                <div className="flex items-center mb-4">
+                                    <div className="p-3 bg-red-100 rounded-full mr-4">
+                                        <FiAlertCircle className="w-6 h-6 text-red-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-gray-900">Delete Document</h3>
+                                        <p className="text-sm text-gray-600">This action cannot be undone</p>
+                                    </div>
+                                </div>
+
+                                <p className="text-gray-700 mb-6">
+                                    Are you sure you want to delete <span className="font-medium">"{deletingDoc.originalName}"</span>?
+                                    This will permanently remove the document from your profile.
+                                </p>
+
+                                <div className="flex justify-end space-x-3">
+                                    <button
+                                        onClick={() => setDeletingDoc(null)}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={confirmDelete}
+                                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
+                                    >
+                                        <FiTrash2 className="w-4 h-4 mr-2" />
+                                        Delete Document
                                     </button>
                                 </div>
                             </div>
