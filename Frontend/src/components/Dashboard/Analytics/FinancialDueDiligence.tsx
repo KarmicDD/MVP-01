@@ -4,8 +4,8 @@ import { FiDownload, FiFileText, FiBarChart2, FiList, FiClipboard, FiInfo, FiX, 
 import SimpleSpinner from '../../SimpleSpinner';
 import { profileService } from '../../../services/api';
 import { toast } from 'react-hot-toast';
-import { useEntityFinancialDueDiligence } from '../../../hooks/useEntityFinancialDueDiligence';
-import FinancialDueDiligenceReportContent from './FinancialDueDiligenceReportContent';
+import { useNewFinancialDueDiligence } from '../../../hooks/useNewFinancialDueDiligence';
+import NewFinancialDueDiligenceReportContent from './NewFinancialDueDiligenceReportContent';
 import { LoadingSpinner } from '../../Loading';
 import TutorialButton from '../../Tutorial/TutorialButton';
 import { useTutorial } from '../../../hooks/useTutorial';
@@ -38,11 +38,10 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
     // If user is an investor, we want to analyze the startup
     entityType = userProfile.role === 'startup' ? 'investor' : 'startup';
   }
-
   // Use the tutorial hook for the help button functionality
   useTutorial('financial-dd-tutorial');
 
-  // Use the entity financial due diligence hook with the correct entity type
+  // Use the new financial due diligence hook with the correct entity type
   const {
     report,
     loading,
@@ -51,20 +50,40 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
     checkingDocuments,
     availableDocuments,
     missingDocumentTypes,
+    entityInfo,
     handleExportPDF,
     handleShareReport,
     generateReport,
     formatDate,
     reportRef
-  } = useEntityFinancialDueDiligence(entityId, entityType);
-
+  } = useNewFinancialDueDiligence(entityId, entityType);
   // Fetch existing reports on component mount
   useEffect(() => {
     fetchFinancialReports();
-
-    // Determine which entity's documents we are analyzing
-    fetchEntityName();
   }, [userProfile, selectedMatchId]);
+
+  // Update entity name when entity info changes
+  useEffect(() => {
+    if (entityInfo && entityInfo.companyName) {
+      setEntityName(entityInfo.companyName);
+    } else if (selectedMatchId) {
+      // Fetch entity name if not provided by the hook
+      const fetchEntityName = async () => {
+        try {
+          // Use getProfile method instead of getProfileByUserId
+          // The entityType is the opposite of the user's role
+          const profile = await profileService.getProfile(selectedMatchId, entityType);
+          if (profile && profile.companyName) {
+            setEntityName(profile.companyName);
+          }
+        } catch (error) {
+          console.error('Error fetching entity name:', error);
+        }
+      };
+
+      fetchEntityName();
+    }
+  }, [entityInfo, selectedMatchId, entityType]);
 
   const fetchEntityName = async () => {
     if (!selectedMatchId) return;
@@ -237,18 +256,16 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
             onDismiss={() => window.location.reload()}
           />
 
-          {availableDocuments && availableDocuments.length > 0 && (
-            <div className="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
+          {availableDocuments && availableDocuments.length > 0 && (            <div className="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
               <h4 className="font-medium text-gray-700 mb-3">Available Documents</h4>
               <div className="space-y-2 max-h-60 overflow-y-auto">
-                {availableDocuments.map((doc, index) => (
-                  <div key={index} className="flex items-center p-2 hover:bg-white rounded-md">
+                {availableDocuments.map((doc, index) => (                  <div key={index} className="flex items-center p-2 hover:bg-white rounded-md">
                     <FiFileText className="text-indigo-500 mr-2" />
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{getFormattedDocumentType(doc.documentType)}</p>
+                      <p className="text-sm font-medium text-gray-800">{doc.originalName}</p>
                       <p className="text-xs text-gray-500">
-                        {doc.documentName} •
-                        Uploaded: {new Date(doc.uploadDate).toLocaleDateString()}
+                        {getFormattedDocumentType(doc.documentType)} •
+                        Uploaded: {new Date(doc.createdAt || '').toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -290,9 +307,8 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
       {/* Report title is now handled in FinancialDueDiligenceReportContent component */}
 
       {/* Main content */}
-      <div ref={reportRef}>
-        {report ? (
-          <FinancialDueDiligenceReportContent
+      <div ref={reportRef}>        {report ? (
+          <NewFinancialDueDiligenceReportContent
             report={report}
             formatDate={formatDate}
             handleExportPDF={handleExportPDF}
@@ -413,14 +429,13 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
                   </p>
                   <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {availableDocuments.map((doc, index) => (
-                        <div key={index} className="flex items-center p-2 hover:bg-white rounded-md">
+                      {availableDocuments.map((doc, index) => (                        <div key={index} className="flex items-center p-2 hover:bg-white rounded-md">
                           <FiFileText className="text-indigo-500 mr-2" />
                           <div>
-                            <p className="text-sm font-medium text-gray-800">{getFormattedDocumentType(doc.documentType)}</p>
+                            <p className="text-sm font-medium text-gray-800">{doc.originalName}</p>
                             <p className="text-xs text-gray-500">
-                              {doc.documentName} •
-                              Uploaded: {new Date(doc.uploadDate).toLocaleDateString()}
+                              {getFormattedDocumentType(doc.documentType)} •
+                              Uploaded: {new Date(doc.createdAt || '').toLocaleDateString()}
                             </p>
                           </div>
                         </div>

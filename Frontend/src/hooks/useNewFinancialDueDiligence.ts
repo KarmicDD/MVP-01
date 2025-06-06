@@ -217,25 +217,49 @@ export function useNewFinancialDueDiligence(entityId: string | null, entityType:
       setCheckingDocuments(true);
       console.log(`Checking document availability for entity ${entityId} (${entityType})`);
 
-      // Using the financial due diligence route
-      const response = await api.get(`/financial-due-diligence/entity/${entityId}/check-documents?entityType=${entityType}`);
+      // First, check for ALL documents to get a comprehensive view
+      try {
+        const allDocsResponse = await api.get(`/financial/entity/${entityId}/all-documents?entityType=${entityType}`);
 
-      // Set entity info
-      if (response.data.entityProfile) {
-        setEntityInfo(response.data.entityProfile);
-      }
+        if (allDocsResponse.data.documents) {
+          setAvailableDocuments(allDocsResponse.data.documents);
+          console.log(`Found ${allDocsResponse.data.totalDocuments} total documents for entity`);
+        }
 
-      // Set available documents
-      if (response.data.documents) {
-        setAvailableDocuments(response.data.documents);
-      }
+        if (allDocsResponse.data.entityProfile) {
+          setEntityInfo(allDocsResponse.data.entityProfile);
+        }
 
-      // Check if documents are available
-      const hasDocuments = response.data.documentsAvailable;
-      setDocumentsAvailable(hasDocuments);
+        const hasAllDocuments = allDocsResponse.data.documentsAvailable;
+        setDocumentsAvailable(hasAllDocuments);
 
-      if (!hasDocuments) {
-        setLoading(false); // Stop loading since we won't fetch the report
+        if (!hasAllDocuments) {
+          setLoading(false);
+          return;
+        }
+      } catch (allDocsError) {
+        console.warn('Could not fetch all documents, falling back to new financial route:', allDocsError);
+
+        // Fallback to the new financial due diligence route that finds ALL documents
+        const response = await api.get(`/new-financial/entity/${entityId}/check-documents?entityType=${entityType}`);
+
+        // Set entity info
+        if (response.data.entityProfile) {
+          setEntityInfo(response.data.entityProfile);
+        }
+
+        // Set available documents
+        if (response.data.documents) {
+          setAvailableDocuments(response.data.documents);
+        }
+
+        // Check if documents are available
+        const hasDocuments = response.data.documentsAvailable;
+        setDocumentsAvailable(hasDocuments);
+
+        if (!hasDocuments) {
+          setLoading(false); // Stop loading since we won't fetch the report
+        }
       }
     } catch (err) {
       console.error('Error checking financial documents availability:', err);
@@ -259,8 +283,8 @@ export function useNewFinancialDueDiligence(entityId: string | null, entityType:
       console.log(`Fetching financial due diligence report for entity ${entityId} (${entityType})`);
 
       try {
-        // Call the financial due diligence API route
-        const response = await api.get(`/financial-due-diligence/entity/${entityId}/reports?entityType=${entityType}`);
+        // Call the new financial due diligence API route
+        const response = await api.get(`/new-financial/entity/${entityId}?entityType=${entityType}`);
 
         // Check if the report was successfully calculated
         if (response.data && response.data.reportCalculated === false) {
@@ -357,9 +381,9 @@ export function useNewFinancialDueDiligence(entityId: string | null, entityType:
       setLoading(true);
       setError(null);
 
-      // Call the financial due diligence API endpoint to generate a new report
+      // Call the new financial due diligence API endpoint to generate a new report
       console.log(`Generating report for entityId: ${entityId}, entityType: ${entityType}`);
-      const response = await api.post(`/financial-due-diligence/entity/${entityId}/analyze`, {
+      const response = await api.post(`/new-financial/entity/${entityId}/generate`, {
         entityType
       });
 

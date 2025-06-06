@@ -20,7 +20,8 @@ import {
     generateFinancialDueDiligenceReport,
     shareFinancialDueDiligenceReport,
     exportFinancialDueDiligenceReportPdf,
-    getEntityDocumentDetails
+    getEntityDocumentDetails,
+    getAllEntityDocuments
 } from '../../controllers/EntityFinancialDueDiligenceController';
 
 const router = express.Router();
@@ -832,6 +833,71 @@ router.get(
     '/entity/:entityId/documents',
     authenticateJWT,
     getEntityDocumentDetails
+);
+
+/**
+ * @swagger
+ * /financial/entity/{entityId}/all-documents:
+ *   get:
+ *     tags:
+ *       - Financial Due Diligence
+ *     summary: Get all documents for an entity
+ *     description: Retrieve all documents (financial and non-financial) for the specified entity
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: entityId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The entity ID
+ *       - in: query
+ *         name: entityType
+ *         schema:
+ *           type: string
+ *           enum: [startup, investor]
+ *         description: The type of entity
+ *     responses:
+ *       '200':
+ *         description: All documents retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 documents:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       documentId:
+ *                         type: string
+ *                       documentName:
+ *                         type: string
+ *                       documentType:
+ *                         type: string
+ *                       uploadDate:
+ *                         type: string
+ *                         format: date-time
+ *                 categorizedDocuments:
+ *                   type: object
+ *                   properties:
+ *                     financial:
+ *                       type: array
+ *                     legal:
+ *                       type: array
+ *                     other:
+ *                       type: array
+ *       '401':
+ *         description: Unauthorized
+ *       '500':
+ *         description: Server error
+ */
+router.get(
+    '/entity/:entityId/all-documents',
+    authenticateJWT,
+    getAllEntityDocuments
 );
 
 export default router;

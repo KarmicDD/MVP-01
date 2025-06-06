@@ -7,9 +7,7 @@ import InvestorProfileForm from '../Profile/InvestorProfileForm';
 import SocialMediaLinks from './SocialMediaLinks';
 import TeamMembers from './TeamMembers';
 import InvestmentHistory from './InvestmentHistory';
-import DocumentUpload from './DocumentUpload';
-import NewDocumentUploadSystem from './NewDocumentUploadSystem';
-import EnhancedDocumentUpload from './EnhancedDocumentUpload';
+import ComprehensiveDocumentUpload from './ComprehensiveDocumentUpload';
 // import { FiSave } from 'react-icons/fi'; // Imported but not used
 // import LoadingSpinner from '../Loading'; // Imported but not used
 
@@ -165,7 +163,7 @@ const ProfileContent: React.FC<ProfileContentProps> = ({
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
             >
-              <EnhancedDocumentUpload />
+              <ComprehensiveDocumentUpload />
             </motion.div>
           )}
 

@@ -166,15 +166,12 @@ async function getEntityDocuments(entityId: string, entityType: 'startup' | 'inv
     const documentTypesToCheck = [
         ...requiredFinancialDocumentTypes,
         ...(entityType === 'startup' ? startupSpecificDocumentTypes : []),
-        ...(entityType === 'investor' ? investorSpecificDocumentTypes : [])
-    ];    // Fetch ALL documents for the entity that are public OR financial documents
-    // This ensures public documents (including "other" and "miscellaneous" types) are included in analysis
+        ...(entityType === 'investor' ? investorSpecificDocumentTypes : [])];
+
+    // Fetch ALL documents for the entity to ensure comprehensive analysis
+    // This matches the approach used in NewFinancialDueDiligenceController
     const documents = await DocumentModel.find({
-        userId: entityId,
-        $or: [
-            { documentType: { $regex: /^financial_/ } }, // All financial documents
-            { isPublic: true } // All public documents regardless of type
-        ]
+        userId: entityId
     });
 
     // Check which required documents are missing
@@ -1676,6 +1673,89 @@ export const getEntityDocumentDetails = async (req: Request, res: Response): Pro
             'Error retrieving entity document details',
             500
         );
+    }
+};
+
+/**
+ * Get ALL document details for an entity (financial and non-financial documents)
+ * This endpoint returns all documents uploaded by the entity for comprehensive analysis
+ */
+export const getAllEntityDocuments = async (req: Request, res: Response): Promise<void> => {
+    try {
+        if (!req.user?.userId) {
+            res.status(401).json({ message: 'Unauthorized' });
+            return;
+        }
+
+        const { entityId } = req.params;
+        const entityType = req.query.entityType as 'startup' | 'investor' || 'startup';
+
+        if (!entityId) {
+            res.status(400).json({ message: 'Entity ID is required' });
+            return;
+        }
+
+        // Find ALL documents for the entity - no filtering by type
+        const documents = await DocumentModel.find({
+            userId: entityId
+        });
+
+        // Get entity profile information
+        let entityProfile;
+        if (entityType === 'startup') {
+            entityProfile = await StartupProfileModel.findOne({ userId: entityId });
+        } else {
+            entityProfile = await InvestorProfileModel.findOne({ userId: entityId });
+        }
+
+        // Format all documents for the response
+        const allDocuments = documents.map(doc => ({
+            documentId: doc._id ? doc._id.toString() : '',
+            documentName: doc.originalName || doc.fileName || '',
+            documentType: doc.documentType || '',
+            uploadDate: doc.createdAt || new Date(),
+            fileSize: doc.fileSize,
+            fileType: doc.fileType
+        }));
+
+        // Categorize documents for easier frontend handling
+        const categorizedDocuments = {
+            financial: allDocuments.filter(doc =>
+                doc.documentType.startsWith('financial_') ||
+                doc.documentName.toLowerCase().includes('financial') ||
+                doc.documentName.toLowerCase().includes('balance') ||
+                doc.documentName.toLowerCase().includes('income') ||
+                doc.documentName.toLowerCase().includes('cash')
+            ),
+            legal: allDocuments.filter(doc =>
+                doc.documentType.startsWith('legal_') ||
+                doc.documentName.toLowerCase().includes('legal') ||
+                doc.documentName.toLowerCase().includes('contract') ||
+                doc.documentName.toLowerCase().includes('agreement')
+            ),
+            other: allDocuments.filter(doc =>
+                !doc.documentType.startsWith('financial_') &&
+                !doc.documentType.startsWith('legal_') &&
+                !doc.documentName.toLowerCase().includes('financial') &&
+                !doc.documentName.toLowerCase().includes('legal')
+            )
+        };
+
+        res.status(200).json({
+            message: 'All documents retrieved successfully',
+            documentsAvailable: documents.length > 0,
+            totalDocuments: documents.length,
+            documents: allDocuments,
+            categorizedDocuments,
+            entityProfile: entityProfile ? {
+                companyName: entityType === 'startup'
+                    ? (entityProfile as any).companyName
+                    : (entityProfile as any).companyName || (entityProfile as any).name,
+                entityType
+            } : null
+        });
+    } catch (err) {
+        handleControllerError(res, err, 'Error retrieving all entity documents');
     }
 };
 
