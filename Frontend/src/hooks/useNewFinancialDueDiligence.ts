@@ -217,8 +217,8 @@ export function useNewFinancialDueDiligence(entityId: string | null, entityType:
       setCheckingDocuments(true);
       console.log(`Checking document availability for entity ${entityId} (${entityType})`);
 
-      // Using the new financial due diligence route
-      const response = await api.get(`/new-financial/entity/${entityId}/documents?entityType=${entityType}`);
+      // Using the financial due diligence route
+      const response = await api.get(`/financial-due-diligence/entity/${entityId}/check-documents?entityType=${entityType}`);
 
       // Set entity info
       if (response.data.entityProfile) {
@@ -259,8 +259,8 @@ export function useNewFinancialDueDiligence(entityId: string | null, entityType:
       console.log(`Fetching financial due diligence report for entity ${entityId} (${entityType})`);
 
       try {
-        // Call the new financial due diligence API route
-        const response = await api.get(`/new-financial/entity/${entityId}?entityType=${entityType}`);
+        // Call the financial due diligence API route
+        const response = await api.get(`/financial-due-diligence/entity/${entityId}/reports?entityType=${entityType}`);
 
         // Check if the report was successfully calculated
         if (response.data && response.data.reportCalculated === false) {
@@ -357,9 +357,9 @@ export function useNewFinancialDueDiligence(entityId: string | null, entityType:
       setLoading(true);
       setError(null);
 
-      // Call the new financial due diligence API endpoint to generate a new report
+      // Call the financial due diligence API endpoint to generate a new report
       console.log(`Generating report for entityId: ${entityId}, entityType: ${entityType}`);
-      const response = await api.post(`/new-financial/entity/${entityId}/generate`, {
+      const response = await api.post(`/financial-due-diligence/entity/${entityId}/analyze`, {
         entityType
       });
 

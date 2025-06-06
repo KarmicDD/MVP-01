@@ -35,7 +35,6 @@ const NewFinancialDueDiligence: React.FC<NewFinancialDueDiligenceProps> = ({ use
     entityType = userProfile.role === 'startup' ? 'investor' : 'startup';
   }
 
-  // Use the tutorial hook for the help button functionality
   useTutorial('new-financial-dd-tutorial');
 
   // Use the entity financial due diligence hook with the correct entity type

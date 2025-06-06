@@ -9,6 +9,7 @@ import TeamMembers from './TeamMembers';
 import InvestmentHistory from './InvestmentHistory';
 import DocumentUpload from './DocumentUpload';
 import NewDocumentUploadSystem from './NewDocumentUploadSystem';
+import EnhancedDocumentUpload from './EnhancedDocumentUpload';
 // import { FiSave } from 'react-icons/fi'; // Imported but not used
 // import LoadingSpinner from '../Loading'; // Imported but not used
 
@@ -164,7 +165,7 @@ const ProfileContent: React.FC<ProfileContentProps> = ({
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
             >
-              <NewDocumentUploadSystem />
+              <EnhancedDocumentUpload />
             </motion.div>
           )}
 

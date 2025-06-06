@@ -11,6 +11,7 @@ import emailRoutes from './emailRoutes';
 import searchRoutes from './searchRoutes';
 import financialDueDiligenceRoutes from './financialDueDiligence/financialDueDiligenceRoutes';
 import newFinancialDueDiligenceRoutes from './financialDueDiligence/newFinancialDueDiligenceRoutes';
+import legalDueDiligenceRoutes from './legalDueDiligence/legalDueDiligenceRoutes';
 import recommendationRoutes from './analytics/recommendationRoutes';
 import analyticsRoutes from './analytics/analyticsRoutes';
 import dashboardRoutes from './analytics/dashboardRoutes';
@@ -41,6 +42,10 @@ router.use('/financial', financialDueDiligenceRoutes);
 // New Financial due diligence routes
 console.log('Registering new financial due diligence routes');
 router.use('/new-financial', newFinancialDueDiligenceRoutes);
+
+// Legal due diligence routes
+console.log('Registering legal due diligence routes');
+router.use('/legal-due-diligence', legalDueDiligenceRoutes);
 
 // Recommendation routes
 console.log('Registering recommendation routes');
