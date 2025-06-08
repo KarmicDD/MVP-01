@@ -47,8 +47,7 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, selectedRole }) => {
     const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const navigate = useNavigate();
-    console.log('selectedRole:', selectedRole);
-    const handleSubmit = async (e: React.FormEvent) => {
+    console.log('selectedRole:', selectedRole);    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!selectedRole) {
@@ -59,8 +58,6 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, selectedRole }) => {
         try {
             setLoading(true);
             setError('');
-            // Show success state briefly before redirect
-            setTimeout(() => setShowSuccess(true), 400);
 
             // Login with email/password
             const response = await authService.login({
@@ -68,6 +65,9 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, selectedRole }) => {
                 password,
                 role: selectedRole
             });
+
+            // Only show success state after successful login
+            setShowSuccess(true);
 
             // Show success message before redirect
             setTimeout(() => {
