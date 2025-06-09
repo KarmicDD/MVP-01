@@ -544,22 +544,21 @@ const ComprehensiveDocumentUpload: React.FC = () => {
     };
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
+        <div className="space-y-8">            {/* Header */}
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-xl p-8 border border-blue-100 shadow-sm"
+                className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-xl p-4 sm:p-6 lg:p-8 border border-blue-100 shadow-sm"
             >
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-3xl font-bold text-gray-900 mb-3">Document Management Center</h2>
-                        <p className="text-gray-600 text-lg">Organize, upload, and manage your business documents with ease</p>
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div className="text-center lg:text-left">
+                        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 sm:mb-3">Document Management Center</h2>
+                        <p className="text-gray-600 text-sm sm:text-base lg:text-lg">Organize, upload, and manage your business documents with ease</p>
                     </div>
-                    <div className="flex items-center space-x-3 bg-white rounded-lg px-4 py-3 shadow-sm border">
-                        <FiFolder className="w-8 h-8 text-blue-600" />
+                    <div className="flex items-center justify-center space-x-3 bg-white rounded-lg px-3 sm:px-4 py-2 sm:py-3 shadow-sm border">
+                        <FiFolder className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
                         <div className="text-center">
-                            <div className="text-2xl font-bold text-gray-900">{existingDocuments.length}</div>
+                            <div className="text-xl sm:text-2xl font-bold text-gray-900">{existingDocuments.length}</div>
                             <div className="text-xs text-gray-500 uppercase tracking-wide">Documents</div>
                         </div>
                     </div>
@@ -571,22 +570,21 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
-            >
-                <div className="flex bg-gray-50 border-b border-gray-200">
+            >                <div className="flex flex-wrap bg-gray-50 border-b border-gray-200">
                     {Object.entries(DOCUMENT_CATEGORIES).map(([key, label]) => (
                         <button
                             key={key}
                             onClick={() => setSelectedCategory(key as keyof typeof DOCUMENT_CATEGORIES)}
-                            className={`flex-1 px-6 py-4 font-semibold text-center transition-all duration-200 ${selectedCategory === key
+                            className={`flex-1 min-w-[140px] px-3 sm:px-6 py-3 sm:py-4 font-semibold text-center transition-all duration-200 ${selectedCategory === key
                                 ? 'bg-white text-blue-600 border-b-2 border-blue-600 shadow-sm'
                                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                                 }`}
                         >
-                            <div className="flex items-center justify-center space-x-2">
-                                {key === 'financial' && <span className="text-green-500">💰</span>}
-                                {key === 'legal' && <span className="text-blue-500">⚖️</span>}
-                                {key === 'other' && <span className="text-purple-500">📄</span>}
-                                <span>{label}</span>
+                            <div className="flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2">
+                                {key === 'financial' && <span className="text-green-500 text-lg sm:text-base">💰</span>}
+                                {key === 'legal' && <span className="text-blue-500 text-lg sm:text-base">⚖️</span>}
+                                {key === 'other' && <span className="text-purple-500 text-lg sm:text-base">📄</span>}
+                                <span className="text-sm sm:text-base">{label}</span>
                                 <span className="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-full">
                                     {existingDocuments.filter(doc =>
                                         key === 'financial' ? doc.category === 'financial' :
@@ -599,18 +597,17 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                     ))}
                 </div>
 
-                {/* Bulk Upload Settings */}
-                <motion.div
+                {/* Bulk Upload Settings */}                <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="p-6 bg-gray-50"
+                    className="p-4 sm:p-6 bg-gray-50"
                 >
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                        <FiPlus className="w-5 h-5 mr-2" />
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center">
+                        <FiPlus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                         Quick Upload Settings for {DOCUMENT_CATEGORIES[selectedCategory]}
                     </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Default Document Type
@@ -618,7 +615,7 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                             <select
                                 value={bulkMetadata.documentType}
                                 onChange={(e) => setBulkMetadata(prev => ({ ...prev, documentType: e.target.value }))}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                             >
                                 <option value="">Select document type</option>
                                 {getDocumentTypesByCategory(selectedCategory).map((type, index) => (
@@ -634,7 +631,7 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                             <select
                                 value={bulkMetadata.timePeriod}
                                 onChange={(e) => setBulkMetadata(prev => ({ ...prev, timePeriod: e.target.value }))}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                             >
                                 <option value="">Select time period</option>
                                 {TIME_PERIODS.map(period => (
@@ -643,8 +640,8 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                             </select>
                         </div>
 
-                        <div className="flex items-center justify-center">
-                            <label className="flex items-center space-x-3 bg-white px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                        <div className="flex items-center justify-center lg:justify-start">
+                            <label className="flex items-center space-x-2 sm:space-x-3 bg-white px-3 sm:px-4 py-2 sm:py-3 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer">
                                 <input
                                     type="checkbox"
                                     checked={bulkMetadata.isPublic}
@@ -653,7 +650,7 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                                 />
                                 <div className="flex items-center space-x-2">
                                     {bulkMetadata.isPublic ? <FiUnlock className="w-4 h-4 text-green-600" /> : <FiLock className="w-4 h-4 text-gray-400" />}
-                                    <span className="text-sm text-gray-700">Make documents public (unlocked) by default</span>
+                                    <span className="text-xs sm:text-sm text-gray-700">Make documents public (unlocked) by default</span>
                                 </div>
                             </label>
                         </div>
@@ -661,15 +658,14 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                 </motion.div>
             </motion.div>
 
-            {/* File Upload Area */}
-            <motion.div
+            {/* File Upload Area */}            <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300 ${dragActive
+                className={`border-2 border-dashed rounded-xl p-6 sm:p-8 lg:p-12 text-center transition-all duration-300 ${dragActive
                     ? 'border-blue-500 bg-blue-50 scale-105'
                     : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
                     }`}
@@ -683,31 +679,31 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                     accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif"
                 />
 
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                     <div className={`transition-transform duration-300 ${dragActive ? 'scale-110' : ''}`}>
                         <div className="relative">
-                            <FiUpload className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                            <div className="absolute -top-2 -right-2">
-                                {selectedCategory === 'financial' && <span className="text-2xl">💰</span>}
-                                {selectedCategory === 'legal' && <span className="text-2xl">⚖️</span>}
-                                {selectedCategory === 'other' && <span className="text-2xl">📄</span>}
+                            <FiUpload className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                            <div className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2">
+                                {selectedCategory === 'financial' && <span className="text-xl sm:text-2xl">💰</span>}
+                                {selectedCategory === 'legal' && <span className="text-xl sm:text-2xl">⚖️</span>}
+                                {selectedCategory === 'other' && <span className="text-xl sm:text-2xl">📄</span>}
                             </div>
                         </div>
                     </div>
-                    <div className="space-y-2">
-                        <p className="text-xl font-semibold text-gray-900">
+                    <div className="space-y-1 sm:space-y-2">
+                        <p className="text-lg sm:text-xl font-semibold text-gray-900">
                             Drop your {DOCUMENT_CATEGORIES[selectedCategory].toLowerCase()} documents here
                         </p>
-                        <p className="text-gray-500 text-lg">or</p>
+                        <p className="text-gray-500 text-base sm:text-lg">or</p>
                     </div>
                     <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-4 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-semibold text-base sm:text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                     >
                         Select Documents
                     </button>
                     <div className="space-y-1">
-                        <p className="text-sm text-gray-500">
+                        <p className="text-xs sm:text-sm text-gray-500">
                             Supported formats: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, JPG, PNG, GIF
                         </p>
                         <p className="text-xs text-gray-400">
@@ -723,24 +719,23 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className="bg-white rounded-xl border border-gray-200 shadow-sm"
-                >
-                    <div className="p-6 border-b border-gray-200">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                                <FiFile className="w-5 h-5 mr-2 text-blue-600" />
+                >                    <div className="p-4 sm:p-6 border-b border-gray-200">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+                                <FiFile className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-600" />
                                 Selected Documents ({files.length})
                             </h3>
-                            <div className="flex items-center space-x-3">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                                 <button
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="text-blue-600 hover:text-blue-700 px-4 py-2 border border-blue-600 rounded-lg hover:bg-blue-50 transition-all duration-200 font-medium"
+                                    className="text-blue-600 hover:text-blue-700 px-3 sm:px-4 py-2 border border-blue-600 rounded-lg hover:bg-blue-50 transition-all duration-200 font-medium text-sm sm:text-base text-center"
                                 >
                                     Add More Files
                                 </button>
                                 <button
                                     onClick={uploadAllFiles}
                                     disabled={isLoading || files.every(f => f.isUploaded)}
-                                    className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-md hover:shadow-lg flex items-center space-x-2"
+                                    className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 sm:px-6 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-md hover:shadow-lg flex items-center justify-center space-x-2 text-sm sm:text-base"
                                 >
                                     <FiUpload className="w-4 h-4" />
                                     <span>{isLoading ? 'Uploading...' : 'Upload Documents'}</span>
@@ -756,18 +751,17 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                                     key={fileData.id}
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: 'auto' }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    className="p-6"
+                                    exit={{ opacity: 0, height: 0 }}                                    className="p-4 sm:p-6"
                                 >
-                                    <div className="flex items-start space-x-4">
-                                        <div className="flex-shrink-0 mt-1">
-                                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                                <FiFile className="w-5 h-5 text-blue-600" />
+                                    <div className="flex flex-col sm:flex-row sm:items-start space-y-3 sm:space-y-0 sm:space-x-4">
+                                        <div className="flex-shrink-0 mt-0 sm:mt-1">
+                                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                                <FiFile className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                                             </div>
                                         </div>
 
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between mb-2">
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-2">
                                                 <h4 className="text-sm font-medium text-gray-900 truncate">
                                                     {fileData.file.name}
                                                 </h4>
@@ -787,20 +781,18 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                                                 </div>
                                             </div>
 
-                                            <p className="text-sm text-gray-500 mb-3 flex items-center space-x-2">
+                                            <p className="text-xs sm:text-sm text-gray-500 mb-3 flex flex-wrap items-center gap-1 sm:gap-2">
                                                 <span>{formatFileSize(fileData.file.size)}</span>
-                                                <span className="text-gray-300">•</span>
+                                                <span className="text-gray-300 hidden sm:inline">•</span>
                                                 <span className="capitalize">{fileData.category}</span>
                                                 {fileData.documentType && (
                                                     <>
-                                                        <span className="text-gray-300">•</span>
-                                                        <span>{getDocumentTypesByCategory(fileData.category).find(dt => dt.value === fileData.documentType)?.label || fileData.documentType}</span>
+                                                        <span className="text-gray-300 hidden sm:inline">•</span>
+                                                        <span className="text-xs">{getDocumentTypesByCategory(fileData.category).find(dt => dt.value === fileData.documentType)?.label || fileData.documentType}</span>
                                                     </>
                                                 )}
-                                            </p>
-
-                                            {fileData.editMode && (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                                            </p>                                            {fileData.editMode && (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
                                                     <div>
                                                         <label className="block text-xs font-medium text-gray-700 mb-1">
                                                             Category *
@@ -851,7 +843,7 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                                                         </select>
                                                     </div>
 
-                                                    <div className="flex items-center space-x-4">
+                                                    <div className="flex items-center justify-center sm:justify-start">
                                                         <label className="flex items-center space-x-2">
                                                             <input
                                                                 type="checkbox"
@@ -922,18 +914,17 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="bg-white rounded-xl border border-gray-200 shadow-sm"
-            >
-                <div className="p-6 border-b border-gray-200">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                            <FiFolder className="w-5 h-5 mr-2 text-blue-600" />
+            >                <div className="p-4 sm:p-6 border-b border-gray-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+                            <FiFolder className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-600" />
                             {DOCUMENT_CATEGORIES[selectedCategory]} Documents ({existingDocuments.filter(doc =>
                                 selectedCategory === 'financial' ? doc.category === 'financial' :
                                     selectedCategory === 'legal' ? doc.category === 'legal' :
                                         doc.category === 'other'
                             ).length})
                         </h3>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-xs sm:text-sm text-gray-500 text-center sm:text-right">
                             {existingDocuments.filter(doc =>
                                 selectedCategory === 'financial' ? doc.category === 'financial' :
                                     selectedCategory === 'legal' ? doc.category === 'legal' :
@@ -945,13 +936,12 @@ const ComprehensiveDocumentUpload: React.FC = () => {
 
                 {isLoading && <div className="p-6 text-center">Loading documents...</div>}
 
-                {!isLoading && existingDocuments.length === 0 && (
-                    <div className="p-12 text-center">
-                        <FiInbox className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h4 className="text-xl font-semibold text-gray-700 mb-2">
+                {!isLoading && existingDocuments.length === 0 && (                    <div className="p-8 sm:p-12 text-center">
+                        <FiInbox className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                        <h4 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">
                             No documents uploaded yet
                         </h4>
-                        <p className="text-gray-500 mb-6">
+                        <p className="text-sm sm:text-base text-gray-500 mb-4 sm:mb-6">
                             Use the uploader above to add your first document.
                         </p>
                     </div>
@@ -971,33 +961,33 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                                         key={getDocumentId(document) || `existing-doc-${document.originalName || document.fileName}-${index}`}
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        className="p-6 hover:bg-gray-50 transition-colors duration-200"
+                                        exit={{ opacity: 0 }}                                        className="p-4 sm:p-6 hover:bg-gray-50 transition-colors duration-200"
                                     >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center space-x-4">
-                                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                                    <FiFile className="w-5 h-5 text-blue-600" />
-                                                </div>                                                <div>
-                                                    <h4 className="text-sm font-medium text-gray-900">
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                            <div className="flex items-center space-x-3 sm:space-x-4">
+                                                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                                    <FiFile className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium text-gray-900 truncate">
                                                         {document.originalName || document.fileName}
                                                     </h4>
-                                                    <p className="text-sm text-gray-500 flex items-center space-x-2">
+                                                    <p className="text-xs sm:text-sm text-gray-500 flex flex-wrap items-center gap-1 sm:gap-2">
                                                         <span>{getDocumentTypesByCategory(document.category as keyof typeof DOCUMENT_CATEGORIES).find(dt => dt.value === document.documentType)?.label || document.documentType}</span>
-                                                        <span className="text-gray-300">•</span>
+                                                        <span className="text-gray-300 hidden sm:inline">•</span>
                                                         <span>{formatFileSize(document.fileSize || document.size)}</span>
                                                     </p>
                                                     <p className="text-xs text-gray-400">
                                                         Uploaded {new Date(document.createdAt).toLocaleDateString()}
                                                     </p>
                                                     {document.description && (
-                                                        <p className="text-xs text-gray-600 mt-1">
+                                                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">
                                                             {document.description}
                                                         </p>
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="flex items-center space-x-3">
+                                            <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3">
                                                 <div className="flex items-center text-xs text-gray-500">
                                                     {document.isPublic ? (
                                                         <><FiUnlock className="w-3 h-3 mr-1 text-green-600" />Public</>
@@ -1005,44 +995,46 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                                                         <><FiLock className="w-3 h-3 mr-1 text-red-600" />Private</>
                                                     )}
                                                 </div>
-                                                <button
-                                                    onClick={() => handleViewDocument(document)}
-                                                    className="text-green-600 hover:text-green-800 p-2 rounded-md hover:bg-green-50 transition-colors"
-                                                    title="View Document"
-                                                >
-                                                    <FiEye className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => toggleDocumentVisibility(document)}
-                                                    className={`p-2 rounded-md transition-colors ${document.isPublic
-                                                        ? 'text-green-600 hover:text-green-800 hover:bg-green-50'
-                                                        : 'text-red-600 hover:text-red-800 hover:bg-red-50'
-                                                        }`}
-                                                    title="Toggle Visibility"
-                                                >
-                                                    {document.isPublic ? <FiUnlock className="w-4 h-4 text-green-600" /> : <FiLock className="w-4 h-4 text-red-600" />}
-                                                </button>
-                                                <button
-                                                    onClick={() => handleEditDocument(document)}
-                                                    className="text-indigo-600 hover:text-indigo-800 p-2 rounded-md hover:bg-indigo-50 transition-colors"
-                                                    title="Edit Document"
-                                                >
-                                                    <FiEdit3 className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => downloadDocument(document)}
-                                                    className="text-blue-600 hover:text-blue-800 p-2 rounded-md hover:bg-blue-50 transition-colors"
-                                                    title="Download Document"
-                                                >
-                                                    <FiDownload className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteClick(document)}
-                                                    className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50 transition-colors"
-                                                    title="Delete Document"
-                                                >
-                                                    <FiTrash2 className="w-4 h-4" />
-                                                </button>
+                                                <div className="flex items-center space-x-1 sm:space-x-2">
+                                                    <button
+                                                        onClick={() => handleViewDocument(document)}
+                                                        className="text-green-600 hover:text-green-800 p-1.5 sm:p-2 rounded-md hover:bg-green-50 transition-colors"
+                                                        title="View Document"
+                                                    >
+                                                        <FiEye className="w-3 h-3 sm:w-4 sm:h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => toggleDocumentVisibility(document)}
+                                                        className={`p-1.5 sm:p-2 rounded-md transition-colors ${document.isPublic
+                                                            ? 'text-green-600 hover:text-green-800 hover:bg-green-50'
+                                                            : 'text-red-600 hover:text-red-800 hover:bg-red-50'
+                                                            }`}
+                                                        title="Toggle Visibility"
+                                                    >
+                                                        {document.isPublic ? <FiUnlock className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" /> : <FiLock className="w-3 h-3 sm:w-4 sm:h-4 text-red-600" />}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleEditDocument(document)}
+                                                        className="text-indigo-600 hover:text-indigo-800 p-1.5 sm:p-2 rounded-md hover:bg-indigo-50 transition-colors"
+                                                        title="Edit Document"
+                                                    >
+                                                        <FiEdit3 className="w-3 h-3 sm:w-4 sm:h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => downloadDocument(document)}
+                                                        className="text-blue-600 hover:text-blue-800 p-1.5 sm:p-2 rounded-md hover:bg-blue-50 transition-colors"
+                                                        title="Download Document"
+                                                    >
+                                                        <FiDownload className="w-3 h-3 sm:w-4 sm:h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteClick(document)}
+                                                        className="text-red-600 hover:text-red-800 p-1.5 sm:p-2 rounded-md hover:bg-red-50 transition-colors"
+                                                        title="Delete Document"
+                                                    >
+                                                        <FiTrash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </motion.div>
@@ -1052,15 +1044,14 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                             selectedCategory === 'financial' ? doc.category === 'financial' :
                                 selectedCategory === 'legal' ? doc.category === 'legal' :
                                     doc.category === 'other'
-                        ).length === 0 && (
-                                <div className="p-12 text-center text-gray-500">
-                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <FiInfo className="w-8 h-8 text-gray-400" />
+                        ).length === 0 && (                                <div className="p-8 sm:p-12 text-center text-gray-500">
+                                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                                        <FiInfo className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
                                     </div>
-                                    <h4 className="text-lg font-medium text-gray-900 mb-2">
+                                    <h4 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
                                         No {DOCUMENT_CATEGORIES[selectedCategory].toLowerCase()} documents yet
                                     </h4>
-                                    <p className="text-gray-500 mb-4">
+                                    <p className="text-sm sm:text-base text-gray-500 mb-4">
                                         Upload your first {DOCUMENT_CATEGORIES[selectedCategory].toLowerCase()} document to get started
                                     </p>
                                 </div>
