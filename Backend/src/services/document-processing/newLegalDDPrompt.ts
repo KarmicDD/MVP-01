@@ -72,9 +72,12 @@ For every relevant legal area and document:
 
 * **Recommended Actions**
 
-  * If everything is compliant: **"No action required."**
-  * If not: suggest **concrete, specific, legal remedial actions**.
+  * For each recommendation, clearly state:
+    * **Area**: The specific legal area this recommendation pertains to (e.g., Corporate Structure, Regulatory Compliance). YOU MUST PROVIDE THIS.
+    * **Recommendation**: The concrete, specific, legal remedial action to be taken. If everything is compliant, state: **"No action required."** YOU MUST PROVIDE THIS.
+    * **Responsible Party**: The entity or individual responsible for implementing the action (e.g., Management, Legal Team, Board of Directors). YOU MUST PROVIDE THIS.
   * Classify risks by severity: **Critical**, **High**, **Medium**, **Low**
+  * Provide an estimated **Timeline** for completion.
   * Use these referrals **only if truly outside legal scope**:
     * Financial irregularities → **Financial DD**
     * Market-related legal issues → **Market DD**
@@ -83,127 +86,14 @@ For every relevant legal area and document:
 
 ---
 
-### CORPORATE STRUCTURE ANALYSIS
-
-* **Incorporation Details**
-  * Certificate of incorporation validity and authenticity
-  * Name availability and trademark conflicts
-  * Registered office compliance
-  * Object clause adequacy for business operations
-
-* **Share Capital Structure**
-  * Authorized vs. issued capital analysis
-  * Share class rights and preferences
-  * Share transfer restrictions and tag-along/drag-along rights
-  * Employee stock option plans (ESOPs) compliance
-
-* **Board and Management Structure**
-  * Director appointments and qualifications
-  * Board composition and independence requirements
-  * Key managerial personnel appointments
-  * Delegation of powers and authority matrix
-
----
-
-### REGULATORY COMPLIANCE ANALYSIS
-
-* **Corporate Law Compliance**
-  * Companies Act, 2013 compliance status
-  * Annual filing compliance (Form AOC-4, MGT-7, etc.)
-  * Board meeting and shareholder meeting compliance
-  * Related party transaction compliance
-
-* **Sectoral Regulations**
-  * Industry-specific licensing and approvals
-  * RBI regulations (if applicable)
-  * SEBI regulations (if applicable)
-  * Other regulatory body compliance
-
-* **Tax and Financial Compliance**
-  * GST registration and filing compliance
-  * Income tax compliance status
-  * TDS and other tax deduction compliance
-  * Transfer pricing compliance (if applicable)
-
----
-
-### MATERIAL AGREEMENTS ANALYSIS
-
-* **Investment Agreements**
-  * Terms of existing investment rounds
-  * Investor rights and protections
-  * Anti-dilution provisions
-  * Exit rights and mechanisms
-
-* **Commercial Agreements**
-  * Key customer and supplier agreements
-  * Distribution and partnership agreements
-  * Service agreements and SOWs
-  * Licensing and franchise agreements
-
-* **Employment and HR Agreements**
-  * Key employee contracts and terms
-  * Non-compete and confidentiality agreements
-  * Consultant and advisor agreements
-  * HR policy compliance
-
----
-
-### INTELLECTUAL PROPERTY ANALYSIS
-
-* **IP Ownership and Protection**
-  * Trademark registrations and applications
-  * Copyright ownership and assignments
-  * Patent filings and protection
-  * Trade secret protection measures
-
-* **IP Agreements**
-  * Technology licensing agreements
-  * IP assignment agreements
-  * Joint development agreements
-  * IP indemnification provisions
-
----
-
-### LITIGATION AND DISPUTES ANALYSIS
-
-* **Existing Litigation**
-  * Civil litigation matters
-  * Criminal cases (if any)
-  * Regulatory proceedings
-  * Arbitration and mediation matters
-
-* **Potential Disputes**
-  * Legal notices received/sent
-  * Demand letters and settlement discussions
-  * Regulatory show cause notices
-  * Employee grievances and disputes
-
----
-
-### REGULATORY FILINGS STATUS
-
-* **Statutory Filings**
-  * ROC filings compliance
-  * Annual returns and financial statements
-  * Board resolutions and form filings
-  * Changes in director/shareholding notifications
-
-* **Regulatory Approvals**
-  * Business license renewals
-  * Environmental clearances (if required)
-  * Industry-specific approvals
-  * Foreign investment compliance (FEMA)
-
----
-
 ### MISSING DOCUMENTS
 
-List any critical legal documents that are missing or incomplete:
-* Required but not provided
-* Expired documents needing renewal
-* Incomplete documentation sets
-* Documents with unclear status
+For each missing or incomplete document, provide:
+*   **Document Category**: (e.g., Corporate Filings, IP Registrations)
+*   **Specific Document**: (e.g., Annual Return for FY 2023-24, Patent Certificate for X)
+*   **Requirement Reference**: (e.g., Companies Act Section Y, Internal Policy Z)
+
+After listing all missing documents, you **MANDATORY: MUST PROVIDE THIS.** general **Note** summarizing any overall observations or concerns about the completeness of the documentation provided.
 
 ---
 
@@ -223,7 +113,24 @@ List any critical legal documents that are missing or incomplete:
 
 ---
 
+### CONSOLIDATED RECOMMENDATIONS LIST
+
+**MANDATORY**: Compile a comprehensive list of all recommended actions identified in the "ITEMIZED LEGAL DUE DILIGENCE" section. Each recommendation in this list MUST include:
+*   **Area**: The specific legal area (e.g., Corporate Structure, Regulatory Compliance).
+*   **Recommendation**: The concrete, specific, legal remedial action. If everything is compliant, state: **"No action required."**
+*   **Responsible Party**: The entity or individual responsible for implementing the action (e.g., Management, Legal Team, Board of Directors).
+*   **Priority**: The risk severity (**Critical**, **High**, **Medium**, **Low**).
+*   **Timeline**: Estimated time for completion.
+*   **Cost**: (If applicable, otherwise state "Not Applicable" or omit).
+
+This list is crucial for the final structured output. Ensure every itemized recommendation is included here with all specified details. If no recommendations arise from the entire due diligence, this list should explicitly state "No recommendations identified."
+
+---
+
 ### EXECUTIVE SUMMARY
+
+**MANDATORY**: Provide an overall **Headline** for the executive summary (e.g., "Positive Legal Outlook with Minor Compliance Gaps for [Company Name]"). YOU MUST PROVIDE THIS.
+**MANDATORY**: Provide a general **Summary** (2-3 paragraphs) of the entire legal due diligence findings, covering the most critical aspects before detailing the specific assessments below. YOU MUST PROVIDE THIS.
 
 #### Legal Structure Assessment
 * Overall corporate structure soundness
@@ -262,12 +169,14 @@ Remember: Your analysis directly impacts investment decisions. Be thorough, accu
  * This defines the expected structure for the legal due diligence report response
  */
 export const NEW_LEGAL_DD_STRUCTURE = `
-The response must be a valid JSON object with this exact structure:
+The response must be a valid JSON object with this exact structure. All fields marked as MANDATORY in comments MUST be included.
 
 {
   "companyName": "string",
   "reportDate": "string (ISO date)",
   "executiveSummary": {
+    "headline": "string", // MANDATORY: This field must be populated.
+    "summary": "string", // MANDATORY: This field must be populated.
     "overallRisk": "string (Critical/High/Medium/Low)",
     "legalStructureRating": "string (Excellent/Good/Fair/Poor)",
     "complianceRating": "string (Excellent/Good/Fair/Poor)",
@@ -275,6 +184,16 @@ The response must be a valid JSON object with this exact structure:
     "keyFindings": ["array of key finding strings"],
     "criticalIssues": ["array of critical issue strings"],
     "recommendedActions": ["array of recommended action strings"]
+  },
+  "riskScoreDetails": { // MANDATORY: This section must be populated.
+    "score": "string (e.g., numeric score or descriptive like '75/100')",
+    "riskLevel": "string (Critical/High/Medium/Low)", // Should align with executiveSummary.overallRisk
+    "justification": "string (Detailed explanation for the risk score and level)"
+  },
+  "complianceAssessmentDetails": { // MANDATORY: This section must be populated.
+    "complianceScore": "string (e.g., descriptive like Excellent/Good/Fair/Poor or a percentage)", // Should align with executiveSummary.complianceRating
+    "details": "string (Detailed summary of compliance status, key compliant areas, and non-compliant areas)",
+    "status": "string (Compliant/Partially Compliant/Non-Compliant/Not Assessed)"
   },
   "corporateStructure": {
     "incorporationStatus": "string",
@@ -328,13 +247,23 @@ The response must be a valid JSON object with this exact structure:
       "impact": "string"
     }
   ],
-  "missingDocuments": ["array of missing document strings"],
-  "recommendations": [
+  "missingDocuments": {
+    "documentList": [
+      {
+        "documentCategory": "string",
+        "specificDocument": "string",
+        "requirementReference": "string"
+      }
+    ],
+    "note": "string" // MANDATORY: This field must be populated.
+  },
+  "recommendations": [ // MANDATORY: This array must be populated if there are recommendations. If no recommendations, provide an empty array [].
     {
-      "priority": "string (Critical/High/Medium/Low)",
-      "action": "string",
-      "timeline": "string",
-      "responsibility": "string",
+      "area": "string", // MANDATORY if part of a recommendation object.
+      "recommendation": "string", // MANDATORY if part of a recommendation object.
+      "priority": "string (Critical/High/Medium/Low)", // MANDATORY if part of a recommendation object.
+      "timeline": "string", // MANDATORY if part of a recommendation object.
+      "responsibleParty": "string", // MANDATORY if part of a recommendation object.
       "cost": "string (if applicable)"
     }
   ],

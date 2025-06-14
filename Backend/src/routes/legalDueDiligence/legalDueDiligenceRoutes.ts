@@ -4,7 +4,6 @@ import { asyncHandler } from '../../utils/asyncHandler';
 
 // Import new legal due diligence routes
 import newLegalDueDiligenceRoutes from './newLegalDueDiligenceRoutes';
-import entityLegalDueDiligenceRoutes from './entityLegalDueDiligenceRoutes';
 
 const router = express.Router();
 
@@ -35,7 +34,5 @@ router.use(authenticateJWT);
 // New legal due diligence routes (document-based analysis)
 router.use('/new', newLegalDueDiligenceRoutes);
 
-// Entity legal due diligence routes (comprehensive entity analysis)
-router.use('/entity', entityLegalDueDiligenceRoutes);
 
 export default router;

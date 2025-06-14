@@ -22,28 +22,86 @@ export interface ILegalReportItem {
     recommendedActions: string[];
 }
 
-export interface ILegalRiskScore {
-    score: string;
-    riskLevel: string;
-    justification: string;
+export interface ILegalMissingDocuments {
+    documentList: ILegalDocumentItem[];
+    note: string;
 }
 
-export interface ILegalMissingDocuments {
-    list: ILegalDocumentItem[];
+export interface ILegalExecutiveSummary {
+    headline: string;
+    summary: string;
+    keyFindings: string[];
+    recommendedActions: string[];
+}
+
+export interface ILegalDetailedFinding {
+    area: string;
+    document: string;
+    finding: string;
+    riskLevel: string;
+    recommendation: string;
+    timeline: string;
     impact: string;
-    priorityLevel: 'high' | 'medium' | 'low';
+}
+
+export interface ILegalRecommendation {
+    area: string;
+    recommendation: string;
+    priority: string;
+    timeline: string;
+    responsibleParty: string;
+    estimatedCost?: string;
+    potentialImpact?: string;
+}
+
+export interface ILegalReportMetadata {
+    documentsReviewed: number;
+    complianceAreasChecked: number;
+    totalFindings: number;
+    criticalIssuesCount: number;
+    highPriorityIssuesCount: number;
+    mediumPriorityIssuesCount: number;
+    lowPriorityIssuesCount: number;
+    reportVersion?: string;
+    assessmentDate?: string;
+    assessorName?: string;
+}
+
+export interface ILegalRiskScore {
+    score: string;
+    riskLevel: 'High' | 'Medium' | 'Low' | 'Critical' | 'Significant' | 'Moderate' | 'Minor' | 'Informational';
+    justification: string;
 }
 
 export interface ILegalCompliance {
     complianceScore: string;
     details: string;
+    status?: 'Compliant' | 'Partially Compliant' | 'Non-Compliant' | 'Not Assessed';
 }
 
 export interface ILegalAnalysis {
-    items: ILegalReportItem[];
-    complianceAssessment: ILegalCompliance;
-    riskScore: ILegalRiskScore;
+    introduction?: string;
+    executiveSummary?: ILegalExecutiveSummary;
+    items?: ILegalReportItem[];
+    totalCompanyScore?: {
+        score: number;
+        rating: string;
+        description: string;
+    };
+    investmentDecision?: {
+        recommendation: string;
+        successProbability?: number;
+        justification: string;
+        keyConsiderations: string[];
+        suggestedTerms?: string[];
+    };
     missingDocuments: ILegalMissingDocuments;
+    detailedFindings?: ILegalDetailedFinding[];
+    recommendations?: ILegalRecommendation[];
+    reportMetadata?: ILegalReportMetadata;
+    disclaimer?: string;
+    riskScoreDetails?: ILegalRiskScore; // Renamed from riskScore
+    complianceAssessmentDetails?: ILegalCompliance; // Renamed from complianceAssessment
 }
 
 export interface ILegalDueDiligenceReport extends Document {
@@ -66,6 +124,9 @@ export interface ILegalDueDiligenceReport extends Document {
         uploadDate: Date;
     }>;
     missingDocumentTypes: string[];
+    reportType?: string;
+    reportPerspective?: string;
+    disclaimer?: string;
     createdAt: Date;
     updatedAt: Date;
     expiresAt: Date;
@@ -85,64 +146,115 @@ const LegalReportItemSchema = new Schema({
     recommendedActions: [{ type: String }]
 });
 
-const LegalRiskScoreSchema = new Schema({
-    score: { type: String, required: true },
-    riskLevel: { type: String, required: true },
-    justification: { type: String, required: true }
+const LegalMissingDocumentsSchema = new Schema({
+    documentList: [LegalDocumentItemSchema],
+    note: { type: String, required: false }
 });
 
-const LegalMissingDocumentsSchema = new Schema({
-    list: [LegalDocumentItemSchema],
-    impact: { type: String, required: true },
-    priorityLevel: { type: String, enum: ['high', 'medium', 'low'], required: true }
+const LegalExecutiveSummarySchema = new Schema({
+    headline: { type: String, required: false },
+    summary: { type: String, required: false },
+    keyFindings: [{ type: String }],
+    recommendedActions: [{ type: String }]
 });
+
+const LegalDetailedFindingSchema = new Schema({
+    area: { type: String, required: true },
+    document: { type: String, required: true },
+    finding: { type: String, required: true },
+    riskLevel: { type: String, required: true },
+    recommendation: { type: String, required: true },
+    timeline: { type: String, required: true },
+    impact: { type: String, required: true }
+});
+
+const LegalRecommendationSchema = new Schema({
+    area: { type: String, required: false },
+    recommendation: { type: String, required: false },
+    priority: { type: String, required: true },
+    timeline: { type: String, required: true },
+    responsibleParty: { type: String, required: false },
+    estimatedCost: { type: String, required: false },
+    potentialImpact: { type: String, required: false }
+});
+
+const LegalReportMetadataSchema = new Schema({
+    documentsReviewed: { type: Number, required: true },
+    complianceAreasChecked: { type: Number, required: true },
+    totalFindings: { type: Number, required: true },
+    criticalIssuesCount: { type: Number, required: true },
+    highPriorityIssuesCount: { type: Number, required: true },
+    mediumPriorityIssuesCount: { type: Number, required: true },
+    lowPriorityIssuesCount: { type: Number, required: true },
+    reportVersion: { type: String, required: false },
+    assessmentDate: { type: String, required: false },
+    assessorName: { type: String, required: false }
+}, { _id: false });
+
+const LegalRiskScoreSchema = new Schema({
+    score: { type: String, required: true },
+    riskLevel: { type: String, enum: ['High', 'Medium', 'Low', 'Critical', 'Significant', 'Moderate', 'Minor', 'Informational'], required: true },
+    justification: { type: String, required: true }
+}, { _id: false });
 
 const LegalComplianceSchema = new Schema({
     complianceScore: { type: String, required: true },
-    details: { type: String, required: true }
-});
+    details: { type: String, required: true },
+    status: { type: String, enum: ['Compliant', 'Partially Compliant', 'Non-Compliant', 'Not Assessed'], required: false }
+}, { _id: false });
 
 const LegalAnalysisSchema = new Schema({
+    introduction: { type: String, required: false },
+    executiveSummary: LegalExecutiveSummarySchema,
     items: [LegalReportItemSchema],
-    complianceAssessment: LegalComplianceSchema,
-    riskScore: LegalRiskScoreSchema,
-    missingDocuments: LegalMissingDocumentsSchema
-});
+    totalCompanyScore: {
+        score: { type: Number, required: true },
+        rating: { type: String, required: true },
+        description: { type: String, required: true }
+    },
+    investmentDecision: {
+        recommendation: { type: String, required: true },
+        successProbability: { type: Number, required: false },
+        justification: { type: String, required: true },
+        keyConsiderations: [{ type: String }],
+        suggestedTerms: [{ type: String }]
+    },
+    missingDocuments: { type: LegalMissingDocumentsSchema, required: true },
+    detailedFindings: [LegalDetailedFindingSchema],
+    recommendations: [LegalRecommendationSchema],
+    reportMetadata: LegalReportMetadataSchema,
+    disclaimer: { type: String, required: false },
+    riskScoreDetails: LegalRiskScoreSchema, // Renamed from riskScore
+    complianceAssessmentDetails: LegalComplianceSchema // Renamed from complianceAssessment
+}, { _id: false, minimize: false });
 
 const LegalDueDiligenceReportSchema = new Schema({
-    entityId: {
-        type: String,
-        required: true,
-        index: true
-    },
-    entityType: {
-        type: String,
-        enum: ['startup', 'investor'],
-        required: true,
-        index: true
-    },
+    entityId: { type: String, required: true, index: true },
+    entityType: { type: String, enum: ['startup', 'investor'], required: true },
     entityProfile: {
         companyName: { type: String, required: true },
-        industry: { type: String },
+        industry: { type: String, required: true },
         incorporationDate: { type: String },
         registrationNumber: { type: String },
-        address: { type: String }
+        address: { type: String },
     },
-    legalAnalysis: LegalAnalysisSchema,
-    reportCalculated: {
-        type: Boolean,
-        required: true,
-        default: false,
-        index: true
-    },
+    legalAnalysis: { type: LegalAnalysisSchema, required: true },
+    reportCalculated: { type: Boolean, default: false },
     processingNotes: { type: String },
     availableDocuments: [{
-        documentId: { type: String, required: true },
-        documentName: { type: String, required: true },
-        documentType: { type: String, required: true },
-        uploadDate: { type: Date, required: true }
+        _id: false,
+        documentId: String,
+        documentName: String,
+        documentType: String,
+        uploadDate: Date,
     }],
-    missingDocumentTypes: [{ type: String }]
+    missingDocumentTypes: [String],
+    reportType: { type: String },
+    reportPerspective: { type: String },
+    disclaimer: { type: String, required: false },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+    expiresAt: { type: Date, index: { expires: '30d' } }
 }, {
     timestamps: true
 });
@@ -155,10 +267,15 @@ LegalDueDiligenceReportSchema.index({ entityId: 1, entityType: 1 });
 LegalDueDiligenceReportSchema.index({ entityId: 1, reportCalculated: 1 });
 
 // Pre-save middleware to set expiresAt
-LegalDueDiligenceReportSchema.pre('save', function (next) {
-    if (this.isNew) {
-        this.set('expiresAt', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)); // 30 days from now
+LegalDueDiligenceReportSchema.pre<ILegalDueDiligenceReport>('save', function (next) {
+    if (!this.expiresAt) {
+        const now = new Date();
+        this.expiresAt = new Date(now.setDate(now.getDate() + 30));
     }
+    if (this.isNew) {
+        this.createdAt = new Date();
+    }
+    this.updatedAt = new Date();
     next();
 });
 

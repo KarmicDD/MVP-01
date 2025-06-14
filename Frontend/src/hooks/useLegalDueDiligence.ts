@@ -18,30 +18,226 @@ export interface LegalReportItem {
     facts: string[];
     keyFindings: string[];
     recommendedActions: string[];
+    summary?: string; // NEW: Optional summary for each item, if needed
 }
 
 export interface LegalRiskScore {
     score: string;
-    riskLevel: string;
+    riskLevel: 'High' | 'Medium' | 'Low' | 'Critical' | 'Significant' | 'Moderate' | 'Minor' | 'Informational';
     justification: string;
 }
 
 export interface LegalMissingDocuments {
     list: LegalDocumentItem[];
     impact: string;
-    priorityLevel: 'high' | 'medium' | 'low';
+    priorityLevel: 'High' | 'Medium' | 'Low';
 }
 
 export interface LegalCompliance {
     complianceScore: string;
     details: string;
+    status?: 'Compliant' | 'Partially Compliant' | 'Non-Compliant' | 'Not Assessed';
+}
+
+export interface LegalExecutiveSummary {
+    overallRisk: 'Critical' | 'High' | 'Medium' | 'Low';
+    legalStructureRating: 'Excellent' | 'Good' | 'Fair' | 'Poor';
+    complianceRating: 'Excellent' | 'Good' | 'Fair' | 'Poor';
+    transactionReadiness: 'Ready' | 'Conditional' | 'Requires Work' | 'Not Ready';
+    keyFindings: string[];
+    criticalIssues: string[];
+    recommendedActions: string[];
+}
+
+export interface LegalSectionAssessment {
+    findings: string[];
+    riskLevel: 'High' | 'Medium' | 'Low' | 'Critical' | 'Significant' | 'Moderate' | 'Minor' | 'Informational' | 'Not Assessed';
+    status?: 'Compliant' | 'Needs Attention' | 'Critical' | 'Good' | 'Fair' | 'Poor' | 'Not Applicable';
+    summary?: string;
+    keyObservations?: string[];
+    implications?: string;
+}
+
+export interface LegalCorporateStructure extends LegalSectionAssessment {
+    incorporationStatus: string;
+    shareCapitalStructure: string;
+    boardComposition: string;
+    corporateGovernance: string;
+}
+
+export interface LegalRegulatoryCompliance extends LegalSectionAssessment {
+    corporateLawCompliance: string;
+    sectoralCompliance: string;
+    taxCompliance: string;
+}
+
+export interface LegalMaterialAgreements extends LegalSectionAssessment {
+    investmentAgreements: string;
+    commercialAgreements: string;
+    employmentAgreements: string;
+}
+
+export interface LegalIntellectualProperty extends LegalSectionAssessment {
+    ipOwnership: string;
+    ipProtection: string;
+    ipAgreements: string;
+}
+
+export interface LegalLitigationAndDisputes extends LegalSectionAssessment {
+    existingLitigation: string;
+    potentialDisputes: string;
+}
+
+export interface LegalRegulatoryFilings extends LegalSectionAssessment {
+    statutoryFilings: string;
+    regulatoryApprovals: string;
+}
+
+export interface LegalDetailedFinding {
+    area: string;
+    document?: string;
+    finding: string;
+    riskLevel: 'Critical' | 'High' | 'Medium' | 'Low' | 'Informational';
+    recommendation: string;
+    timeline?: 'Immediate' | 'Short-Term' | 'Medium-Term' | 'Long-Term';
+    impact: string;
+    responsibleParty?: string;
+    currentStatus?: 'Open' | 'In Progress' | 'Resolved' | 'Mitigated';
+}
+
+export interface LegalRecommendation {
+    priority: 'Critical' | 'High' | 'Medium' | 'Low';
+    action: string;
+    timeline: 'Immediate' | 'Short-Term' | 'Medium-Term' | 'Long-Term' | 'Ongoing';
+    responsibility: string;
+    cost?: string;
+    rationale?: string;
+    expectedOutcome?: string;
+}
+
+export interface LegalReportMetadata {
+    documentsReviewed: number;
+    complianceAreasChecked: number;
+    totalFindings: number;
+    criticalIssuesCount: number;
+    highPriorityIssuesCount: number;
+    mediumPriorityIssuesCount: number;
+    lowPriorityIssuesCount: number;
+    reportVersion?: string;
+    assessmentDate?: string;
+    assessorName?: string;
 }
 
 export interface LegalAnalysis {
-    items: LegalReportItem[];
-    complianceAssessment: LegalCompliance;
-    riskScore: LegalRiskScore;
-    missingDocuments: LegalMissingDocuments;
+    introduction?: string; // Retained for overall introduction
+    items?: LegalReportItem[]; // This structure matches the user's request
+
+    // Overall assessments (inspired by Financial DD)
+    totalCompanyScore?: {
+        score: number;
+        rating: string; // e.g., 'High Risk', 'Moderate Risk', 'Low Risk'
+        description: string;
+    };
+
+    // Investment decision section (inspired by Financial DD)
+    investmentDecision?: {
+        recommendation: string; // e.g., 'Proceed with Caution', 'Further Investigation Required'
+        successProbability?: number; // Optional, if applicable to legal context
+        justification: string;
+        keyConsiderations: string[];
+        suggestedTerms?: string[]; // e.g., specific clauses, indemnities
+    };
+
+    // Enhanced executive summary (inspired by Financial DD)
+    executiveSummary?: {
+        headline: string; // Concise headline for the summary
+        summary: string; // Overall summary of legal findings
+        keyFindings: string[]; // Bullet points of most critical findings
+        recommendedActions: string[]; // High-level recommended actions
+    };
+
+    complianceAssessment?: LegalCompliance;
+    riskScore?: LegalRiskScore;
+    missingDocuments: {
+        documentList: LegalDocumentItem[];
+        note: string;
+    };
+
+    corporateStructureAnalysis?: {
+        incorporationDetails: string;
+        shareCapitalStructure: string;
+        boardAndManagementStructure: string;
+        findings: string[];
+        riskLevel: string;
+    };
+
+    regulatoryComplianceAnalysis?: {
+        corporateLawCompliance: string;
+        sectoralRegulations: string;
+        taxAndFinancialCompliance: string;
+        findings: string[];
+        riskLevel: string;
+    };
+
+    materialAgreementsAnalysis?: {
+        investmentAgreements: string;
+        commercialAgreements: string;
+        employmentAndHRAgreements: string;
+        findings: string[];
+        riskLevel: string;
+    };
+
+    intellectualPropertyAnalysis?: {
+        ipOwnershipAndProtection: string;
+        ipAgreements: string;
+        findings: string[];
+        riskLevel: string;
+    };
+
+    litigationAndDisputesAnalysis?: {
+        existingLitigation: string;
+        potentialDisputes: string;
+        findings: string[];
+        riskLevel: string;
+    };
+
+    regulatoryFilingsStatus?: {
+        statutoryFilings: string;
+        regulatoryApprovals: string;
+        findings: string[];
+        riskLevel: string;
+    };
+
+    overallLegalRiskAssessment?: {
+        criticalIssues: string[];
+        highPriorityIssues: string[];
+        mediumPriorityIssues: string[];
+        lowPriorityIssues: string[];
+    };
+
+    recommendations?: Array<{
+        priority: string;
+        action: string;
+        timeline: string;
+        responsibility: string;
+        cost?: string;
+        rationale?: string;
+        expectedOutcome?: string;
+    }>;
+
+    reportMetadata?: LegalReportMetadata;
+
+    corporateStructure?: LegalCorporateStructure;
+    regulatoryCompliance?: LegalRegulatoryCompliance;
+    materialAgreements?: LegalMaterialAgreements;
+    intellectualProperty?: LegalIntellectualProperty;
+    litigationAndDisputes?: LegalLitigationAndDisputes;
+    regulatoryFilings?: LegalRegulatoryFilings;
+    detailedFindings?: LegalDetailedFinding[];
+
+    methodology?: string;
+    scopeAndLimitations?: string;
+    disclaimer?: string;
 }
 
 export interface LegalDueDiligenceReport {
@@ -55,7 +251,7 @@ export interface LegalDueDiligenceReport {
         registrationNumber?: string;
         address?: string;
     };
-    legalAnalysis: LegalAnalysis;
+    legalAnalysis: LegalAnalysis; // Ensure this uses the updated LegalAnalysis
     reportCalculated: boolean;
     processingNotes?: string;
     availableDocuments: Array<{
@@ -65,6 +261,46 @@ export interface LegalDueDiligenceReport {
         uploadDate: Date;
     }>;
     missingDocumentTypes: string[];
+
+    // Report metadata and top-level fields (inspired by Financial DD)
+    companyName?: string;
+    reportDate?: string;
+    generatedBy?: string;
+    reportTitle?: string; // e.g., "Legal Due Diligence Report for [CompanyName]"
+    clientName?: string; // Who the report is for
+
+    // Explicit introduction at the report level, if different from legalAnalysis.introduction
+    introduction?: string;
+    disclaimer?: string;
+
+    // Core structured content - expose at top level for easier access
+    items?: LegalReportItem[]; // This will be the primary display array for the new format
+    executiveSummary?: LegalAnalysis['executiveSummary'];
+    totalCompanyScore?: LegalAnalysis['totalCompanyScore'];
+    investmentDecision?: LegalAnalysis['investmentDecision'];
+    detailedFindings?: LegalDetailedFinding[];
+    recommendations?: LegalRecommendation[];
+
+    riskScore?: LegalRiskScore;
+    missingDocuments?: {
+        documentList: LegalDocumentItem[];
+        note: string;
+        overallImpact?: string; // New: Summarize impact of missing docs
+        priority?: 'High' | 'Medium' | 'Low'; // New: Overall priority for addressing missing docs
+    };
+    corporateStructureAnalysis?: LegalCorporateStructure;
+    regulatoryComplianceAnalysis?: LegalRegulatoryCompliance;
+    materialAgreementsAnalysis?: LegalMaterialAgreements;
+    intellectualPropertyAnalysis?: LegalIntellectualProperty;
+    litigationAndDisputesAnalysis?: LegalLitigationAndDisputes;
+    regulatoryFilingsStatus?: LegalRegulatoryFilings;
+
+    reportMetadata?: LegalReportMetadata;
+
+    compatibilityAnalysis?: any;
+    forwardLookingAnalysis?: any;
+    scoringBreakdown?: any;
+
     createdAt: Date;
     updatedAt: Date;
     expiresAt: Date;
@@ -104,12 +340,19 @@ export const useLegalDueDiligence = (entityId: string, entityType: 'startup' | '
     const [entityInfo, setEntityInfo] = useState<EntityInfo | null>(null);
     const reportRef = useRef<HTMLDivElement>(null);
 
-    // Check for documents availability when entityId changes
     useEffect(() => {
         if (entityId && entityType) {
             checkDocumentsAvailability();
         }
-    }, [entityId, entityType]); const checkDocumentsAvailability = async () => {
+    }, [entityId, entityType]);
+
+    useEffect(() => {
+        if (documentsAvailable && entityId && entityType) {
+            fetchExistingReport();
+        }
+    }, [documentsAvailable, entityId, entityType]);
+
+    const checkDocumentsAvailability = async () => {
         setCheckingDocuments(true);
         setError(null);
 
@@ -156,7 +399,9 @@ export const useLegalDueDiligence = (entityId: string, entityType: 'startup' | '
         } finally {
             setCheckingDocuments(false);
         }
-    }; const generateReport = async (isAutomatic = false) => {
+    };
+
+    const generateReport = async (isAutomatic = false) => {
         if (!entityId || !entityType) {
             if (!isAutomatic) toast.error('Entity information is missing');
             return;
@@ -166,18 +411,12 @@ export const useLegalDueDiligence = (entityId: string, entityType: 'startup' | '
         setError(null);
 
         try {
-            // Show loading toast
-            const loadingToast = !isAutomatic ? toast.loading('Generating legal due diligence report...') : null;
-
             console.log(`Generating legal report for entityId: ${entityId}, entityType: ${entityType}`);
             const response = await api.post(`/legal-due-diligence/new/entity/${entityId}/analyze`, {
                 entityType
             });
 
-            if (loadingToast) toast.dismiss(loadingToast);
-
             if (response.data.success && response.data.data) {
-                // Check if the report was successfully calculated
                 if (response.data.data.processingStatus === 'pending') {
                     console.warn('Report was generated but processing is pending');
                     setError({
@@ -187,7 +426,6 @@ export const useLegalDueDiligence = (entityId: string, entityType: 'startup' | '
                     });
                     if (!isAutomatic) toast.warning('Report is being processed. This may take a few moments.');
                 } else {
-                    // For successful completion, we need to fetch the full report
                     await fetchExistingReport();
                     if (!isAutomatic) toast.success('Legal due diligence report generated successfully!');
                 }
@@ -196,6 +434,28 @@ export const useLegalDueDiligence = (entityId: string, entityType: 'startup' | '
             }
         } catch (error: any) {
             console.error('Error generating legal due diligence report:', error);
+
+            if (error.response?.data?.message &&
+                error.response.data.message.includes('already exists')) {
+                console.log('Report already exists, fetching existing report');
+
+                if (error.response.data.data?.reportId) {
+                    try {
+                        const existingReportResponse = await api.get(`/legal-due-diligence/new/reports/${error.response.data.data.reportId}`);
+                        if (existingReportResponse.data.success && existingReportResponse.data.data) {
+                            setReport(existingReportResponse.data.data);
+                            if (!isAutomatic) toast.success('Loaded existing legal due diligence report');
+                            return;
+                        }
+                    } catch (fetchError) {
+                        console.error('Error fetching existing report by ID:', fetchError);
+                    }
+                }
+
+                await fetchExistingReport();
+                if (!isAutomatic) toast.success('Loaded existing legal due diligence report');
+                return;
+            }
 
             if (error.response?.data) {
                 setError({
@@ -229,19 +489,87 @@ export const useLegalDueDiligence = (entityId: string, entityType: 'startup' | '
     const fetchExistingReport = async () => {
         if (!entityId || !entityType) return;
 
+        setLoading(true);
+        setError(null);
+
         try {
+            console.log(`Fetching existing legal DD report for entityId: ${entityId}, entityType: ${entityType}`);
+
             const response = await api.get(`/legal-due-diligence/new/entity/${entityId}/reports`, {
                 params: { entityType }
             });
 
             if (response.data.success && response.data.data && response.data.data.length > 0) {
-                // Get the most recent report
                 const latestReport = response.data.data[0];
-                setReport(latestReport);
+                console.log('Found existing legal DD report:', latestReport);                // Transform the backend response to match the frontend expectations
+                const analysisResult = latestReport.analysisResult || {};
+
+                const transformedReport = {
+                    ...latestReport,
+                    // Map the backend structure to frontend expectations
+                    legalAnalysis: {
+                        ...analysisResult,
+                        // Ensure the items array is available at the analysis level
+                        items: analysisResult.items || [],
+                        executiveSummary: analysisResult.executiveSummary,
+                        totalCompanyScore: analysisResult.totalCompanyScore,
+                        investmentDecision: analysisResult.investmentDecision,
+                        detailedFindings: analysisResult.detailedFindings || [],
+                        recommendations: analysisResult.recommendations || [],
+                        missingDocuments: analysisResult.missingDocuments || { documentList: [], note: '' },
+                        reportMetadata: analysisResult.reportMetadata || {}
+                    },
+                    // Also expose top-level properties for direct access
+                    items: analysisResult.items || [],
+                    executiveSummary: analysisResult.executiveSummary,
+                    totalCompanyScore: analysisResult.totalCompanyScore,
+                    investmentDecision: analysisResult.investmentDecision,
+                    detailedFindings: analysisResult.detailedFindings || [],
+                    recommendations: analysisResult.recommendations || [],
+                    missingDocuments: analysisResult.missingDocuments || { documentList: [], note: '' },
+
+                    availableDocuments: latestReport.availableDocuments || [],
+                    missingDocumentTypes: latestReport.missingDocumentTypes || [],
+                    entityProfile: latestReport.entityProfile || {
+                        companyName: latestReport.companyName || 'Unknown Company',
+                        industry: 'Not specified'
+                    },
+                    entityType: latestReport.entityType || 'startup',
+                    createdAt: latestReport.createdAt || latestReport.reportGeneratedAt || new Date(),
+                    updatedAt: latestReport.updatedAt || new Date(),
+                    expiresAt: latestReport.expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                }; console.log('Transformed report:', transformedReport);
+                console.log('Transformed report legalAnalysis:', transformedReport.legalAnalysis);
+                console.log('Backend analysisResult:', analysisResult);
+                console.log('Executive Summary:', analysisResult.executiveSummary);
+                console.log('Items:', analysisResult.items);
+                console.log('Total Company Score:', analysisResult.totalCompanyScore);
+                console.log('Investment Decision:', analysisResult.investmentDecision);
+                console.log('Detailed Findings:', analysisResult.detailedFindings);
+                console.log('Recommendations:', analysisResult.recommendations);
+                console.log('Missing Documents:', analysisResult.missingDocuments);
+                setReport(transformedReport);
+            } else {
+                console.log('No existing legal DD report found, attempting to generate automatically');
+                await generateReport(true);
             }
         } catch (error: any) {
             console.error('Error fetching existing report:', error);
-            // Don't set error here as this is just a helper function
+
+            if (error.response?.status === 404 ||
+                (error.response?.data?.message && error.response.data.message.includes('not found'))) {
+                console.log('Report not found (404), attempting to generate automatically');
+                await generateReport(true);
+            } else {
+                setError({
+                    message: error.response?.data?.message || 'Failed to fetch existing report',
+                    type: 'API_ERROR',
+                    errorCode: error.response?.data?.errorCode,
+                    details: error.response?.data
+                });
+            }
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -254,7 +582,6 @@ export const useLegalDueDiligence = (entityId: string, entityType: 'startup' | '
         try {
             toast.loading('Preparing PDF export...');
 
-            // Use html2canvas to capture the report
             const canvas = await html2canvas(reportRef.current, {
                 scale: 2,
                 height: reportRef.current.scrollHeight,
@@ -275,11 +602,9 @@ export const useLegalDueDiligence = (entityId: string, entityType: 'startup' | '
             let heightLeft = imgHeight;
             let position = 0;
 
-            // Add first page
             pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
             heightLeft -= pdfHeight;
 
-            // Add additional pages if needed
             while (heightLeft >= 0) {
                 position = heightLeft - imgHeight;
                 pdf.addPage();
@@ -295,7 +620,9 @@ export const useLegalDueDiligence = (entityId: string, entityType: 'startup' | '
             toast.dismiss();
             toast.error('Failed to export PDF');
         }
-    }; const handleShareReport = async () => {
+    };
+
+    const handleShareReport = async () => {
         if (!report) {
             toast.error('No report available to share');
             return;
@@ -315,7 +642,6 @@ export const useLegalDueDiligence = (entityId: string, entityType: 'startup' | '
             if (response.data.success) {
                 toast.success('Report sharing link generated successfully!');
 
-                // Copy to clipboard if available
                 if (navigator.clipboard && response.data.shareLink) {
                     await navigator.clipboard.writeText(response.data.shareLink);
                     toast.info('Share link copied to clipboard');

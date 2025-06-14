@@ -6,6 +6,7 @@ import { profileService } from '../../../services/api';
 import { toast } from 'react-hot-toast';
 import { useLegalDueDiligence } from '../../../hooks/useLegalDueDiligence';
 import LegalDueDiligenceReportContent from './LegalDueDiligenceReportContent';
+import NewLegalDueDiligenceReportContent from './NewLegalDueDiligenceReportContent';
 import { LoadingSpinner } from '../../Loading';
 import TutorialButton from '../../Tutorial/TutorialButton';
 import { useTutorial } from '../../../hooks/useTutorial';
@@ -97,7 +98,7 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
     if (checkingDocuments || loading) {
         return <LoadingSpinner message="Preparing Legal Analysis" submessage="Loading legal due diligence data..." />;
     }
-    
+
     // Show error state if there's an error
     if (error) {
         // Check if error is a string or an object
@@ -109,13 +110,13 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
         return (
             <div className="bg-white rounded-xl shadow-lg overflow-hidden p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Legal Due Diligence</h3>
-                
+
                 <ErrorDisplay
                     error={errorObj}
                     onRetry={generateReport}
                     onDismiss={() => window.location.reload()}
                 />
-                
+
                 {availableDocuments && availableDocuments.length > 0 && (
                     <div className="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
                         <h4 className="font-medium text-gray-700 mb-3">Available Documents</h4>
@@ -161,19 +162,21 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
                             regulatory adherence, and legal risks for {entityName}.
                         </p>
                     </div>
-                </div>
-
-                {/* Main content */}
+                </div>                {/* Main content */}
                 <div ref={reportRef}>
                     <LegalDueDiligenceReportContent
                         report={report}
                         userProfile={userProfile}
                         entityName={entityName}
+                        formatDate={formatDate}
+                        handleExportPDF={handleExportPDF}
+                        handleShareReport={handleShareReport}
                     />
                 </div>
             </div>
-        );    }
-    
+        );
+    }
+
     // Pre-report generation state
     if (documentsAvailable === false) {
         return (

@@ -19,6 +19,19 @@ const LEGAL_DD_COST = 0.05; // Cost per legal DD request
 const MAX_DAILY_REQUESTS = 50; // Maximum legal DD requests per day
 
 /**
+ * Helper function to safely convert userId to ObjectId or use as string
+ * Follows DRY principle for userId handling throughout the controller
+ */
+const getUserIdForQuery = (userId: string): Types.ObjectId | string => {
+    // Check if userId is a valid ObjectId format (24 character hex string)
+    if (Types.ObjectId.isValid(userId) && userId.length === 24) {
+        return new Types.ObjectId(userId);
+    }
+    // If not a valid ObjectId, use as string (for UUID or other formats)
+    return userId;
+};
+
+/**
  * Helper function to handle errors in a standardized way
  */
 const handleControllerError = (
@@ -143,7 +156,8 @@ export const analyzeNewLegalDueDiligence = async (req: Request, res: Response) =
         const { entityId } = req.params;
         const entityType = (req.query.entityType as 'startup' | 'investor') || 'startup';
 
-        console.log(`Processing legal due diligence request for entityId: ${entityId}, entityType: ${entityType}`);        // Validate required fields
+        console.log(`Processing legal due diligence request for entityId: ${entityId}, entityType: ${entityType}`);
+
         if (!entityId) {
             return res.status(400).json({
                 message: 'Entity ID is required',
@@ -151,112 +165,176 @@ export const analyzeNewLegalDueDiligence = async (req: Request, res: Response) =
             });
         }
 
-        // Check if report already exists
-        const existingReport = await LegalDueDiligenceReportModel.findOne({ entityId });
+        const existingReport = await LegalDueDiligenceReportModel.findOne({ entityId, entityType });
+
         if (existingReport) {
-            return res.status(400).json({
-                message: 'Legal due diligence report already exists for this entity',
-                success: false,
-                data: {
-                    reportId: existingReport._id,
-                    entityId: existingReport.entityId,
-                    companyName: existingReport.entityProfile?.companyName || 'Unknown Company',
-                    reportGeneratedAt: existingReport.createdAt
-                }
+            console.log(`Updating existing legal due diligence report for entity ${entityId}`);
+            existingReport.set({
+                ...req.body,
+                updatedAt: new Date(),
             });
-        }        // Check if entity exists
-        let entity = await StartupProfileModel.findOne({ userId: entityId });
-        if (!entity) {
-            entity = await InvestorProfileModel.findOne({ userId: entityId });
+            await existingReport.save();
+            return res.status(200).json(existingReport);
         }
 
-        if (!entity) {
+        let entityProfile;
+        let companyName = 'Unknown Company';
+
+        if (entityType === 'startup') {
+            entityProfile = await StartupProfileModel.findOne({ userId: entityId });
+            companyName = entityProfile?.companyName || 'Startup Company';
+        } else {
+            entityProfile = await InvestorProfileModel.findOne({ userId: entityId });
+            companyName = entityProfile?.companyName || 'Investor Company';
+        }
+
+        if (!entityProfile) {
             return res.status(404).json({
-                message: 'Entity not found',
+                message: `${entityType === 'startup' ? 'Startup' : 'Investor'} profile not found`,
                 success: false
             });
         }
 
-        // Check API usage limits using the authenticated user's ID
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        const legalDocumentTypes: DocumentType[] = [
+            'legal_incorporation_certificate',
+            'legal_moa_aoa',
+            'legal_board_resolutions',
+            'legal_shareholders_agreement',
+            'legal_share_certificates',
+            'legal_valuation_reports',
+            'legal_loan_agreements',
+            'legal_annual_filings'
+        ];
 
-        const todayUsage = await ApiUsageModel.countDocuments({
-            userId: new Types.ObjectId(req.user.userId),
-            createdAt: { $gte: today, $lt: tomorrow }
+        const legalDocuments = await DocumentModel.find({
+            userId: entityId,
+            documentType: { $in: legalDocumentTypes }
         });
 
-        if (todayUsage >= MAX_DAILY_REQUESTS) {
-            return res.status(429).json({
-                message: `Daily limit of ${MAX_DAILY_REQUESTS} legal due diligence requests exceeded`,
-                success: false
+        if (legalDocuments.length === 0) {
+            return res.status(404).json({
+                message: 'No legal documents found for analysis',
+                success: false,
+                errorCode: 'NO_LEGAL_DOCUMENTS',
+                suggestion: 'Please upload legal documents such as incorporation certificate, MOA/AOA, board resolutions, etc.'
             });
         }
 
-        // Log API usage
-        const apiUsage = new ApiUsageModel({
-            userId: new Types.ObjectId(req.user.userId)
-        });
+        console.log(`Found ${legalDocuments.length} legal documents for analysis`);
 
-        await apiUsage.save();
+        const documentsForProcessing = legalDocuments.map(doc => ({
+            filePath: doc.filePath || `/path/to/uploads/${doc.fileName}`,
+            documentType: doc.documentType,
+            originalName: doc.originalName,
+            description: doc.description,
+            fileType: doc.fileType,
+            fileSize: doc.fileSize,
+            createdAt: doc.createdAt?.toISOString(),
+            updatedAt: doc.updatedAt?.toISOString()
+        }));
 
-        // Generate the report using the service with proper parameters
-        const report = await newLegalDueDiligenceService.generateLegalDueDiligenceReport(entityId, req.user.userId);
+        const analysisResult = await newLegalDueDiligenceService.processLegalDocumentsAndGenerateReport(
+            documentsForProcessing,
+            companyName,
+            `Entity Type: ${entityType}, Analysis requested by: ${req.user.userId}`
+        );
 
-        if (!report) {
-            return res.status(500).json({
-                message: 'Failed to generate legal due diligence report',
-                success: false
-            });
-        }
+        const reportData = {
+            entityId: entityId,
+            entityType: entityType,
+            entityProfile: {
+                companyName: companyName,
+                industry: (entityProfile as any).industry || 'Not specified',
+                incorporationDate: (entityProfile as any).incorporationDate || undefined,
+                registrationNumber: (entityProfile as any).registrationNumber || undefined,
+                address: (entityProfile as any).address || undefined
+            },
+            legalAnalysis: analysisResult,
+            reportCalculated: true,
+            processingNotes: `Analysis requested by user ${req.user.userId} for ${entityType} entity`,
+            availableDocuments: legalDocuments.map(doc => ({
+                documentId: doc._id ? doc._id.toString() : '',
+                documentName: doc.originalName || doc.fileName || '',
+                documentType: doc.documentType || '',
+                uploadDate: doc.createdAt || new Date()
+            })),
+            missingDocumentTypes: legalDocumentTypes.filter(
+                docType => !legalDocuments.map(doc => doc.documentType).includes(docType)
+            )
+        };
 
-        res.status(201).json({
-            message: 'Legal due diligence analysis completed successfully',
-            success: true,
-            data: {
-                reportId: report._id,
-                entityId: report.entityId,
-                companyName: report.entityProfile?.companyName || 'Unknown Company',
-                reportGeneratedAt: report.createdAt,
-                processingStatus: report.reportCalculated ? 'completed' : 'pending',
-                apiUsage: {
-                    id: apiUsage._id,
-                    remainingRequests: MAX_DAILY_REQUESTS - todayUsage - 1
-                }
-            }
-        });
+        const newReport = new LegalDueDiligenceReportModel(reportData);
+        await newReport.save();
+
+        res.status(201).json(newReport);
     } catch (error) {
         handleControllerError(res, error, 'Error analyzing legal due diligence');
     }
 };
 
 /**
- * Get all legal due diligence reports
+ * Get legal due diligence reports for a specific entity or all reports
+ * This function supports filtering by entity ID when called via /entity/:entityId/reports route
  */
 export const getLegalDueDiligenceReports = async (req: Request, res: Response) => {
     try {
-        const reports = await LegalDueDiligenceReportModel.find({})
-            .select('entityId entityProfile legalAnalysis reportCalculated createdAt updatedAt')
+        if (!req.user?.userId) {
+            return res.status(401).json({
+                message: 'Unauthorized',
+                success: false
+            });
+        }
+
+        const { entityId } = req.params;
+        const entityType = (req.query.entityType as 'startup' | 'investor') || 'startup';
+
+        console.log(`Getting legal DD reports for entityId: ${entityId}, entityType: ${entityType}`);
+
+        // Build the query filter
+        let queryFilter: any = {};
+
+        if (entityId) {
+            // If entityId is provided, filter by entity
+            queryFilter = {
+                entityId: entityId,
+                entityType: entityType
+            };
+        }
+        // If no entityId is provided, return all reports (for admin/general use)
+
+        const reports = await LegalDueDiligenceReportModel.find(queryFilter)
+            .select('entityId entityType entityProfile legalAnalysis reportCalculated createdAt updatedAt availableDocuments missingDocumentTypes')
             .sort({ createdAt: -1 });
 
         const formattedReports = reports.map(report => ({
             reportId: report._id,
             entityId: report.entityId,
+            entityType: report.entityType,
             companyName: report.entityProfile?.companyName || 'Unknown Company',
             reportGeneratedAt: report.createdAt,
             processingStatus: report.reportCalculated ? 'completed' : 'pending',
             analysisResult: report.legalAnalysis,
+            availableDocuments: report.availableDocuments || [],
+            missingDocumentTypes: report.missingDocumentTypes || [],
+            summary: {
+                overallRisk: report.legalAnalysis?.riskScoreDetails?.riskLevel || 'Not assessed',
+                complianceRating: report.legalAnalysis?.complianceAssessmentDetails?.complianceScore || 'Not assessed'
+            },
             createdAt: report.createdAt,
             updatedAt: report.updatedAt
         }));
 
+        console.log(`Found ${formattedReports.length} legal DD reports`);
+
         res.status(200).json({
-            message: 'Legal due diligence reports retrieved successfully',
+            message: entityId
+                ? `Legal due diligence reports for entity ${entityId} retrieved successfully`
+                : 'Legal due diligence reports retrieved successfully',
             success: true,
             data: formattedReports,
-            total: formattedReports.length
+            total: formattedReports.length,
+            entityId: entityId || null,
+            entityType: entityId ? entityType : null
         });
     } catch (error) {
         handleControllerError(res, error, 'Error retrieving legal due diligence reports');
