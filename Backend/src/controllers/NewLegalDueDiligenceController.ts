@@ -165,33 +165,50 @@ export const analyzeNewLegalDueDiligence = async (req: Request, res: Response) =
             });
         }
 
-        const existingReport = await LegalDueDiligenceReportModel.findOne({ entityId, entityType });
-
-        if (existingReport) {
-            console.log(`Updating existing legal due diligence report for entity ${entityId}`);
-            existingReport.set({
-                ...req.body,
-                updatedAt: new Date(),
+        const existingReport = await LegalDueDiligenceReportModel.findOne({ entityId, entityType }); if (existingReport) {
+            console.log(`Existing legal due diligence report found for entity ${entityId}`);
+            return res.status(200).json({
+                message: 'Legal due diligence report already exists',
+                success: true,
+                data: {
+                    reportId: existingReport._id,
+                    processingStatus: 'completed'
+                }
             });
-            await existingReport.save();
-            return res.status(200).json(existingReport);
-        }
-
-        let entityProfile;
-        let companyName = 'Unknown Company';
+        } let entityProfile;
 
         if (entityType === 'startup') {
             entityProfile = await StartupProfileModel.findOne({ userId: entityId });
-            companyName = entityProfile?.companyName || 'Startup Company';
         } else {
             entityProfile = await InvestorProfileModel.findOne({ userId: entityId });
-            companyName = entityProfile?.companyName || 'Investor Company';
         }
 
         if (!entityProfile) {
             return res.status(404).json({
                 message: `${entityType === 'startup' ? 'Startup' : 'Investor'} profile not found`,
-                success: false
+                success: false,
+                errorCode: 'PROFILE_NOT_FOUND',
+                suggestion: 'Please ensure the entity profile is properly created before requesting legal due diligence analysis.'
+            });
+        }        // Strict validation: Ensure company name is available
+        const companyName = entityProfile.companyName;
+        if (!companyName || companyName.trim() === '') {
+            return res.status(422).json({
+                message: 'Company name is required for legal due diligence analysis',
+                success: false,
+                errorCode: 'MISSING_COMPANY_NAME',
+                suggestion: 'Please update the entity profile with a valid company name before proceeding.'
+            });
+        }
+
+        // Strict validation: Ensure industry is available
+        const industry = (entityProfile as any).industry;
+        if (!industry || industry.trim() === '') {
+            return res.status(422).json({
+                message: 'Company industry is required for legal due diligence analysis',
+                success: false,
+                errorCode: 'MISSING_INDUSTRY',
+                suggestion: 'Please update the entity profile with a valid industry before proceeding.'
             });
         }
 
@@ -231,20 +248,49 @@ export const analyzeNewLegalDueDiligence = async (req: Request, res: Response) =
             fileSize: doc.fileSize,
             createdAt: doc.createdAt?.toISOString(),
             updatedAt: doc.updatedAt?.toISOString()
-        }));
+        }));        // Process documents and generate report with strict validation
+        let analysisResult;
+        try {
+            analysisResult = await newLegalDueDiligenceService.processLegalDocumentsAndGenerateReport(
+                documentsForProcessing,
+                companyName,
+                `Entity Type: ${entityType}, Analysis requested by: ${req.user.userId}`
+            );
 
-        const analysisResult = await newLegalDueDiligenceService.processLegalDocumentsAndGenerateReport(
-            documentsForProcessing,
-            companyName,
-            `Entity Type: ${entityType}, Analysis requested by: ${req.user.userId}`
-        );
+            // Validate that the AI response contains required data
+            if (!analysisResult) {
+                throw new Error('AI analysis failed: No report data generated');
+            }
 
-        const reportData = {
+            if (!analysisResult.missingDocuments) {
+                throw new Error('AI analysis failed: Missing required field "missingDocuments"');
+            }
+
+            console.log('Legal due diligence analysis completed successfully with strict validation');
+
+        } catch (analysisError: any) {
+            console.error('Analysis failed with validation error:', analysisError);
+
+            // Check if this is a validation error from our strict validation
+            if (analysisError.message && analysisError.message.includes('Invalid')) {
+                return res.status(422).json({
+                    message: 'AI analysis did not provide complete legal due diligence data',
+                    success: false,
+                    errorCode: 'INCOMPLETE_AI_ANALYSIS',
+                    details: analysisError.message,
+                    suggestion: 'The AI was unable to generate a complete legal analysis from the provided documents. Please ensure all required legal documents are properly formatted and try again.',
+                    timestamp: new Date().toISOString()
+                });
+            }
+
+            // Re-throw other errors to be handled by the general error handler
+            throw analysisError;
+        } const reportData = {
             entityId: entityId,
             entityType: entityType,
             entityProfile: {
                 companyName: companyName,
-                industry: (entityProfile as any).industry || 'Not specified',
+                industry: industry,
                 incorporationDate: (entityProfile as any).incorporationDate || undefined,
                 registrationNumber: (entityProfile as any).registrationNumber || undefined,
                 address: (entityProfile as any).address || undefined
@@ -261,12 +307,14 @@ export const analyzeNewLegalDueDiligence = async (req: Request, res: Response) =
             missingDocumentTypes: legalDocumentTypes.filter(
                 docType => !legalDocuments.map(doc => doc.documentType).includes(docType)
             )
-        };
-
-        const newReport = new LegalDueDiligenceReportModel(reportData);
+        }; const newReport = new LegalDueDiligenceReportModel(reportData);
         await newReport.save();
 
-        res.status(201).json(newReport);
+        res.status(201).json({
+            message: 'Legal due diligence report generated successfully',
+            success: true,
+            data: newReport
+        });
     } catch (error) {
         handleControllerError(res, error, 'Error analyzing legal due diligence');
     }
@@ -304,25 +352,23 @@ export const getLegalDueDiligenceReports = async (req: Request, res: Response) =
 
         const reports = await LegalDueDiligenceReportModel.find(queryFilter)
             .select('entityId entityType entityProfile legalAnalysis reportCalculated createdAt updatedAt availableDocuments missingDocumentTypes')
-            .sort({ createdAt: -1 });
-
-        const formattedReports = reports.map(report => ({
-            reportId: report._id,
-            entityId: report.entityId,
-            entityType: report.entityType,
-            companyName: report.entityProfile?.companyName || 'Unknown Company',
-            reportGeneratedAt: report.createdAt,
-            processingStatus: report.reportCalculated ? 'completed' : 'pending',
-            analysisResult: report.legalAnalysis,
-            availableDocuments: report.availableDocuments || [],
-            missingDocumentTypes: report.missingDocumentTypes || [],
-            summary: {
-                overallRisk: report.legalAnalysis?.riskScoreDetails?.riskLevel || 'Not assessed',
-                complianceRating: report.legalAnalysis?.complianceAssessmentDetails?.complianceScore || 'Not assessed'
-            },
-            createdAt: report.createdAt,
-            updatedAt: report.updatedAt
-        }));
+            .sort({ createdAt: -1 }); const formattedReports = reports.map(report => ({
+                reportId: report._id,
+                entityId: report.entityId,
+                entityType: report.entityType,
+                companyName: report.entityProfile?.companyName || '',
+                reportGeneratedAt: report.createdAt,
+                processingStatus: report.reportCalculated ? 'completed' : 'pending',
+                analysisResult: report.legalAnalysis,
+                availableDocuments: report.availableDocuments || [],
+                missingDocumentTypes: report.missingDocumentTypes || [],
+                summary: {
+                    overallRisk: report.legalAnalysis?.riskScore?.riskLevel || 'Not assessed',
+                    complianceRating: report.legalAnalysis?.complianceAssessment?.complianceScore || 'Not assessed'
+                },
+                createdAt: report.createdAt,
+                updatedAt: report.updatedAt
+            }));
 
         console.log(`Found ${formattedReports.length} legal DD reports`);
 
@@ -366,11 +412,10 @@ export const getLegalDueDiligenceReportById = async (req: Request, res: Response
 
         res.status(200).json({
             message: 'Legal due diligence report retrieved successfully',
-            success: true,
-            data: {
+            success: true, data: {
                 reportId: report._id,
                 entityId: report.entityId,
-                companyName: report.entityProfile?.companyName || 'Unknown Company',
+                companyName: report.entityProfile?.companyName || '',
                 reportGeneratedAt: report.createdAt,
                 processingStatus: report.reportCalculated ? 'completed' : 'pending',
                 analysisResult: report.legalAnalysis,

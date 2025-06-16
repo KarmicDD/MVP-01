@@ -905,6 +905,199 @@ components:
       required:
         - message
 
+    LegalDueDiligenceReport:
+      type: object
+      properties:
+        companyName:
+          type: string
+          description: Name of the company analyzed
+        reportDate:
+          type: string
+          format: date-time
+          description: Date when the report was generated
+        executiveSummary:
+          type: object
+          properties:
+            headline:
+              type: string
+              description: Executive summary headline
+            summary:
+              type: string
+              description: Overall summary of legal findings
+            overallRisk:
+              type: string
+              enum: [Critical, High, Medium, Low]
+              description: Overall risk level
+            legalStructureRating:
+              type: string
+              enum: [Excellent, Good, Fair, Poor]
+              description: Legal structure rating
+            complianceRating:
+              type: string
+              enum: [Excellent, Good, Fair, Poor]
+              description: Compliance rating
+            transactionReadiness:
+              type: string
+              enum: [Ready, Conditional, "Requires Work", "Not Ready"]
+              description: Transaction readiness status
+            keyFindings:
+              type: array
+              items:
+                type: string
+              description: Key legal findings
+            criticalIssues:
+              type: array
+              items:
+                type: string
+              description: Critical legal issues
+            recommendedActions:
+              type: string
+              description: Recommended actions formatted as numbered list
+          required:
+            - headline
+            - summary
+        totalCompanyScore:
+          type: object
+          properties:
+            score:
+              type: number
+              minimum: 0
+              maximum: 100
+              description: Overall company score
+            rating:
+              type: string
+              description: Overall rating (e.g., High Risk, Moderate Risk, Low Risk)
+            description:
+              type: string
+              description: Detailed explanation of the scoring rationale
+          required:
+            - score
+            - rating
+            - description
+        investmentDecision:
+          type: object
+          properties:
+            recommendation:
+              type: string
+              description: Investment recommendation (e.g., Proceed with Caution, Further Investigation Required)
+            successProbability:
+              type: number
+              minimum: 0
+              maximum: 100
+              description: Probability of successful outcome (0-100)
+            justification:
+              type: string
+              description: Detailed justification for the recommendation
+            keyConsiderations:
+              type: array
+              items:
+                type: string
+              description: Key considerations for the investment decision
+            suggestedTerms:
+              type: array
+              items:
+                type: string
+              description: Suggested terms or conditions
+          required:
+            - recommendation
+            - successProbability
+            - justification
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+                description: Title of the legal area or document
+              facts:
+                type: array
+                items:
+                  type: string
+                description: Facts from document analysis
+              keyFindings:
+                type: array
+                items:
+                  type: string
+                description: Key findings from legal analysis
+              recommendedActions:
+                type: string
+                description: Recommended actions formatted as numbered list
+            required:
+              - title
+          description: Itemized legal due diligence findings
+        missingDocuments:
+          type: object
+          properties:
+            documentList:
+              type: array
+              items:
+                type: object
+                properties:
+                  documentCategory:
+                    type: string
+                    description: Category of the missing document
+                  specificDocument:
+                    type: string
+                    description: Specific document that is missing
+                  requirementReference:
+                    type: string
+                    description: Reference to the requirement
+                required:
+                  - documentCategory
+                  - specificDocument
+                  - requirementReference
+            note:
+              type: string
+              description: Additional notes about missing documents
+        recommendations:
+          type: array
+          items:
+            type: object
+            properties:
+              area:
+                type: string
+                description: Legal area the recommendation pertains to
+              recommendation:
+                type: string
+                description: Specific legal remedial action
+              priority:
+                type: string
+                enum: [Critical, High, Medium, Low]
+                description: Priority level
+              timeline:
+                type: string
+                description: Timeline for completion
+              responsibleParty:
+                type: string
+                description: Entity responsible for implementation
+              cost:
+                type: string
+                description: Estimated cost
+              rationale:
+                type: string
+                description: Brief explanation of importance
+              expectedOutcome:
+                type: string
+                description: Expected outcome of implementation
+            required:
+              - area
+              - recommendation
+              - priority
+              - timeline
+              - responsibleParty
+              - cost
+              - rationale
+              - expectedOutcome
+          description: List of recommendations (optional, only if issues found)
+      required:
+        - companyName
+        - reportDate
+        - executiveSummary
+        - totalCompanyScore
+        - investmentDecision
+        - items
+
   securitySchemes:
     bearerAuth:
       type: http

@@ -17,7 +17,7 @@ export interface LegalReportItem {
     title: string;
     facts: string[];
     keyFindings: string[];
-    recommendedActions: string[];
+    recommendedActions: string; // Changed from array to string to match backend
     summary?: string; // NEW: Optional summary for each item, if needed
 }
 
@@ -46,7 +46,7 @@ export interface LegalExecutiveSummary {
     transactionReadiness: 'Ready' | 'Conditional' | 'Requires Work' | 'Not Ready';
     keyFindings: string[];
     criticalIssues: string[];
-    recommendedActions: string[];
+    recommendedActions: string; // Changed from array to string to match backend
 }
 
 export interface LegalSectionAssessment {
@@ -107,12 +107,16 @@ export interface LegalDetailedFinding {
 
 export interface LegalRecommendation {
     priority: 'Critical' | 'High' | 'Medium' | 'Low';
-    action: string;
-    timeline: 'Immediate' | 'Short-Term' | 'Medium-Term' | 'Long-Term' | 'Ongoing';
-    responsibility: string;
+    action?: string;
+    timeline: 'Immediate' | 'Short-Term' | 'Medium-Term' | 'Long-Term' | 'Ongoing' | string;
+    responsibility?: string;
     cost?: string;
     rationale?: string;
     expectedOutcome?: string;
+    // For backend compatibility
+    area?: string;
+    recommendation?: string;
+    responsibleParty?: string;
 }
 
 export interface LegalReportMetadata {
@@ -362,9 +366,8 @@ export const useLegalDueDiligence = (entityId: string, entityType: 'startup' | '
             });
 
             if (response.data.success) {
-                setDocumentsAvailable(response.data.documentsAvailable);
-                setAvailableDocuments(response.data.availableDocuments || []);
-                setMissingDocumentTypes(response.data.missingDocumentTypes || []);
+                setDocumentsAvailable(response.data.documentsAvailable); setAvailableDocuments(response.data.availableDocuments);
+                setMissingDocumentTypes(response.data.missingDocumentTypes);
                 setEntityInfo(response.data.entityInfo || null);
             } else {
                 setDocumentsAvailable(false);
@@ -505,39 +508,32 @@ export const useLegalDueDiligence = (entityId: string, entityType: 'startup' | '
                 const analysisResult = latestReport.analysisResult || {};
 
                 const transformedReport = {
-                    ...latestReport,
-                    // Map the backend structure to frontend expectations
+                    ...latestReport,                    // Map the backend structure to frontend expectations
                     legalAnalysis: {
                         ...analysisResult,
                         // Ensure the items array is available at the analysis level
-                        items: analysisResult.items || [],
+                        items: analysisResult.items,
                         executiveSummary: analysisResult.executiveSummary,
                         totalCompanyScore: analysisResult.totalCompanyScore,
                         investmentDecision: analysisResult.investmentDecision,
-                        detailedFindings: analysisResult.detailedFindings || [],
-                        recommendations: analysisResult.recommendations || [],
-                        missingDocuments: analysisResult.missingDocuments || { documentList: [], note: '' },
-                        reportMetadata: analysisResult.reportMetadata || {}
+                        detailedFindings: analysisResult.detailedFindings,
+                        recommendations: analysisResult.recommendations,
+                        missingDocuments: analysisResult.missingDocuments,
+                        reportMetadata: analysisResult.reportMetadata
                     },
                     // Also expose top-level properties for direct access
-                    items: analysisResult.items || [],
+                    items: analysisResult.items,
                     executiveSummary: analysisResult.executiveSummary,
                     totalCompanyScore: analysisResult.totalCompanyScore,
                     investmentDecision: analysisResult.investmentDecision,
-                    detailedFindings: analysisResult.detailedFindings || [],
-                    recommendations: analysisResult.recommendations || [],
-                    missingDocuments: analysisResult.missingDocuments || { documentList: [], note: '' },
-
-                    availableDocuments: latestReport.availableDocuments || [],
-                    missingDocumentTypes: latestReport.missingDocumentTypes || [],
-                    entityProfile: latestReport.entityProfile || {
-                        companyName: latestReport.companyName || 'Unknown Company',
-                        industry: 'Not specified'
-                    },
-                    entityType: latestReport.entityType || 'startup',
-                    createdAt: latestReport.createdAt || latestReport.reportGeneratedAt || new Date(),
-                    updatedAt: latestReport.updatedAt || new Date(),
-                    expiresAt: latestReport.expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                    detailedFindings: analysisResult.detailedFindings,
+                    recommendations: analysisResult.recommendations,
+                    missingDocuments: analysisResult.missingDocuments, availableDocuments: latestReport.availableDocuments,
+                    missingDocumentTypes: latestReport.missingDocumentTypes,
+                    entityProfile: latestReport.entityProfile, entityType: latestReport.entityType,
+                    createdAt: latestReport.createdAt,
+                    updatedAt: latestReport.updatedAt,
+                    expiresAt: latestReport.expiresAt
                 }; console.log('Transformed report:', transformedReport);
                 console.log('Transformed report legalAnalysis:', transformedReport.legalAnalysis);
                 console.log('Backend analysisResult:', analysisResult);
@@ -545,6 +541,8 @@ export const useLegalDueDiligence = (entityId: string, entityType: 'startup' | '
                 console.log('Items:', analysisResult.items);
                 console.log('Total Company Score:', analysisResult.totalCompanyScore);
                 console.log('Investment Decision:', analysisResult.investmentDecision);
+                console.log('Recommendations from backend:', analysisResult.recommendations);
+                console.log('Recommendations count:', analysisResult.recommendations?.length || 0);
                 console.log('Detailed Findings:', analysisResult.detailedFindings);
                 console.log('Recommendations:', analysisResult.recommendations);
                 console.log('Missing Documents:', analysisResult.missingDocuments);

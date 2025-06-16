@@ -305,14 +305,13 @@ Remember to:
 
             if (!parsedReport) {
                 throw new Error('Failed to parse legal due diligence report JSON from Gemini response');
-            }
-
-            // Transform the AI response to match our MongoDB schema
+            }            // Transform the AI response to match our MongoDB schema
             const transformedReport = this.transformAIResponseToSchema(parsedReport);
 
-            // Log the processed report
+            // Log the processed report with recommendations info
+            console.log(`Recommendations in transformed report: ${transformedReport.recommendations?.length || 0}`);
             fileLogger.logTextToFile(
-                `Legal DD Processed Report for ${companyName}:\n\n${JSON.stringify(transformedReport, null, 2)}`,
+                `Legal DD Processed Report for ${companyName}:\n\nRecommendations count: ${transformedReport.recommendations?.length || 0}\n\n${JSON.stringify(transformedReport, null, 2)}`,
                 'legal_dd_processed_report'
             );
 
@@ -331,532 +330,445 @@ Remember to:
             throw error;
         }
     }    /**
-     * Transform AI response to match MongoDB schema
-     * The AI might return a different structure than what our MongoDB expects
+     * Transform AI response to match MongoDB schema with strict validation
+     * NO FALLBACK LOGIC - throws errors if required fields are missing or invalid
+     * This ensures only genuine AI-generated legal analysis data is used for real companies
      * @param aiResponse Raw AI response
-     * @returns Transformed response matching ILegalAnalysis schema
+     * @returns Validated and transformed response matching ILegalAnalysis schema
      */
     private transformAIResponseToSchema(aiResponse: any): any {
-        console.log('Transforming AI response to match MongoDB schema...');
+        console.log('Transforming AI response to match MongoDB schema with strict validation...');
 
-        // Handle missingDocuments if it's returned as an array (fix the original error)
-        let missingDocuments = aiResponse.missingDocuments;
-        if (Array.isArray(aiResponse.missingDocuments)) {
-            console.log('AI returned missingDocuments as array, transforming to expected object format...');
+        // STRICT VALIDATION: Validate AI response structure
+        this.validateAIResponse(aiResponse);
 
-            const missingDocsArray = aiResponse.missingDocuments as string[];
+        // Handle missingDocuments transformation with validation
+        let missingDocuments = this.validateAndTransformMissingDocuments(aiResponse.missingDocuments);
 
-            missingDocuments = {
-                list: missingDocsArray.map(docString => ({
-                    documentCategory: 'Legal Documents',
-                    specificDocument: docString,
-                    requirementReference: 'Required for comprehensive legal due diligence'
-                })),
-                impact: missingDocsArray.length > 0
-                    ? `Missing ${missingDocsArray.length} document(s) may limit the completeness of legal compliance assessment and risk evaluation.`
-                    : 'No missing documents identified.',
-                priorityLevel: missingDocsArray.length > 3 ? 'high' : missingDocsArray.length > 1 ? 'medium' : 'low'
-            };
-        } else if (missingDocuments && missingDocuments.list && !Array.isArray(missingDocuments.list)) {
-            // Fix missingDocuments.list if it's not an array
-            missingDocuments.list = [];
-        }
-
-        // Handle the new comprehensive structure
-        if (aiResponse.executiveSummary || aiResponse.corporateStructure || aiResponse.regulatoryCompliance) {
-            console.log('AI returned new comprehensive structure, using it directly...');
-
-            // Return the comprehensive structure with backward compatibility and ALL additional fields
-            return {
-                // Legacy fields for backward compatibility
-                items: aiResponse.items || this.extractItemsFromAIResponse(aiResponse),
-                complianceAssessment: aiResponse.complianceAssessment || this.extractComplianceFromAIResponse(aiResponse),
-                riskScore: aiResponse.riskScore || this.extractRiskScoreFromAIResponse(aiResponse),
-                missingDocuments: missingDocuments || {
-                    list: [],
-                    impact: 'No missing documents identified.',
-                    priorityLevel: 'low'
-                },
-
-                // New comprehensive structure
-                executiveSummary: aiResponse.executiveSummary,
-                corporateStructure: aiResponse.corporateStructure,
-                regulatoryCompliance: aiResponse.regulatoryCompliance,
-                materialAgreements: aiResponse.materialAgreements,
-                intellectualProperty: aiResponse.intellectualProperty,
-                litigationAndDisputes: aiResponse.litigationAndDisputes,
-                regulatoryFilings: aiResponse.regulatoryFilings,
-                detailedFindings: aiResponse.detailedFindings || [],
-                recommendations: aiResponse.recommendations || [],
-                reportMetadata: aiResponse.reportMetadata,
-
-                // Additional fields from Financial DD pattern
-                reportType: aiResponse.reportType || 'Legal Due Diligence',
-                reportPerspective: aiResponse.reportPerspective || 'Comprehensive Legal Analysis',
-                totalCompanyScore: aiResponse.totalCompanyScore || {
-                    score: 75,
-                    rating: 'B+',
-                    description: 'Legal compliance and structure assessment'
-                },
-                investmentDecision: aiResponse.investmentDecision || {
-                    recommendation: 'Proceed with Caution',
-                    successProbability: 75,
-                    justification: 'Legal due diligence reveals manageable risks with proper mitigation',
-                    keyConsiderations: ['Complete missing documentation', 'Address compliance gaps', 'Implement governance improvements'],
-                    suggestedTerms: ['Legal compliance warranties', 'Indemnification clauses', 'Governance board seats']
-                },
-                compatibilityAnalysis: aiResponse.compatibilityAnalysis || this.generateCompatibilityAnalysis(aiResponse),
-                forwardLookingAnalysis: aiResponse.forwardLookingAnalysis || this.generateForwardLookingAnalysis(aiResponse),
-                scoringBreakdown: aiResponse.scoringBreakdown || this.generateScoringBreakdown(aiResponse),
-
-                // Standard sections matching Financial DD structure
-                financialAnalysis: aiResponse.financialAnalysis,
-                riskFactors: aiResponse.riskFactors || this.extractRiskFactors(aiResponse),
-                complianceItems: aiResponse.complianceItems || this.extractComplianceItems(aiResponse),
-
-                // Table sections
-                directorsTable: aiResponse.directorsTable || this.generateDirectorsTable(aiResponse),
-                keyBusinessAgreements: aiResponse.keyBusinessAgreements || this.generateKeyBusinessAgreements(aiResponse),
-                leavePolicy: aiResponse.leavePolicy,
-                provisionsAndPrepayments: aiResponse.provisionsAndPrepayments,
-                deferredTaxAssets: aiResponse.deferredTaxAssets
-            };
-        }
-
-        // If the response already has the legacy structure, return it with enhancements
-        if (aiResponse.items && aiResponse.complianceAssessment && aiResponse.riskScore && aiResponse.missingDocuments) {
-            return this.enhanceLegacyStructure(aiResponse, missingDocuments);
-        }
-
-        // If the AI returned a complex structure, try to extract the required fields
-        const transformedResponse = {
-            items: this.extractItemsFromAIResponse(aiResponse),
-            complianceAssessment: this.extractComplianceFromAIResponse(aiResponse),
-            riskScore: this.extractRiskScoreFromAIResponse(aiResponse),
-            missingDocuments: missingDocuments || {
-                list: [],
-                impact: 'No missing documents identified.',
-                priorityLevel: 'low'
-            },
-
-            // Add all additional fields with defaults
-            reportType: 'Legal Due Diligence',
-            reportPerspective: 'Comprehensive Legal Analysis',
-            totalCompanyScore: {
-                score: 75,
-                rating: 'B+',
-                description: 'Legal compliance and structure assessment'
-            },
-            investmentDecision: {
-                recommendation: 'Proceed with Caution',
-                successProbability: 75,
-                justification: 'Legal due diligence completed with standard recommendations',
-                keyConsiderations: ['Review legal documentation completeness', 'Address identified compliance issues'],
-                suggestedTerms: ['Standard legal warranties', 'Compliance representations']
-            },
-            compatibilityAnalysis: this.generateCompatibilityAnalysis(aiResponse),
-            forwardLookingAnalysis: this.generateForwardLookingAnalysis(aiResponse),
-            scoringBreakdown: this.generateScoringBreakdown(aiResponse),
-            riskFactors: this.extractRiskFactors(aiResponse),
-            complianceItems: this.extractComplianceItems(aiResponse),
-            directorsTable: this.generateDirectorsTable(aiResponse),
-            keyBusinessAgreements: this.generateKeyBusinessAgreements(aiResponse)
+        // STRICT SCHEMA TRANSFORMATION: Only include fields that AI explicitly provides
+        // Remove all fallback logic and backward compatibility fields
+        const transformedResponse: any = {
+            // Core required fields - validated presence
+            missingDocuments: missingDocuments
         };
 
-        console.log(`Transformed AI response to schema-compliant format with ${transformedResponse.items.length} items`);
-        return transformedResponse;
-    }
-
-    /**
-     * Normalize an existing structure that already matches the schema
-     */
-    private normalizeExistingStructure(response: any): any {
-        // Handle missingDocuments if it's returned as an array
-        if (response.missingDocuments && Array.isArray(response.missingDocuments)) {
-            const missingDocsArray = response.missingDocuments as string[];
-
-            response.missingDocuments = {
-                list: missingDocsArray.map(docString => ({
-                    documentCategory: 'Legal Documents',
-                    specificDocument: docString,
-                    requirementReference: 'Required for comprehensive legal due diligence'
-                })),
-                impact: missingDocsArray.length > 0
-                    ? `Missing ${missingDocsArray.length} document(s) may limit the completeness of legal compliance assessment and risk evaluation.`
-                    : 'No missing documents identified.',
-                priorityLevel: missingDocsArray.length > 3 ? 'high' : missingDocsArray.length > 1 ? 'medium' : 'low'
-            };
-        }
-
-        return response;
-    }
-
-    /**
-     * Extract items from various AI response formats
-     */
-    private extractItemsFromAIResponse(aiResponse: any): any[] {
-        const items = [];
-
-        // If items already exist, use them
-        if (aiResponse.items && Array.isArray(aiResponse.items)) {
-            return aiResponse.items;
-        }
-
-        // Try to extract from detailed findings
-        if (aiResponse.detailedFindings && Array.isArray(aiResponse.detailedFindings)) {
-            for (const finding of aiResponse.detailedFindings) {
-                items.push({
-                    title: finding.area || finding.document || 'Legal Analysis',
-                    facts: [finding.finding || 'No specific facts provided'],
-                    keyFindings: [finding.recommendation || 'No key findings provided'],
-                    recommendedActions: [finding.timeline ? `${finding.recommendation} (Timeline: ${finding.timeline})` : finding.recommendation || 'No actions recommended']
-                });
-            }
-        }
-
-        // Try to extract from sectional data
-        const sections = ['corporateStructure', 'regulatoryCompliance', 'materialAgreements', 'intellectualProperty', 'litigationAndDisputes', 'regulatoryFilings'];
-
-        for (const section of sections) {
-            if (aiResponse[section]) {
-                const sectionData = aiResponse[section];
-                const sectionTitle = section.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-
-                items.push({
-                    title: sectionTitle,
-                    facts: sectionData.findings || ['No specific facts provided'],
-                    keyFindings: [sectionData.riskLevel ? `Risk Level: ${sectionData.riskLevel}` : 'No key findings provided'],
-                    recommendedActions: ['Review and address identified issues']
-                });
-            }
-        }
-
-        // If no items found, create a basic one
-        if (items.length === 0) {
-            items.push({
-                title: 'General Legal Analysis',
-                facts: ['Analysis completed based on available documents'],
-                keyFindings: ['Review required for comprehensive assessment'],
-                recommendedActions: ['Conduct detailed legal review']
-            });
-        }
-
-        return items;
-    }
-
-    /**
-     * Extract compliance assessment from AI response
-     */
-    private extractComplianceFromAIResponse(aiResponse: any): any {
-        if (aiResponse.complianceAssessment) {
-            return aiResponse.complianceAssessment;
-        }
-
-        // Try to extract from executive summary
-        if (aiResponse.executiveSummary) {
-            const summary = aiResponse.executiveSummary;
-            return {
-                complianceScore: summary.complianceRating || '75%',
-                details: summary.keyFindings ? summary.keyFindings.join('; ') : 'Compliance assessment completed based on available documents'
-            };
-        }
-
-        // Default compliance assessment
-        return {
-            complianceScore: '75%',
-            details: 'Compliance assessment completed based on available documents'
-        };
-    }
-
-    /**
-     * Extract risk score from AI response
-     */
-    private extractRiskScoreFromAIResponse(aiResponse: any): any {
+        // Risk and compliance - use only primary field names (remove backward compatibility)
         if (aiResponse.riskScore) {
-            return aiResponse.riskScore;
+            this.validateRiskScore(aiResponse.riskScore);
+            transformedResponse.riskScore = aiResponse.riskScore;
         }
 
-        // Try to extract from executive summary
+        if (aiResponse.complianceAssessment) {
+            this.validateComplianceAssessment(aiResponse.complianceAssessment);
+            transformedResponse.complianceAssessment = aiResponse.complianceAssessment;
+        }        // Items array is required - AI must provide this
+        if (aiResponse.items && Array.isArray(aiResponse.items) && aiResponse.items.length > 0) {
+            this.validateItems(aiResponse.items);
+            transformedResponse.items = aiResponse.items;
+        } else {
+            throw new Error('AI analysis failed: Missing required field "items" - Legal due diligence analysis must provide detailed itemized findings');
+        }        // Executive summary is required - AI must provide this
         if (aiResponse.executiveSummary) {
-            const summary = aiResponse.executiveSummary;
+            this.validateExecutiveSummary(aiResponse.executiveSummary);
+            transformedResponse.executiveSummary = aiResponse.executiveSummary;
+        } else {
+            throw new Error('AI analysis failed: Missing required field "executiveSummary" - Legal due diligence analysis must provide executive summary');
+        }        // Total company score is MANDATORY - AI must provide this
+        if (aiResponse.totalCompanyScore) {
+            this.validateTotalCompanyScore(aiResponse.totalCompanyScore);
+            transformedResponse.totalCompanyScore = aiResponse.totalCompanyScore;
+        } else {
+            throw new Error('AI analysis failed: Missing required field "totalCompanyScore" - Legal due diligence analysis must provide company scoring');
+        }        // Investment decision is MANDATORY - AI must provide this
+        if (aiResponse.investmentDecision) {
+            this.validateInvestmentDecision(aiResponse.investmentDecision);
+            transformedResponse.investmentDecision = aiResponse.investmentDecision;
+        } else {
+            throw new Error('AI analysis failed: Missing required field "investmentDecision" - Legal due diligence analysis must provide investment recommendation');
+        }
+
+        if (aiResponse.detailedFindings && Array.isArray(aiResponse.detailedFindings)) {
+            this.validateDetailedFindings(aiResponse.detailedFindings);
+            transformedResponse.detailedFindings = aiResponse.detailedFindings;
+        }
+
+        if (aiResponse.recommendations && Array.isArray(aiResponse.recommendations)) {
+            this.validateRecommendations(aiResponse.recommendations);
+            transformedResponse.recommendations = aiResponse.recommendations;
+        }
+
+        if (aiResponse.reportMetadata) {
+            this.validateReportMetadata(aiResponse.reportMetadata);
+            transformedResponse.reportMetadata = aiResponse.reportMetadata;
+        }        // Simple optional fields (no complex validation needed)
+        if (aiResponse.introduction) transformedResponse.introduction = aiResponse.introduction;
+        if (aiResponse.disclaimer) transformedResponse.disclaimer = aiResponse.disclaimer;
+
+        // Additional analysis sections from JSON structure
+        if (aiResponse.corporateStructure) {
+            this.validateAnalysisSection(aiResponse.corporateStructure, 'corporateStructure');
+            transformedResponse.corporateStructure = aiResponse.corporateStructure;
+        }
+
+        if (aiResponse.regulatoryCompliance) {
+            this.validateAnalysisSection(aiResponse.regulatoryCompliance, 'regulatoryCompliance');
+            transformedResponse.regulatoryCompliance = aiResponse.regulatoryCompliance;
+        }
+
+        if (aiResponse.materialAgreements) {
+            this.validateAnalysisSection(aiResponse.materialAgreements, 'materialAgreements');
+            transformedResponse.materialAgreements = aiResponse.materialAgreements;
+        }
+
+        if (aiResponse.intellectualProperty) {
+            this.validateAnalysisSection(aiResponse.intellectualProperty, 'intellectualProperty');
+            transformedResponse.intellectualProperty = aiResponse.intellectualProperty;
+        }
+
+        if (aiResponse.litigationAndDisputes) {
+            this.validateAnalysisSection(aiResponse.litigationAndDisputes, 'litigationAndDisputes');
+            transformedResponse.litigationAndDisputes = aiResponse.litigationAndDisputes;
+        }
+
+        if (aiResponse.regulatoryFilings) {
+            this.validateAnalysisSection(aiResponse.regulatoryFilings, 'regulatoryFilings');
+            transformedResponse.regulatoryFilings = aiResponse.regulatoryFilings;
+        } console.log(`Strict validation passed. Transformed AI response with validated structure - all required fields provided by AI.`);
+        return transformedResponse;
+    }    /**
+     * Validate the overall AI response structure
+     */
+    private validateAIResponse(aiResponse: any): void {
+        if (!aiResponse || typeof aiResponse !== 'object') {
+            throw new Error('Invalid AI response: Response must be a valid JSON object');
+        }
+
+        // Validate that required fields are present - no fallbacks allowed
+        if (!aiResponse.missingDocuments) {
+            throw new Error('Invalid AI response: Missing required field "missingDocuments"');
+        }
+
+        if (!aiResponse.totalCompanyScore) {
+            throw new Error('Invalid AI response: Missing required field "totalCompanyScore"');
+        }
+
+        if (!aiResponse.investmentDecision) {
+            throw new Error('Invalid AI response: Missing required field "investmentDecision"');
+        }
+
+        if (!aiResponse.items || !Array.isArray(aiResponse.items) || aiResponse.items.length === 0) {
+            throw new Error('Invalid AI response: Missing or empty required field "items"');
+        }
+
+        if (!aiResponse.executiveSummary || !aiResponse.executiveSummary.headline || !aiResponse.executiveSummary.summary) {
+            throw new Error('Invalid AI response: Missing required executiveSummary fields (headline and summary)');
+        }
+    }
+
+    /**
+     * Validate and transform missingDocuments field
+     */
+    private validateAndTransformMissingDocuments(missingDocuments: any): any {
+        if (!missingDocuments) {
+            throw new Error('Missing required field: missingDocuments');
+        }
+
+        // Handle if AI returns array format (transform to expected object format)
+        if (Array.isArray(missingDocuments)) {
+            const missingDocsArray = missingDocuments as string[];
             return {
-                score: '6/10',
-                riskLevel: summary.overallRisk || 'Medium',
-                justification: summary.criticalIssues ?
-                    `Based on identified issues: ${summary.criticalIssues.join('; ')}` :
-                    'Risk assessment based on comprehensive legal analysis'
+                documentList: missingDocsArray.map(docString => {
+                    if (typeof docString !== 'string') {
+                        throw new Error('Invalid missingDocuments: Each document must be a string');
+                    }
+                    return {
+                        documentCategory: 'Legal Documents',
+                        specificDocument: docString,
+                        requirementReference: 'Required for comprehensive legal due diligence'
+                    };
+                }),
+                note: missingDocsArray.length > 0
+                    ? `Missing ${missingDocsArray.length} document(s) may limit the completeness of legal compliance assessment and risk evaluation.`
+                    : 'No missing documents identified.'
             };
         }
 
-        // Default risk score
-        return {
-            score: '5/10',
-            riskLevel: 'Medium',
-            justification: 'Risk assessment based on available legal documentation'
-        };
-    }
-
-    /**
-     * Enhance legacy structure with additional fields
-     */
-    private enhanceLegacyStructure(response: any, missingDocuments: any): any {
-        const enhanced = this.normalizeExistingStructure(response);
-
-        // Add all additional fields
-        enhanced.reportType = response.reportType || 'Legal Due Diligence';
-        enhanced.reportPerspective = response.reportPerspective || 'Comprehensive Legal Analysis';
-        enhanced.totalCompanyScore = response.totalCompanyScore || {
-            score: 75,
-            rating: 'B+',
-            description: 'Legal compliance and structure assessment'
-        };
-        enhanced.investmentDecision = response.investmentDecision || {
-            recommendation: 'Proceed with Caution',
-            successProbability: 75,
-            justification: 'Legal due diligence reveals manageable risks with proper mitigation',
-            keyConsiderations: ['Complete missing documentation', 'Address compliance gaps'],
-            suggestedTerms: ['Legal compliance warranties', 'Indemnification clauses']
-        };
-        enhanced.compatibilityAnalysis = response.compatibilityAnalysis || this.generateCompatibilityAnalysis(response);
-        enhanced.forwardLookingAnalysis = response.forwardLookingAnalysis || this.generateForwardLookingAnalysis(response);
-        enhanced.scoringBreakdown = response.scoringBreakdown || this.generateScoringBreakdown(response);
-        enhanced.riskFactors = response.riskFactors || this.extractRiskFactors(response);
-        enhanced.complianceItems = response.complianceItems || this.extractComplianceItems(response);
-        enhanced.directorsTable = response.directorsTable || this.generateDirectorsTable(response);
-        enhanced.keyBusinessAgreements = response.keyBusinessAgreements || this.generateKeyBusinessAgreements(response);
-
-        // Override missingDocuments if it was transformed
-        if (missingDocuments) {
-            enhanced.missingDocuments = missingDocuments;
+        // Validate object format
+        if (typeof missingDocuments !== 'object') {
+            throw new Error('Invalid missingDocuments: Must be an object or array');
         }
 
-        return enhanced;
-    }
+        if (!missingDocuments.documentList || !Array.isArray(missingDocuments.documentList)) {
+            throw new Error('Invalid missingDocuments: documentList must be an array');
+        }
 
-    /**
-     * Generate compatibility analysis from AI response
-     */
-    private generateCompatibilityAnalysis(aiResponse: any): any {
-        return {
-            overview: 'Legal compatibility assessment completed',
-            strengths: ['Legal structure analysis', 'Compliance review'],
-            challenges: ['Documentation gaps', 'Regulatory requirements'],
-            recommendations: ['Complete missing documentation', 'Strengthen compliance framework']
-        };
-    }
-
-    /**
-     * Generate forward-looking analysis from AI response
-     */
-    private generateForwardLookingAnalysis(aiResponse: any): any {
-        return {
-            legalRoadmap: {
-                overview: 'Legal structure and compliance roadmap',
-                keyMilestones: ['Complete documentation', 'Address compliance gaps', 'Implement governance improvements'],
-                riskMitigation: ['Regular compliance audits', 'Legal document maintenance', 'Governance oversight']
-            },
-            regulatoryOutlook: {
-                overview: 'Regulatory environment assessment',
-                upcomingChanges: ['Monitor regulatory updates', 'Stay current with compliance requirements'],
-                impact: 'Medium - manageable with proper monitoring'
+        // Validate each document in the list
+        missingDocuments.documentList.forEach((doc: any, index: number) => {
+            if (!doc || typeof doc !== 'object') {
+                throw new Error(`Invalid missingDocuments: documentList[${index}] must be an object`);
             }
-        };
+            if (!doc.documentCategory || typeof doc.documentCategory !== 'string') {
+                throw new Error(`Invalid missingDocuments: documentList[${index}].documentCategory is required and must be a string`);
+            }
+            if (!doc.specificDocument || typeof doc.specificDocument !== 'string') {
+                throw new Error(`Invalid missingDocuments: documentList[${index}].specificDocument is required and must be a string`);
+            }
+            if (!doc.requirementReference || typeof doc.requirementReference !== 'string') {
+                throw new Error(`Invalid missingDocuments: documentList[${index}].requirementReference is required and must be a string`);
+            }
+        });
+
+        return missingDocuments;
     }
 
     /**
-     * Generate scoring breakdown from AI response
+     * Validate risk score structure
      */
-    private generateScoringBreakdown(aiResponse: any): any {
-        return {
-            overview: 'Legal due diligence scoring breakdown',
-            categories: [
-                {
-                    name: 'Corporate Structure',
-                    score: 80,
-                    description: 'Corporate governance and structure assessment',
-                    status: 'good',
-                    keyPoints: ['Well-structured corporate hierarchy', 'Clear governance framework']
-                },
-                {
-                    name: 'Regulatory Compliance',
-                    score: 75,
-                    description: 'Regulatory compliance status',
-                    status: 'good',
-                    keyPoints: ['Most requirements met', 'Some gaps identified']
-                },
-                {
-                    name: 'Documentation Completeness',
-                    score: 65,
-                    description: 'Legal documentation completeness',
-                    status: 'warning',
-                    keyPoints: ['Key documents available', 'Some documents missing']
-                },
-                {
-                    name: 'Risk Management',
-                    score: 70,
-                    description: 'Legal risk management assessment',
-                    status: 'good',
-                    keyPoints: ['Manageable risk levels', 'Mitigation strategies needed']
+    private validateRiskScore(riskScore: any): void {
+        if (!riskScore || typeof riskScore !== 'object') {
+            throw new Error('Invalid riskScore: Must be an object');
+        }
+
+        const requiredFields = ['score', 'riskLevel', 'justification'];
+        for (const field of requiredFields) {
+            if (!riskScore[field] || typeof riskScore[field] !== 'string') {
+                throw new Error(`Invalid riskScore: ${field} is required and must be a string`);
+            }
+        }
+
+        const validRiskLevels = ['High', 'Medium', 'Low', 'Critical', 'Significant', 'Moderate', 'Minor', 'Informational'];
+        if (!validRiskLevels.includes(riskScore.riskLevel)) {
+            throw new Error(`Invalid riskScore: riskLevel must be one of ${validRiskLevels.join(', ')}`);
+        }
+    }
+
+    /**
+     * Validate compliance assessment structure
+     */
+    private validateComplianceAssessment(complianceAssessment: any): void {
+        if (!complianceAssessment || typeof complianceAssessment !== 'object') {
+            throw new Error('Invalid complianceAssessment: Must be an object');
+        }
+
+        const requiredFields = ['complianceScore', 'details'];
+        for (const field of requiredFields) {
+            if (!complianceAssessment[field] || typeof complianceAssessment[field] !== 'string') {
+                throw new Error(`Invalid complianceAssessment: ${field} is required and must be a string`);
+            }
+        }
+
+        if (complianceAssessment.status) {
+            const validStatuses = ['Compliant', 'Partially Compliant', 'Non-Compliant', 'Not Assessed'];
+            if (!validStatuses.includes(complianceAssessment.status)) {
+                throw new Error(`Invalid complianceAssessment: status must be one of ${validStatuses.join(', ')}`);
+            }
+        }
+    }
+
+    /**
+     * Validate items array structure
+     */
+    private validateItems(items: any[]): void {
+        items.forEach((item: any, index: number) => {
+            if (!item || typeof item !== 'object') {
+                throw new Error(`Invalid items[${index}]: Must be an object`);
+            }
+
+            const requiredFields = ['title'];
+            for (const field of requiredFields) {
+                if (!item[field] || typeof item[field] !== 'string') {
+                    throw new Error(`Invalid items[${index}]: ${field} is required and must be a string`);
                 }
-            ]
-        };
-    }
-
-    /**
-     * Extract risk factors from AI response
-     */
-    private extractRiskFactors(aiResponse: any): any[] {
-        const riskFactors = [];
-
-        // Extract from detailed findings
-        if (aiResponse.detailedFindings && Array.isArray(aiResponse.detailedFindings)) {
-            for (const finding of aiResponse.detailedFindings) {
-                if (finding.riskLevel && finding.riskLevel !== 'low') {
-                    riskFactors.push({
-                        category: finding.area || 'Legal Risk',
-                        level: finding.riskLevel,
-                        description: finding.finding,
-                        impact: finding.impact || 'Medium',
-                        mitigation: finding.recommendation
-                    });
+            }            // Validate array fields that should remain as arrays
+            const arrayFields = ['facts', 'keyFindings'];
+            for (const field of arrayFields) {
+                if (item[field] && !Array.isArray(item[field])) {
+                    throw new Error(`Invalid items[${index}]: ${field} must be an array`);
                 }
             }
+
+            // Validate string fields that should be strings (including recommendedActions)
+            const stringFields = ['recommendedActions'];
+            for (const field of stringFields) {
+                if (item[field] && typeof item[field] !== 'string') {
+                    throw new Error(`Invalid items[${index}]: ${field} must be a string`);
+                }
+            }
+        });
+    }    /**
+     * Validate executive summary structure
+     */
+    private validateExecutiveSummary(executiveSummary: any): void {
+        if (!executiveSummary || typeof executiveSummary !== 'object') {
+            throw new Error('Invalid executiveSummary: Must be an object');
         }
 
-        // Extract from executive summary
-        if (aiResponse.executiveSummary && aiResponse.executiveSummary.criticalIssues) {
-            for (const issue of aiResponse.executiveSummary.criticalIssues) {
-                riskFactors.push({
-                    category: 'Critical Legal Issue',
-                    level: 'high',
-                    description: issue,
-                    impact: 'High',
-                    mitigation: 'Immediate attention required'
-                });
+        // Require critical fields - no defaults/fallbacks
+        if (!executiveSummary.headline || typeof executiveSummary.headline !== 'string') {
+            throw new Error('Invalid executiveSummary: headline is required and must be a string');
+        }
+
+        if (!executiveSummary.summary || typeof executiveSummary.summary !== 'string') {
+            throw new Error('Invalid executiveSummary: summary is required and must be a string');
+        }        // Validate array fields that should remain as arrays
+        const arrayFields = ['keyFindings'];
+        for (const field of arrayFields) {
+            if (executiveSummary[field] && !Array.isArray(executiveSummary[field])) {
+                throw new Error(`Invalid executiveSummary: ${field} must be an array`);
             }
         }
 
-        // Default risk factors if none found
-        if (riskFactors.length === 0) {
-            riskFactors.push({
-                category: 'Documentation Risk',
-                level: 'medium',
-                description: 'Some legal documents may be incomplete or missing',
-                impact: 'Medium',
-                mitigation: 'Complete missing documentation and ensure compliance'
-            });
+        // Validate string fields that should be strings (including recommendedActions)
+        const stringFields = ['recommendedActions'];
+        for (const field of stringFields) {
+            if (executiveSummary[field] && typeof executiveSummary[field] !== 'string') {
+                throw new Error(`Invalid executiveSummary: ${field} must be a string`);
+            }
         }
-
-        return riskFactors;
     }
 
     /**
-     * Extract compliance items from AI response
+     * Validate total company score structure
      */
-    private extractComplianceItems(aiResponse: any): any[] {
-        const complianceItems = [];
+    private validateTotalCompanyScore(totalCompanyScore: any): void {
+        if (!totalCompanyScore || typeof totalCompanyScore !== 'object') {
+            throw new Error('Invalid totalCompanyScore: Must be an object');
+        }
 
-        // Extract from regulatory compliance section
-        if (aiResponse.regulatoryCompliance) {
-            const regCompliance = aiResponse.regulatoryCompliance;
-
-            if (regCompliance.corporateLawCompliance) {
-                complianceItems.push({
-                    requirement: 'Corporate Law Compliance',
-                    status: regCompliance.riskLevel === 'low' ? 'compliant' : 'needs-review',
-                    details: regCompliance.corporateLawCompliance,
-                    impact: regCompliance.riskLevel || 'medium'
-                });
-            }
-
-            if (regCompliance.sectoralCompliance) {
-                complianceItems.push({
-                    requirement: 'Sectoral Compliance',
-                    status: regCompliance.riskLevel === 'low' ? 'compliant' : 'needs-review',
-                    details: regCompliance.sectoralCompliance,
-                    impact: regCompliance.riskLevel || 'medium'
-                });
-            }
-
-            if (regCompliance.taxCompliance) {
-                complianceItems.push({
-                    requirement: 'Tax Compliance',
-                    status: regCompliance.riskLevel === 'low' ? 'compliant' : 'needs-review',
-                    details: regCompliance.taxCompliance,
-                    impact: regCompliance.riskLevel || 'medium'
-                });
+        const requiredFields = ['score', 'rating', 'description'];
+        for (const field of requiredFields) {
+            if (totalCompanyScore[field] === undefined || totalCompanyScore[field] === null) {
+                throw new Error(`Invalid totalCompanyScore: ${field} is required`);
             }
         }
 
-        // Default compliance items if none found
-        if (complianceItems.length === 0) {
-            complianceItems.push({
-                requirement: 'General Legal Compliance',
-                status: 'needs-review',
-                details: 'Comprehensive compliance review required',
-                impact: 'medium'
-            });
+        if (typeof totalCompanyScore.score !== 'number') {
+            throw new Error('Invalid totalCompanyScore: score must be a number');
         }
 
-        return complianceItems;
+        if (typeof totalCompanyScore.rating !== 'string' || typeof totalCompanyScore.description !== 'string') {
+            throw new Error('Invalid totalCompanyScore: rating and description must be strings');
+        }
+    }    /**
+     * Validate investment decision structure
+     */
+    private validateInvestmentDecision(investmentDecision: any): void {
+        if (!investmentDecision || typeof investmentDecision !== 'object') {
+            throw new Error('Invalid investmentDecision: Must be an object');
+        }
+
+        const requiredFields = ['recommendation', 'justification'];
+        for (const field of requiredFields) {
+            if (!investmentDecision[field] || typeof investmentDecision[field] !== 'string') {
+                throw new Error(`Invalid investmentDecision: ${field} is required and must be a string`);
+            }
+        }        // Ensure successProbability is a number between 0 and 100 (set default if invalid)
+        if (investmentDecision.successProbability !== undefined && investmentDecision.successProbability !== null) {
+            if (typeof investmentDecision.successProbability !== 'number' ||
+                investmentDecision.successProbability < 0 ||
+                investmentDecision.successProbability > 100) {
+                console.log(`Invalid investmentDecision.successProbability: ${investmentDecision.successProbability}. Setting default.`);
+                investmentDecision.successProbability = 50;
+            }
+        } else {
+            // Set default value if not provided or null
+            console.log(`Missing or null investmentDecision.successProbability: ${investmentDecision.successProbability}. Setting default.`);
+            investmentDecision.successProbability = 50;
+        }
+
+        const arrayFields = ['keyConsiderations', 'suggestedTerms'];
+        for (const field of arrayFields) {
+            if (investmentDecision[field] && !Array.isArray(investmentDecision[field])) {
+                throw new Error(`Invalid investmentDecision: ${field} must be an array`);
+            }
+        }
     }
 
     /**
-     * Generate directors table from AI response
+     * Validate detailed findings array structure
      */
-    private generateDirectorsTable(aiResponse: any): any {
-        return {
-            overview: 'Directors and key personnel information extracted from available documents',
-            directors: [],
-            analysis: 'Director information should be reviewed for completeness and accuracy',
-            recommendations: ['Verify director appointments and resignations', 'Ensure board resolutions are complete', 'Review director compliance requirements']
-        };
+    private validateDetailedFindings(detailedFindings: any[]): void {
+        detailedFindings.forEach((finding: any, index: number) => {
+            if (!finding || typeof finding !== 'object') {
+                throw new Error(`Invalid detailedFindings[${index}]: Must be an object`);
+            }
+
+            const requiredFields = ['area', 'document', 'finding', 'riskLevel', 'recommendation', 'timeline', 'impact'];
+            for (const field of requiredFields) {
+                if (!finding[field] || typeof finding[field] !== 'string') {
+                    throw new Error(`Invalid detailedFindings[${index}]: ${field} is required and must be a string`);
+                }
+            }
+        });
     }
 
     /**
-     * Generate key business agreements from AI response
+     * Validate recommendations array structure
      */
-    private generateKeyBusinessAgreements(aiResponse: any): any {
-        let agreements = [];
-
-        // Extract from material agreements section
-        if (aiResponse.materialAgreements) {
-            const matAgreements = aiResponse.materialAgreements;
-
-            if (matAgreements.investmentAgreements && matAgreements.investmentAgreements !== 'Not available') {
-                agreements.push({
-                    agreementType: 'Investment Agreements',
-                    description: matAgreements.investmentAgreements,
-                    status: 'review-required',
-                    riskLevel: matAgreements.riskLevel || 'medium'
-                });
+    private validateRecommendations(recommendations: any[]): void {
+        recommendations.forEach((recommendation: any, index: number) => {
+            if (!recommendation || typeof recommendation !== 'object') {
+                throw new Error(`Invalid recommendations[${index}]: Must be an object`);
             }
 
-            if (matAgreements.commercialAgreements && matAgreements.commercialAgreements !== 'Not available') {
-                agreements.push({
-                    agreementType: 'Commercial Agreements',
-                    description: matAgreements.commercialAgreements,
-                    status: 'review-required',
-                    riskLevel: matAgreements.riskLevel || 'medium'
-                });
+            const requiredFields = ['area', 'recommendation', 'priority', 'timeline', 'responsibleParty'];
+            for (const field of requiredFields) {
+                if (!recommendation[field] || typeof recommendation[field] !== 'string') {
+                    throw new Error(`Invalid recommendations[${index}]: ${field} is required and must be a string`);
+                }
             }
+        });
+    }
 
-            if (matAgreements.employmentAgreements && matAgreements.employmentAgreements !== 'Not available') {
-                agreements.push({
-                    agreementType: 'Employment Agreements',
-                    description: matAgreements.employmentAgreements,
-                    status: 'review-required',
-                    riskLevel: matAgreements.riskLevel || 'medium'
-                });
-            }
+    /**
+     * Validate report metadata structure
+     */
+    private validateReportMetadata(reportMetadata: any): void {
+        if (!reportMetadata || typeof reportMetadata !== 'object') {
+            throw new Error('Invalid reportMetadata: Must be an object');
         }
 
-        return {
-            overview: agreements.length > 0 ? 'Key business agreements identified and analyzed' : 'Limited information available on key business agreements',
-            agreements: agreements,
-            analysis: 'Business agreements require detailed review for completeness and risk assessment',
-            recommendations: ['Complete agreement documentation', 'Review terms and conditions', 'Ensure compliance with legal requirements']
-        };
+        const requiredNumberFields = [
+            'documentsReviewed', 'complianceAreasChecked', 'totalFindings',
+            'criticalIssuesCount', 'highPriorityIssuesCount', 'mediumPriorityIssuesCount', 'lowPriorityIssuesCount'
+        ];
+
+        for (const field of requiredNumberFields) {
+            if (reportMetadata[field] === undefined || typeof reportMetadata[field] !== 'number') {
+                throw new Error(`Invalid reportMetadata: ${field} is required and must be a number`);
+            }
+        }
+    }
+
+    /**
+     * Validate analysis section structure (used for corporate structure, regulatory compliance, etc.)
+     */
+    private validateAnalysisSection(section: any, sectionName: string): void {
+        if (!section || typeof section !== 'object') {
+            throw new Error(`Invalid ${sectionName}: Must be an object`);
+        }
+
+        // Basic validation - analysis sections should have some content
+        if (Object.keys(section).length === 0) {
+            throw new Error(`Invalid ${sectionName}: Cannot be empty`);
+        }
+
+        // If it has common analysis fields, validate them
+        if (section.summary && typeof section.summary !== 'string') {
+            throw new Error(`Invalid ${sectionName}: summary must be a string`);
+        }
+
+        if (section.findings && !Array.isArray(section.findings)) {
+            throw new Error(`Invalid ${sectionName}: findings must be an array`);
+        }
+
+        if (section.riskLevel && typeof section.riskLevel !== 'string') {
+            throw new Error(`Invalid ${sectionName}: riskLevel must be a string`);
+        }
+
+        if (section.recommendations && !Array.isArray(section.recommendations) && typeof section.recommendations !== 'string') {
+            throw new Error(`Invalid ${sectionName}: recommendations must be an array or string`);
+        }
     }
 
     /**

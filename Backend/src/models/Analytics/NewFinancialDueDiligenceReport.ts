@@ -108,7 +108,7 @@ const AvailableDocumentSchema = new Schema({
 const NewFinancialDueDiligenceReportSchema: Schema = new Schema({
   // Core fields
   targetEntityId: { type: String, required: true },
-  targetEntityType: { type: String, required: true, enum: ['startup', 'investor'] },
+  targetEntityType: { type: String, required: true },
   requestedById: { type: String, required: true },
   companyName: { type: String, required: true },
   reportDate: { type: Date, default: Date.now },

@@ -33,7 +33,6 @@ const RecommendationSchema = new mongoose.Schema({
     },
     perspective: {
         type: String,
-        enum: ['startup', 'investor'],
         required: true,
         default: 'investor'
     },
@@ -43,12 +42,10 @@ const RecommendationSchema = new mongoose.Schema({
         summary: String,
         details: String,
         category: {
-            type: String,
-            enum: ['strategic', 'operational', 'financial', 'communication', 'growth']
+            type: String
         },
         priority: {
-            type: String,
-            enum: ['high', 'medium', 'low']
+            type: String
         },
         confidence: Number
     }],

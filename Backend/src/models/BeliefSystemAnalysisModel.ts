@@ -66,7 +66,7 @@ export interface BeliefSystemAnalysis extends Document {
 const BeliefSystemAnalysisSchema = new Schema<BeliefSystemAnalysis>({
     startupId: { type: String, required: true },
     investorId: { type: String, required: true },
-    perspective: { type: String, enum: ['startup', 'investor'], required: true },
+    perspective: { type: String, required: true },
     executiveSummary: {
         headline: { type: String, required: true },
         keyFindings: { type: String, required: true },
@@ -108,12 +108,12 @@ const BeliefSystemAnalysisSchema = new Schema<BeliefSystemAnalysis>({
     }],
     risks: {
         marketFitRisk: {
-            level: { type: String, enum: ['High', 'Medium', 'Low'], required: true },
+            level: { type: String, required: true },
             description: { type: String, required: true },
             impactAreas: [{ type: String, required: true }]
         },
         operationalRisk: {
-            level: { type: String, enum: ['High', 'Medium', 'Low'], required: true },
+            level: { type: String, required: true },
             description: { type: String, required: true },
             impactAreas: [{ type: String, required: true }]
         },
@@ -123,11 +123,10 @@ const BeliefSystemAnalysisSchema = new Schema<BeliefSystemAnalysis>({
             probability: { type: Number, required: true },
             impact: { type: Number, required: true }
         }]
-    },
-    riskMitigationRecommendations: [{
+    }, riskMitigationRecommendations: [{
         text: { type: String, required: true },
-        priority: { type: String, enum: ['High', 'Medium', 'Low'], required: true },
-        timeline: { type: String, enum: ['Immediate', 'Short-term', 'Medium-term', 'Long-term'], required: true }
+        priority: { type: String, required: true },
+        timeline: { type: String, required: true }
     }],
     improvementAreas: {
         strategicFocus: { type: String, required: true },

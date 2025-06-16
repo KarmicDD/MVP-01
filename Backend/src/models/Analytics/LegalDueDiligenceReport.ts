@@ -19,7 +19,7 @@ export interface ILegalReportItem {
     title: string;
     facts: string[];
     keyFindings: string[];
-    recommendedActions: string[];
+    recommendedActions: string; // Changed from array to string to match other services
 }
 
 export interface ILegalMissingDocuments {
@@ -31,7 +31,7 @@ export interface ILegalExecutiveSummary {
     headline: string;
     summary: string;
     keyFindings: string[];
-    recommendedActions: string[];
+    recommendedActions: string; // Changed from array to string to match other services
 }
 
 export interface ILegalDetailedFinding {
@@ -50,8 +50,9 @@ export interface ILegalRecommendation {
     priority: string;
     timeline: string;
     responsibleParty: string;
-    estimatedCost?: string;
-    potentialImpact?: string;
+    cost?: string;
+    rationale?: string;
+    expectedOutcome?: string;
 }
 
 export interface ILegalReportMetadata {
@@ -100,8 +101,8 @@ export interface ILegalAnalysis {
     recommendations?: ILegalRecommendation[];
     reportMetadata?: ILegalReportMetadata;
     disclaimer?: string;
-    riskScoreDetails?: ILegalRiskScore; // Renamed from riskScore
-    complianceAssessmentDetails?: ILegalCompliance; // Renamed from complianceAssessment
+    riskScore?: ILegalRiskScore;
+    complianceAssessment?: ILegalCompliance;
 }
 
 export interface ILegalDueDiligenceReport extends Document {
@@ -143,7 +144,7 @@ const LegalReportItemSchema = new Schema({
     title: { type: String, required: true },
     facts: [{ type: String }],
     keyFindings: [{ type: String }],
-    recommendedActions: [{ type: String }]
+    recommendedActions: { type: String } // Changed from array to string
 });
 
 const LegalMissingDocumentsSchema = new Schema({
@@ -155,7 +156,7 @@ const LegalExecutiveSummarySchema = new Schema({
     headline: { type: String, required: false },
     summary: { type: String, required: false },
     keyFindings: [{ type: String }],
-    recommendedActions: [{ type: String }]
+    recommendedActions: { type: String } // Changed from array to string
 });
 
 const LegalDetailedFindingSchema = new Schema({
@@ -169,13 +170,14 @@ const LegalDetailedFindingSchema = new Schema({
 });
 
 const LegalRecommendationSchema = new Schema({
-    area: { type: String, required: false },
-    recommendation: { type: String, required: false },
+    area: { type: String, required: true },
+    recommendation: { type: String, required: true },
     priority: { type: String, required: true },
     timeline: { type: String, required: true },
-    responsibleParty: { type: String, required: false },
-    estimatedCost: { type: String, required: false },
-    potentialImpact: { type: String, required: false }
+    responsibleParty: { type: String, required: true },
+    cost: { type: String, required: false },
+    rationale: { type: String, required: false },
+    expectedOutcome: { type: String, required: false }
 });
 
 const LegalReportMetadataSchema = new Schema({
@@ -193,7 +195,7 @@ const LegalReportMetadataSchema = new Schema({
 
 const LegalRiskScoreSchema = new Schema({
     score: { type: String, required: true },
-    riskLevel: { type: String, enum: ['High', 'Medium', 'Low', 'Critical', 'Significant', 'Moderate', 'Minor', 'Informational'], required: true },
+    riskLevel: { type: String, required: true },
     justification: { type: String, required: true }
 }, { _id: false });
 
@@ -218,14 +220,13 @@ const LegalAnalysisSchema = new Schema({
         justification: { type: String, required: true },
         keyConsiderations: [{ type: String }],
         suggestedTerms: [{ type: String }]
-    },
-    missingDocuments: { type: LegalMissingDocumentsSchema, required: true },
+    }, missingDocuments: { type: LegalMissingDocumentsSchema, required: true },
     detailedFindings: [LegalDetailedFindingSchema],
     recommendations: [LegalRecommendationSchema],
     reportMetadata: LegalReportMetadataSchema,
     disclaimer: { type: String, required: false },
-    riskScoreDetails: LegalRiskScoreSchema, // Renamed from riskScore
-    complianceAssessmentDetails: LegalComplianceSchema // Renamed from complianceAssessment
+    riskScore: LegalRiskScoreSchema,
+    complianceAssessment: LegalComplianceSchema
 }, { _id: false, minimize: false });
 
 const LegalDueDiligenceReportSchema = new Schema({

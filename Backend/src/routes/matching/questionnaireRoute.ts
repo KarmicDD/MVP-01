@@ -32,7 +32,6 @@ router.use(authenticateJWT);
  *               properties:
  *                 status:
  *                   type: string
- *                   enum: [not_started, draft, submitted]
  *                   description: Status of the questionnaire submission
  *       '401':
  *         description: Unauthorized

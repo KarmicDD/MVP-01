@@ -27,10 +27,8 @@ const MatchAnalysisSchema = new mongoose.Schema({
         type: String,
         required: true,
         index: true
-    },
-    perspective: {
+    }, perspective: {
         type: String,
-        enum: ['startup', 'investor'],
         required: true,
         default: 'investor'
     },

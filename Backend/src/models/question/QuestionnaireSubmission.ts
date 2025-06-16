@@ -19,19 +19,15 @@ const QuestionnaireSubmissionSchema: Schema = new Schema({
         type: String,
         required: true,
         index: true
-    },
-    userRole: {
+    }, userRole: {
         type: String,
-        required: true,
-        enum: ['startup', 'investor']
+        required: true
     },
     responses: {
         type: Map,
         of: Schema.Types.Mixed
-    },
-    status: {
+    }, status: {
         type: String,
-        enum: ['draft', 'submitted'],
         default: 'draft'
     },
     analysisResults: {

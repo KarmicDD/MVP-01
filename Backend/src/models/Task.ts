@@ -35,7 +35,6 @@ const TaskSchema: Schema = new Schema({
     },
     priority: {
         type: String,
-        enum: ['high', 'medium', 'low'],
         default: 'medium'
     },
     completed: {
@@ -58,7 +57,6 @@ const TaskSchema: Schema = new Schema({
     },
     category: {
         type: String,
-        enum: ['profile', 'document', 'financial', 'match', 'other'],
         default: 'other'
     },
     createdAt: {
