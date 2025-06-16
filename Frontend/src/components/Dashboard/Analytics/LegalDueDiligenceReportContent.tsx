@@ -606,8 +606,7 @@ const LegalDueDiligenceReportContent: React.FC<LegalDueDiligenceReportContentPro
                 <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center mr-3 shadow-lg">
                   <FiAward className="text-white text-xl" />
                 </div>
-                <div>
-                  <div className="text-2xl font-bold text-purple-800">
+                <div>                  <div className="text-2xl font-bold text-purple-800">
                   {(() => {
                     const score = report.totalCompanyScore || legalAnalysis?.totalCompanyScore;
                     if (typeof score === 'object' && score !== null && 'score' in score) {
@@ -694,804 +693,767 @@ const LegalDueDiligenceReportContent: React.FC<LegalDueDiligenceReportContentPro
               </tbody>
             </table>
           </div>
-        </div>
-
-        {/* Main Report Content in a single container */}
-        <div className="bg-white shadow-lg border border-slate-200 overflow-hidden">
-          
-          {/* Introduction Section */}
-          {introductionContent && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="mb-10"
-            >
-              <SectionHeader title="Introduction" icon={<FiInfo />} />
-              <div className="px-8 py-8">
-                <div className="prose max-w-none leading-relaxed">
-                  {introductionContent.split('\n\n').map((paragraph, index) => (
-                    <div key={index} className="mb-8 p-8 border border-gray-300 bg-gray-50">
-                      <p
-                        className="text-lg leading-relaxed"
-                        style={{
-                          color: '#1a202c',
-                          fontFamily: '"Times New Roman", serif',
-                          textAlign: 'justify'
-                        }}
-                      >
-                        {formatTextWithBold(paragraph)}
-                      </p>
-                    </div>
-                  ))}
+        </div>      {introductionContent && (
+          <SectionCard
+            title="Introduction"
+            icon={<FiInfo />}
+            delay={0.2}
+            isOpen={activeSections['Introduction']}
+            toggleOpen={() => toggleSection('Introduction')}        >
+            <div className="prose max-w-none leading-relaxed">
+              {introductionContent.split('\n\n').map((paragraph, index) => (
+                <div key={index} className="mb-8 p-8 border border-gray-300 bg-gray-50">
+                  <p
+                    className="text-lg leading-relaxed"
+                    style={{
+                      color: '#1a202c',
+                      fontFamily: '"Times New Roman", serif',
+                      textAlign: 'justify'
+                    }}
+                  >
+                    {formatTextWithBold(paragraph)}
+                  </p>
                 </div>
+              ))}
+            </div>
+          </SectionCard>
+        )}      {legalAnalysis?.executiveSummary && (
+          <SectionCard
+            title="Executive Summary"
+            icon={<FiFileText />}
+            delay={0.25}
+            isOpen={activeSections['Executive Summary']}
+            toggleOpen={() => toggleSection('Executive Summary')}        >
+            <div className="space-y-10">
+              {/* Executive Summary Header */}
+              <div className="text-center mb-12">
+                <h3
+                  className="text-3xl font-bold mb-4 uppercase tracking-wide"
+                  style={{ fontFamily: '"Times New Roman", serif' }}
+                >
+                  Executive Summary
+                </h3>
+                <div className="w-32 h-1 bg-gray-800 mx-auto"></div>
               </div>
-            </motion.div>
-          }
 
-          {/* Executive Summary Section */}
-          {legalAnalysis?.executiveSummary && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="mb-10"
-            >
-              <SectionHeader title="Executive Summary" icon={<FiFileText />} />
-              <div className="px-8 py-8">
-                <div className="space-y-10">
-                  {/* Executive Summary Header */}
-                  <div className="text-center mb-12">
-                    <h3
-                      className="text-3xl font-bold mb-4 uppercase tracking-wide"
+              {/* Executive Headline */}
+              <div className="grid grid-cols-1 gap-6 mb-10">
+                <InfoItem icon={<FiZap />} label="Executive Headline" value={legalAnalysis.executiveSummary.headline} />
+              </div>
+
+              {/* Summary Content */}
+              <div className="p-10 border-2 border-gray-400 bg-white">
+                <div className="flex items-center mb-8">
+                  <div className="p-3 border-2 border-gray-400 mr-4 bg-gray-100">
+                    <FiFileText className="text-xl text-gray-700" />
+                  </div>
+                  <h4
+                    className="text-2xl font-bold uppercase tracking-wide"
+                    style={{ fontFamily: '"Times New Roman", serif' }}
+                  >
+                    Summary
+                  </h4>
+                </div>
+                <p
+                  className="text-lg leading-relaxed"
+                  style={{
+                    fontFamily: '"Times New Roman", serif',
+                    textAlign: 'justify',
+                    color: '#1a202c'
+                  }}
+                >
+                  {formatTextWithBold(legalAnalysis.executiveSummary.summary)}
+                </p>
+              </div>              {/* Key Findings */}
+              {legalAnalysis.executiveSummary.keyFindings && legalAnalysis.executiveSummary.keyFindings.length > 0 && (
+                <div className="p-10 border-2 border-gray-400 bg-white">
+                  <div className="flex items-center mb-8">
+                    <div className="p-3 border-2 border-gray-400 mr-4 bg-gray-100">
+                      <FiTarget className="text-xl text-gray-700" />
+                    </div>
+                    <h4
+                      className="text-2xl font-bold uppercase tracking-wide"
                       style={{ fontFamily: '"Times New Roman", serif' }}
                     >
-                      Executive Summary
-                    </h3>
-                    <div className="w-32 h-1 bg-gray-800 mx-auto"></div>
+                      Key Findings
+                    </h4>
                   </div>
-
-                  {/* Executive Headline */}
-                  <div className="grid grid-cols-1 gap-6 mb-10">
-                    <InfoItem icon={<FiZap />} label="Executive Headline" value={legalAnalysis.executiveSummary.headline} />
-                  </div>
-
-                  {/* Summary Content */}
-                  <div className="p-10 border-2 border-gray-400 bg-white">
-                    <div className="flex items-center mb-8">
-                      <div className="p-3 border-2 border-gray-400 mr-4 bg-gray-100">
-                        <FiFileText className="text-xl text-gray-700" />
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-200/50 shadow-sm">
+                    <div className="flex items-center mb-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg mr-3">
+                        <FiTarget className="text-white text-lg" />
                       </div>
-                      <h4
-                        className="text-2xl font-bold uppercase tracking-wide"
-                        style={{ fontFamily: '"Times New Roman", serif' }}
-                      >
-                        Summary
-                      </h4>
+                      <span className="text-xl font-bold text-blue-800">Critical Findings</span>
                     </div>
-                    <p
-                      className="text-lg leading-relaxed"
-                      style={{
-                        fontFamily: '"Times New Roman", serif',
-                        textAlign: 'justify',
-                        color: '#1a202c'
-                      }}
+                    <div className="space-y-2">
+                      {legalAnalysis.executiveSummary.keyFindings.map((finding, index) => (
+                        <EnhancedBulletPoint key={index} type="finding" index={index}>
+                          {formatTextWithBold(finding)}
+                        </EnhancedBulletPoint>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}{/* Recommended Actions */}
+              {legalAnalysis.executiveSummary.recommendedActions && (
+                <div className="p-10 border-2 border-gray-400 bg-white">
+                  <div className="flex items-center mb-8">
+                    <div className="p-3 border-2 border-gray-400 mr-4 bg-gray-100">
+                      <FiTrendingUp className="text-xl text-gray-700" />
+                    </div>
+                    <h4
+                      className="text-2xl font-bold uppercase tracking-wide"
+                      style={{ fontFamily: '"Times New Roman", serif' }}
                     >
-                      {formatTextWithBold(legalAnalysis.executiveSummary.summary)}
-                    </p>
-                  </div>              {/* Key Findings */}
-                  {legalAnalysis.executiveSummary.keyFindings && legalAnalysis.executiveSummary.keyFindings.length > 0 && (
-                    <div className="p-10 border-2 border-gray-400 bg-white">
+                      Recommended Actions
+                    </h4>
+                  </div>                  <div className="space-y-6">
+                    {formatRecommendedActions(legalAnalysis.executiveSummary.recommendedActions)}
+                  </div>
+                </div>
+              )}
+            </div>
+          </SectionCard>
+        )}{reportItems && reportItems.length > 0 && (
+          <SectionCard
+            title="Detailed Analysis"
+            icon={<FiLayout />}
+            delay={0.3}
+            isOpen={activeSections['Detailed Analysis']}
+            toggleOpen={() => toggleSection('Detailed Analysis')}        >
+            {reportItems.map((item: LegalReportItem, index: number) => (
+              <motion.div
+                key={index}
+                className="mb-16 border-2 border-gray-400 bg-white page-break-inside-avoid"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * index, duration: 0.5 }}
+              >
+                {/* Subsection Header */}
+                <div className="px-8 py-6 border-b-2 border-gray-400 bg-gray-100">
+                  <h3
+                    className="text-2xl font-bold uppercase tracking-wide"
+                    style={{ fontFamily: '"Times New Roman", serif' }}
+                  >
+                    {item.title}
+                  </h3>
+                </div>
+
+                <div className="p-10 space-y-10">                  {/* Facts Section */}
+                  {item.facts && item.facts.length > 0 && (
+                    <div className="p-8 border border-gray-300 bg-gray-50">
                       <div className="flex items-center mb-8">
-                        <div className="p-3 border-2 border-gray-400 mr-4 bg-gray-100">
-                          <FiTarget className="text-xl text-gray-700" />
+                        <div className="p-2 border border-gray-400 mr-3 bg-white">
+                          <FiTarget className="text-lg text-gray-600" />
                         </div>
                         <h4
-                          className="text-2xl font-bold uppercase tracking-wide"
+                          className="font-bold text-xl uppercase tracking-wide"
+                          style={{ fontFamily: '"Times New Roman", serif' }}
+                        >
+                          Facts
+                        </h4>
+                      </div>
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-200/50 shadow-sm">
+                        <div className="flex items-center mb-4">
+                          <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg mr-3">
+                            <FiCheckCircle className="text-white text-lg" />
+                          </div>
+                          <span className="text-xl font-bold text-green-800">Documented Facts</span>
+                        </div>
+                        <div className="space-y-2">
+                          {item.facts.map((fact, factIndex) => (
+                            <EnhancedBulletPoint key={factIndex} type="fact" index={factIndex}>
+                              {formatTextWithBold(fact)}
+                            </EnhancedBulletPoint>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}                  {/* Key Findings Section */}
+                  {item.keyFindings && item.keyFindings.length > 0 && (
+                    <div className="p-8 border border-gray-300 bg-white">
+                      <div className="flex items-center mb-8">
+                        <div className="p-2 border border-gray-400 mr-3 bg-gray-50">
+                          <FiZap className="text-lg text-gray-600" />
+                        </div>
+                        <h4
+                          className="font-bold text-xl uppercase tracking-wide"
                           style={{ fontFamily: '"Times New Roman", serif' }}
                         >
                           Key Findings
                         </h4>
                       </div>
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-200/50 shadow-sm">
+                      <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-2xl border border-amber-200/50 shadow-sm">
                         <div className="flex items-center mb-4">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg mr-3">
-                            <FiTarget className="text-white text-lg" />
+                          <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg mr-3">
+                            <FiZap className="text-white text-lg" />
                           </div>
-                          <span className="text-xl font-bold text-blue-800">Critical Findings</span>
+                          <span className="text-xl font-bold text-amber-800">Analysis Results</span>
                         </div>
                         <div className="space-y-2">
-                          {legalAnalysis.executiveSummary.keyFindings.map((finding, index) => (
-                            <EnhancedBulletPoint key={index} type="finding" index={index}>
+                          {item.keyFindings.map((finding, findingIndex) => (
+                            <EnhancedBulletPoint key={findingIndex} type="finding" index={findingIndex}>
                               {formatTextWithBold(finding)}
                             </EnhancedBulletPoint>
                           ))}
                         </div>
                       </div>
                     </div>
-                  )}{/* Recommended Actions */}
-                  {legalAnalysis.executiveSummary.recommendedActions && (
-                    <div className="p-10 border-2 border-gray-400 bg-white">
+                  )}
+
+                  {/* Recommended Actions Section */}
+                  {item.recommendedActions && (
+                    <div className="p-8 border border-gray-300 bg-white">
                       <div className="flex items-center mb-8">
-                        <div className="p-3 border-2 border-gray-400 mr-4 bg-gray-100">
-                          <FiTrendingUp className="text-xl text-gray-700" />
+                        <div className="p-2 border border-gray-400 mr-3 bg-gray-50">
+                          <FiTrendingUp className="text-lg text-gray-600" />
+                        </div>
+                        <h4
+                          className="font-bold text-xl uppercase tracking-wide"
+                          style={{ fontFamily: '"Times New Roman", serif' }}
+                        >
+                          Recommended Actions
+                        </h4>
+                      </div>
+                      <div className="space-y-6">
+                        <div
+                          className="leading-relaxed"
+                          style={{
+                            fontFamily: '"Times New Roman", serif',
+                            textAlign: 'justify',
+                            color: '#1a202c'
+                          }}
+                        >
+                          {formatTextWithBold(item.recommendedActions)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Summary Section */}
+                  {item.summary && (
+                    <div className="p-8 border border-gray-300 bg-gray-50">
+                      <div className="flex items-center mb-8">
+                        <div className="p-2 border border-gray-400 mr-3 bg-white">
+                          <FiClipboard className="text-lg text-gray-600" />
+                        </div>
+                        <h4
+                          className="font-bold text-xl uppercase tracking-wide"
+                          style={{ fontFamily: '"Times New Roman", serif' }}
+                        >
+                          Summary
+                        </h4>
+                      </div>
+                      <p
+                        className="leading-relaxed"
+                        style={{
+                          fontFamily: '"Times New Roman", serif',
+                          textAlign: 'justify',
+                          color: '#1a202c'
+                        }}
+                      >
+                        {formatTextWithBold(item.summary)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </SectionCard>)}      {/* Overall Legal Score Section */}
+        {(report.totalCompanyScore || legalAnalysis?.totalCompanyScore) && (
+          <SectionCard
+            title="Overall Legal Score"
+            icon={<FiAward />}
+            delay={0.35}
+            isOpen={activeSections['Overall Legal Score']}
+            toggleOpen={() => toggleSection('Overall Legal Score')}
+          >
+            {(() => {
+              const scoreData = report.totalCompanyScore || legalAnalysis?.totalCompanyScore;
+              const score = typeof scoreData?.score === 'number' ? scoreData.score :
+                typeof scoreData?.score === 'string' ? parseFloat(scoreData.score) : 0;
+              const maxScore = 10;
+              const percentage = (score / maxScore) * 100;
+              const getScoreColor = (score: number) => {
+                if (score >= 8) return colours.legalDD.status.success;
+                if (score >= 6) return colours.legalDD.status.warning;
+                return colours.legalDD.status.error;
+              };
+
+              const getScoreBgGradient = (score: number) => {
+                if (score >= 8) return colours.legalDD.score.excellent;
+                if (score >= 6) return colours.legalDD.score.fair;
+                return colours.legalDD.score.poor;
+              }; return (
+                <div className="space-y-10">
+                  {/* Score Visualization */}
+                  <div className="p-10 border-2 border-gray-400 bg-white">
+                    <div className="text-center mb-10">
+                      <div
+                        className="inline-flex items-center justify-center w-40 h-40 border-4 border-gray-800 text-white shadow-lg mb-8"
+                        style={{
+                          background: 'linear-gradient(to right, #1e293b, #0f172a)',
+                          borderRadius: '50%'
+                        }}
+                      >
+                        <div className="text-center">
+                          <div
+                            className="text-5xl font-bold"
+                            style={{
+                              color: 'white',
+                              fontFamily: '"Times New Roman", serif'
+                            }}
+                          >
+                            {score}
+                          </div>
+                          <div
+                            className="text-lg opacity-90"
+                            style={{
+                              color: '#94a3b8',
+                              fontFamily: '"Times New Roman", serif'
+                            }}
+                          >
+                            / {maxScore}
+                          </div>
+                        </div>
+                      </div>
+                      <h4
+                        className="text-3xl font-bold mb-4 uppercase tracking-wide"
+                        style={{ fontFamily: '"Times New Roman", serif' }}
+                      >
+                        Legal Compliance Score
+                      </h4>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full border-2 border-gray-400 h-8 mb-10 bg-gray-100">
+                      <div
+                        className="h-full transition-all duration-1000 ease-out"
+                        style={{
+                          width: `${percentage}%`,
+                          background: getScoreBgGradient(score)
+                        }}
+                      ></div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="p-8 border-2 border-gray-400 bg-gray-50">
+                        <div className="flex items-center mb-6 text-gray-700">
+                          <div className="p-2 border border-gray-400 mr-4 bg-white">
+                            <FiStar className="text-xl text-gray-600" />
+                          </div>
+                          <span
+                            className="font-bold text-xl uppercase tracking-wide"
+                            style={{ fontFamily: '"Times New Roman", serif' }}
+                          >
+                            Rating
+                          </span>
+                        </div>
+                        <p
+                          className="text-3xl font-bold"
+                          style={{
+                            color: '#1a202c',
+                            fontFamily: '"Times New Roman", serif'
+                          }}
+                        >
+                          {scoreData?.rating || 'N/A'}
+                        </p>
+                      </div>
+                      <div className="p-8 border-2 border-gray-400 bg-gray-50">
+                        <div className="flex items-center mb-6 text-gray-700">
+                          <div className="p-2 border border-gray-400 mr-4 bg-white">
+                            <FiInfo className="text-xl text-gray-600" />
+                          </div>
+                          <span
+                            className="font-bold text-xl uppercase tracking-wide"
+                            style={{ fontFamily: '"Times New Roman", serif' }}
+                          >
+                            Assessment
+                          </span>
+                        </div>
+                        <p
+                          className="leading-relaxed text-lg"
+                          style={{
+                            color: '#1a202c',
+                            fontFamily: '"Times New Roman", serif',
+                            textAlign: 'justify'
+                          }}
+                        >
+                          {scoreData?.description || 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </SectionCard>
+        )}      {/* Investment Decision Perspective Section */}
+        {(report.investmentDecision || legalAnalysis?.investmentDecision) && (
+          <SectionCard
+            title="Investment Decision Perspective"
+            icon={<FiBriefcase />}
+            delay={0.4}
+            isOpen={activeSections['Investment Decision Perspective']}
+            toggleOpen={() => toggleSection('Investment Decision Perspective')}
+          >
+            {(() => {
+              const decisionData = report.investmentDecision || legalAnalysis?.investmentDecision;
+              const recommendation = decisionData?.recommendation?.toLowerCase();
+              const isPositive = recommendation?.includes('recommend') || recommendation?.includes('proceed') || recommendation?.includes('approve');
+              const isNegative = recommendation?.includes('not recommend') || recommendation?.includes('reject') || recommendation?.includes('decline');
+              const getRecommendationColor = () => {
+                if (isPositive) return { background: colours.legalDD.status.success + '15', borderColor: colours.legalDD.status.success + '30' };
+                if (isNegative) return { background: colours.legalDD.status.error + '15', borderColor: colours.legalDD.status.error + '30' };
+                return { background: colours.legalDD.status.warning + '15', borderColor: colours.legalDD.status.warning + '30' };
+              };
+
+              const getRecommendationTextColor = () => {
+                if (isPositive) return colours.legalDD.status.success;
+                if (isNegative) return colours.legalDD.status.error;
+                return colours.legalDD.status.warning;
+              };
+
+              const getRecommendationIcon = () => {
+                if (isPositive) return <FiThumbsUp className="text-2xl" />;
+                if (isNegative) return <FiThumbsDown className="text-2xl" />;
+                return <FiAlertTriangle className="text-2xl" />;
+              };
+
+              return (
+                <div className="space-y-6">                  {/* Main Recommendation Card */}
+                  <div className="grid md:grid-cols-2 gap-8 mb-10">
+                    <div className="p-8 border-2 border-gray-400 bg-white">
+                      <h4
+                        className="text-2xl font-bold mb-6 uppercase tracking-wide"
+                        style={{ fontFamily: '"Times New Roman", serif' }}
+                      >
+                        Recommendation
+                      </h4>
+                      <div
+                        className="flex items-center px-6 py-4 border-2"
+                        style={{
+                          backgroundColor: isPositive ? '#f0fdf4' : isNegative ? '#fef2f2' : '#fffbeb',
+                          borderColor: isPositive ? '#22c55e' : isNegative ? '#ef4444' : '#f59e0b'
+                        }}
+                      >
+                        <span style={{ color: getRecommendationTextColor() }}>
+                          {getRecommendationIcon()}
+                        </span>
+                        <span
+                          className="text-xl font-bold ml-4"
+                          style={{
+                            color: getRecommendationTextColor(),
+                            fontFamily: '"Times New Roman", serif'
+                          }}
+                        >
+                          {decisionData?.recommendation || 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {decisionData?.successProbability && (
+                      <div className="p-8 border-2 border-gray-400 bg-white">
+                        <h4
+                          className="text-2xl font-bold mb-6 uppercase tracking-wide"
+                          style={{ fontFamily: '"Times New Roman", serif' }}
+                        >
+                          Success Probability
+                        </h4>
+                        <div className="text-center">
+                          <div
+                            className="text-5xl font-bold mb-2"
+                            style={{
+                              color: '#1a202c',
+                              fontFamily: '"Times New Roman", serif'
+                            }}
+                          >
+                            {decisionData.successProbability}%
+                          </div>
+                          <div
+                            className="text-lg"
+                            style={{
+                              color: '#4b5563',
+                              fontFamily: '"Times New Roman", serif'
+                            }}
+                          >
+                            Likelihood of Success
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Justification */}
+                  {decisionData?.justification && (
+                    <div className="p-8 border border-gray-300 bg-gray-50 mb-10">
+                      <h4
+                        className="text-2xl font-bold mb-6 uppercase tracking-wide"
+                        style={{ fontFamily: '"Times New Roman", serif' }}
+                      >
+                        Justification
+                      </h4>
+                      <p
+                        className="leading-relaxed"
+                        style={{
+                          fontFamily: '"Times New Roman", serif',
+                          textAlign: 'justify',
+                          color: '#1a202c'
+                        }}
+                      >
+                        {formatTextWithBold(decisionData.justification)}
+                      </p>
+                    </div>
+                  )}                  {/* Key Considerations */}
+                  {decisionData?.keyConsiderations && decisionData.keyConsiderations.length > 0 && (
+                    <div className="p-8 border border-gray-300 bg-white mb-10">
+                      <div className="flex items-center mb-8">
+                        <div className="p-2 border border-gray-400 mr-4 bg-gray-50">
+                          <FiList className="text-xl text-gray-600" />
                         </div>
                         <h4
                           className="text-2xl font-bold uppercase tracking-wide"
                           style={{ fontFamily: '"Times New Roman", serif' }}
                         >
-                          Recommended Actions
+                          Key Considerations
                         </h4>
-                      </div>                  <div className="space-y-6">
-                        {formatRecommendedActions(legalAnalysis.executiveSummary.recommendedActions)}
                       </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          }
-
-          {/* Detailed Analysis Section */}
-          {reportItems && reportItems.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="mb-10"
-            >
-              <SectionHeader title="Detailed Analysis" icon={<FiLayout />} />
-              <div className="px-8 py-8">
-                {reportItems.map((item: LegalReportItem, index: number) => (
-                  <motion.div
-                    key={index}
-                    className="mb-16 border-2 border-gray-400 bg-white page-break-inside-avoid"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 * index, duration: 0.5 }}
-                  >
-                    {/* Subsection Header */}
-                    <div className="px-8 py-6 border-b-2 border-gray-400 bg-gray-100">
-                      <h3
-                        className="text-2xl font-bold uppercase tracking-wide"
-                        style={{ fontFamily: '"Times New Roman", serif' }}
-                      >
-                        {item.title}
-                      </h3>
-                    </div>
-
-                    <div className="p-10 space-y-10">                  {/* Facts Section */}
-                      {item.facts && item.facts.length > 0 && (
-                        <div className="p-8 border border-gray-300 bg-gray-50">
-                          <div className="flex items-center mb-8">
-                            <div className="p-2 border border-gray-400 mr-3 bg-white">
-                              <FiTarget className="text-lg text-gray-600" />
-                            </div>
-                            <h4
-                              className="font-bold text-xl uppercase tracking-wide"
-                              style={{ fontFamily: '"Times New Roman", serif' }}
-                            >
-                              Facts
-                            </h4>
-                          </div>
-                          <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-200/50 shadow-sm">
-                            <div className="flex items-center mb-4">
-                              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg mr-3">
-                                <FiCheckCircle className="text-white text-lg" />
-                              </div>
-                              <span className="text-xl font-bold text-green-800">Documented Facts</span>
-                            </div>
-                            <div className="space-y-2">
-                              {item.facts.map((fact, factIndex) => (
-                                <EnhancedBulletPoint key={factIndex} type="fact" index={factIndex}>
-                                  {formatTextWithBold(fact)}
-                                </EnhancedBulletPoint>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}                  {/* Key Findings Section */}
-                      {item.keyFindings && item.keyFindings.length > 0 && (
-                        <div className="p-8 border border-gray-300 bg-white">
-                          <div className="flex items-center mb-8">
-                            <div className="p-2 border border-gray-400 mr-3 bg-gray-50">
-                              <FiZap className="text-lg text-gray-600" />
-                            </div>
-                            <h4
-                              className="font-bold text-xl uppercase tracking-wide"
-                              style={{ fontFamily: '"Times New Roman", serif' }}
-                            >
-                              Key Findings
-                            </h4>
-                          </div>
-                          <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-2xl border border-amber-200/50 shadow-sm">
-                            <div className="flex items-center mb-4">
-                              <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg mr-3">
-                                <FiZap className="text-white text-lg" />
-                              </div>
-                              <span className="text-xl font-bold text-amber-800">Analysis Results</span>
-                            </div>
-                            <div className="space-y-2">
-                              {item.keyFindings.map((finding, findingIndex) => (
-                                <EnhancedBulletPoint key={findingIndex} type="finding" index={findingIndex}>
-                                  {formatTextWithBold(finding)}
-                                </EnhancedBulletPoint>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Recommended Actions Section */}
-                      {item.recommendedActions && (
-                        <div className="p-8 border border-gray-300 bg-white">
-                          <div className="flex items-center mb-8">
-                            <div className="p-2 border border-gray-400 mr-3 bg-gray-50">
-                              <FiTrendingUp className="text-lg text-gray-600" />
-                            </div>
-                            <h4
-                              className="font-bold text-xl uppercase tracking-wide"
-                              style={{ fontFamily: '"Times New Roman", serif' }}
-                            >
-                              Recommended Actions
-                            </h4>
-                          </div>
-                          <div className="space-y-6">
-                            <div
-                              className="leading-relaxed"
-                              style={{
-                                fontFamily: '"Times New Roman", serif',
-                                textAlign: 'justify',
-                                color: '#1a202c'
-                              }}
-                            >
-                              {formatTextWithBold(item.recommendedActions)}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Summary Section */}
-                      {item.summary && (
-                        <div className="p-8 border border-gray-300 bg-gray-50">
-                          <div className="flex items-center mb-8">
-                            <div className="p-2 border border-gray-400 mr-3 bg-white">
-                              <FiClipboard className="text-lg text-gray-600" />
-                            </div>
-                            <h4
-                              className="font-bold text-xl uppercase tracking-wide"
-                              style={{ fontFamily: '"Times New Roman", serif' }}
-                            >
-                              Summary
-                            </h4>
-                          </div>
-                          <p
-                            className="leading-relaxed"
-                            style={{
-                              fontFamily: '"Times New Roman", serif',
-                              textAlign: 'justify',
-                              color: '#1a202c'
-                            }}
+                      <div className="space-y-4">
+                        {decisionData.keyConsiderations.map((consideration, index) => (
+                          <motion.div
+                            key={index}
+                            className="flex items-start group hover:bg-gray-50 p-4 rounded-lg transition-all duration-200"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.1, duration: 0.3 }}
                           >
-                            {formatTextWithBold(item.summary)}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Overall Legal Score Section */}
-          {(report.totalCompanyScore || legalAnalysis?.totalCompanyScore) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="mb-10"
-            >
-              <SectionHeader title="Overall Legal Score" icon={<FiAward />} />
-              <div className="px-8 py-8">
-                {(() => {
-                  const scoreData = report.totalCompanyScore || legalAnalysis?.totalCompanyScore;
-                  const score = typeof scoreData?.score === 'number' ? scoreData.score :
-                    typeof scoreData?.score === 'string' ? parseFloat(scoreData.score) : 0;
-                  const maxScore = 10;
-                  const percentage = (score / maxScore) * 100;
-                  const getScoreColor = (score: number) => {
-                    if (score >= 8) return colours.legalDD.status.success;
-                    if (score >= 6) return colours.legalDD.status.warning;
-                    return colours.legalDD.status.error;
-                  };
-
-                  const getScoreBgGradient = (score: number) => {
-                    if (score >= 8) return colours.legalDD.score.excellent;
-                    if (score >= 6) return colours.legalDD.score.fair;
-                    return colours.legalDD.score.poor;
-                  }; return (
-                    <div className="space-y-10">
-                      {/* Score Visualization */}
-                      <div className="p-10 border-2 border-gray-400 bg-white">
-                        <div className="text-center mb-10">
-                          <div
-                            className="inline-flex items-center justify-center w-40 h-40 border-4 border-gray-800 text-white shadow-lg mb-8"
-                            style={{
-                              background: 'linear-gradient(to right, #1e293b, #0f172a)',
-                              borderRadius: '50%'
-                            }}
-                          >
-                            <div className="text-center">
-                              <div
-                                className="text-5xl font-bold"
-                                style={{
-                                  color: 'white',
-                                  fontFamily: '"Times New Roman", serif'
-                                }}
-                              >
-                                {score}
-                              </div>
-                              <div
-                                className="text-lg opacity-90"
-                                style={{
-                                  color: '#94a3b8',
-                                  fontFamily: '"Times New Roman", serif'
-                                }}
-                              >
-                                / {maxScore}
+                            <div className="flex-shrink-0 mt-1 mr-4">
+                              <div className="relative">
+                                <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg flex items-center justify-center shadow-lg border-2 border-purple-500 group-hover:shadow-xl transition-all duration-200">
+                                  <span className="text-white text-sm font-bold">{index + 1}</span>
+                                </div>
+                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-purple-400 rounded-full opacity-75"></div>
                               </div>
                             </div>
-                          </div>
-                          <h4
-                            className="text-3xl font-bold mb-4 uppercase tracking-wide"
-                            style={{ fontFamily: '"Times New Roman", serif' }}
-                          >
-                            Legal Compliance Score
-                          </h4>
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div className="w-full border-2 border-gray-400 h-8 mb-10 bg-gray-100">
-                          <div
-                            className="h-full transition-all duration-1000 ease-out"
-                            style={{
-                              width: `${percentage}%`,
-                              background: getScoreBgGradient(score)
-                            }}
-                          ></div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                          <div className="p-8 border-2 border-gray-400 bg-gray-50">
-                            <div className="flex items-center mb-6 text-gray-700">
-                              <div className="p-2 border border-gray-400 mr-4 bg-white">
-                                <FiStar className="text-xl text-gray-600" />
-                              </div>
+                            <div className="flex-1">
                               <span
-                                className="font-bold text-xl uppercase tracking-wide"
-                                style={{ fontFamily: '"Times New Roman", serif' }}
-                              >
-                                Rating
-                              </span>
-                            </div>
-                            <p
-                              className="text-3xl font-bold"
-                              style={{
-                                color: '#1a202c',
-                                fontFamily: '"Times New Roman", serif'
-                              }}
-                            >
-                              {scoreData?.rating || 'N/A'}
-                            </p>
-                          </div>
-                          <div className="p-8 border-2 border-gray-400 bg-gray-50">
-                            <div className="flex items-center mb-6 text-gray-700">
-                              <div className="p-2 border border-gray-400 mr-4 bg-white">
-                                <FiInfo className="text-xl text-gray-600" />
-                              </div>
-                              <span
-                                className="font-bold text-xl uppercase tracking-wide"
-                                style={{ fontFamily: '"Times New Roman", serif' }}
-                              >
-                                Assessment
-                              </span>
-                            </div>
-                            <p
-                              className="leading-relaxed text-lg"
-                              style={{
-                                color: '#1a202c',
-                                fontFamily: '"Times New Roman", serif',
-                                textAlign: 'justify'
-                              }}
-                            >
-                              {scoreData?.description || 'N/A'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Investment Decision Perspective Section */}
-          {(report.investmentDecision || legalAnalysis?.investmentDecision) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-              className="mb-10"
-            >
-              <SectionHeader title="Investment Decision Perspective" icon={<FiBriefcase />} />
-              <div className="px-8 py-8">
-                {(() => {
-                  const decisionData = report.investmentDecision || legalAnalysis?.investmentDecision;
-                  const recommendation = decisionData?.recommendation?.toLowerCase();
-                  const isPositive = recommendation?.includes('recommend') || recommendation?.includes('proceed') || recommendation?.includes('approve');
-                  const isNegative = recommendation?.includes('not recommend') || recommendation?.includes('reject') || recommendation?.includes('decline');
-                  const getRecommendationColor = () => {
-                    if (isPositive) return { background: colours.legalDD.status.success + '15', borderColor: colours.legalDD.status.success + '30' };
-                    if (isNegative) return { background: colours.legalDD.status.error + '15', borderColor: colours.legalDD.status.error + '30' };
-                    return { background: colours.legalDD.status.warning + '15', borderColor: colours.legalDD.status.warning + '30' };
-                  };
-
-                  const getRecommendationTextColor = () => {
-                    if (isPositive) return colours.legalDD.status.success;
-                    if (isNegative) return colours.legalDD.status.error;
-                    return colours.legalDD.status.warning;
-                  };
-
-                  const getRecommendationIcon = () => {
-                    if (isPositive) return <FiThumbsUp className="text-2xl" />;
-                    if (isNegative) return <FiThumbsDown className="text-2xl" />;
-                    return <FiAlertTriangle className="text-2xl" />;
-                  };
-
-                  return (
-                    <div className="space-y-6">                  {/* Main Recommendation Card */}
-                      <div className="grid md:grid-cols-2 gap-8 mb-10">
-                        <div className="p-8 border-2 border-gray-400 bg-white">
-                          <h4
-                            className="text-2xl font-bold mb-6 uppercase tracking-wide"
-                            style={{ fontFamily: '"Times New Roman", serif' }}
-                          >
-                            Recommendation
-                          </h4>
-                          <div
-                            className="flex items-center px-6 py-4 border-2"
-                            style={{
-                              backgroundColor: isPositive ? '#f0fdf4' : isNegative ? '#fef2f2' : '#fffbeb',
-                              borderColor: isPositive ? '#22c55e' : isNegative ? '#ef4444' : '#f59e0b'
-                            }}
-                          >
-                            <span style={{ color: getRecommendationTextColor() }}>
-                              {getRecommendationIcon()}
-                            </span>
-                            <span
-                              className="text-xl font-bold ml-4"
-                              style={{
-                                color: getRecommendationTextColor(),
-                                fontFamily: '"Times New Roman", serif'
-                              }}
-                            >
-                              {decisionData?.recommendation || 'N/A'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {decisionData?.successProbability && (
-                          <div className="p-8 border-2 border-gray-400 bg-white">
-                            <h4
-                              className="text-2xl font-bold mb-6 uppercase tracking-wide"
-                              style={{ fontFamily: '"Times New Roman", serif' }}
-                            >
-                              Success Probability
-                            </h4>
-                            <div className="text-center">
-                              <div
-                                className="text-5xl font-bold mb-2"
-                                style={{
-                                  color: '#1a202c',
-                                  fontFamily: '"Times New Roman", serif'
-                                }}
-                              >
-                                {decisionData.successProbability}%
-                              </div>
-                              <div
-                                className="text-lg"
-                                style={{
-                                  color: '#4b5563',
-                                  fontFamily: '"Times New Roman", serif'
-                                }}
-                              >
-                                Likelihood of Success
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Justification */}
-                      {decisionData?.justification && (
-                        <div className="p-8 border border-gray-300 bg-gray-50 mb-10">
-                          <h4
-                            className="text-2xl font-bold mb-6 uppercase tracking-wide"
-                            style={{ fontFamily: '"Times New Roman", serif' }}
-                          >
-                            Justification
-                          </h4>
-                          <p
-                            className="leading-relaxed"
-                            style={{
-                              fontFamily: '"Times New Roman", serif',
-                              textAlign: 'justify',
-                              color: '#1a202c'
-                            }}
-                          >
-                            {formatTextWithBold(decisionData.justification)}
-                          </p>
-                        </div>
-                      )}                  {/* Key Considerations */}
-                      {decisionData?.keyConsiderations && decisionData.keyConsiderations.length > 0 && (
-                        <div className="p-8 border border-gray-300 bg-white mb-10">
-                          <div className="flex items-center mb-8">
-                            <div className="p-2 border border-gray-400 mr-4 bg-gray-50">
-                              <FiList className="text-xl text-gray-600" />
-                            </div>
-                            <h4
-                              className="text-2xl font-bold uppercase tracking-wide"
-                              style={{ fontFamily: '"Times New Roman", serif' }}
-                            >
-                              Key Considerations
-                            </h4>
-                          </div>
-                          <div className="space-y-4">
-                            {decisionData.keyConsiderations.map((consideration, index) => (
-                              <motion.div
-                                key={index}
-                                className="flex items-start group hover:bg-gray-50 p-4 rounded-lg transition-all duration-200"
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: index * 0.1, duration: 0.3 }}
-                              >
-                                <div className="flex-shrink-0 mt-1 mr-4">
-                                  <div className="relative">
-                                    <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg flex items-center justify-center shadow-lg border-2 border-purple-500 group-hover:shadow-xl transition-all duration-200">
-                                      <span className="text-white text-sm font-bold">{index + 1}</span>
-                                    </div>
-                                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-purple-400 rounded-full opacity-75"></div>
-                                  </div>
-                                </div>
-                                <div className="flex-1">
-                                  <span
-                                    className="leading-relaxed block"
-                                    style={{
-                                      fontFamily: '"Times New Roman", serif',
-                                      textAlign: 'justify',
-                                      color: '#1a202c'
-                                    }}
-                                  >
-                                    {formatTextWithBold(consideration)}
-                                  </span>
-                                </div>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </div>
-                      )}                  {/* Suggested Terms */}
-                      {decisionData?.suggestedTerms && decisionData.suggestedTerms.length > 0 && (
-                        <div className="p-8 border border-gray-300 bg-white">
-                          <div className="flex items-center mb-8">
-                            <div className="p-2 border border-gray-400 mr-4 bg-gray-50">
-                              <FiCheckCircle className="text-xl text-gray-600" />
-                            </div>
-                            <h4
-                              className="text-2xl font-bold uppercase tracking-wide"
-                              style={{ fontFamily: '"Times New Roman", serif' }}
-                            >
-                              Suggested Terms
-                            </h4>
-                          </div>
-                          <div className="space-y-4">
-                            {decisionData.suggestedTerms.map((term, index) => (
-                              <motion.div
-                                key={index}
-                                className="flex items-start group hover:bg-gray-50 p-4 rounded-lg transition-all duration-200"
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: index * 0.1, duration: 0.3 }}
-                              >
-                                <div className="flex-shrink-0 mt-1 mr-4">
-                                  <div className="relative">
-                                    <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-lg flex items-center justify-center shadow-lg border-2 border-emerald-500 group-hover:shadow-xl transition-all duration-200">
-                                      <FiCheckCircle className="text-white text-sm" />
-                                    </div>
-                                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full opacity-75"></div>
-                                  </div>
-                                </div>
-                                <div className="flex-1">
-                                  <span
-                                    className="leading-relaxed block"
-                                    style={{
-                                      fontFamily: '"Times New Roman", serif',
-                                      textAlign: 'justify',
-                                      color: '#1a202c'
-                                    }}
-                                  >
-                                    {formatTextWithBold(term)}
-                                  </span>
-                                </div>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Missing Documents Section */}
-          {(report.missingDocuments || legalAnalysis?.missingDocuments) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.5 }}
-              className="mb-10"
-            >
-              <SectionHeader title="Missing Documents & Information Gaps" icon={<FiFileMinus />} />
-              <div className="px-8 py-8">
-                {(() => {
-                  const missingDocsData = report.missingDocuments || legalAnalysis?.missingDocuments;
-                  return (
-                    <div className="space-y-6">                  {/* Impact Assessment */}
-                      {missingDocsData?.note && (
-                        <div className="p-8 border border-gray-300 bg-white mb-10">
-                          <div className="flex items-start">
-                            <div className="p-2 border border-gray-400 mr-4 bg-gray-50 flex-shrink-0">
-                              <FiInfo className="text-xl text-gray-600" />
-                            </div>
-                            <div>
-                              <h4
-                                className="text-2xl font-bold mb-6 uppercase tracking-wide"
-                                style={{ fontFamily: '"Times New Roman", serif' }}
-                              >
-                                Impact Assessment
-                              </h4>
-                              <p
-                                className="leading-relaxed"
+                                className="leading-relaxed block"
                                 style={{
                                   fontFamily: '"Times New Roman", serif',
                                   textAlign: 'justify',
                                   color: '#1a202c'
                                 }}
                               >
-                                {formatTextWithBold(missingDocsData.note)}
-                              </p>
+                                {formatTextWithBold(consideration)}
+                              </span>
                             </div>
-                          </div>
-                        </div>
-                      )}                  {/* Missing Documents List */}
-                      {missingDocsData?.documentList && missingDocsData.documentList.length > 0 && (
-                        <div className="p-10 border-2 border-gray-400 bg-white">
-                          <div className="flex items-center mb-8">
-                            <div className="p-2 border border-gray-400 mr-4 bg-gray-50">
-                              <FiFileText className="text-xl text-gray-600" />
-                            </div>
-                            <h4
-                              className="text-2xl font-bold uppercase tracking-wide"
-                              style={{ fontFamily: '"Times New Roman", serif' }}
-                            >
-                              Missing Documents ({missingDocsData.documentList.length})
-                            </h4>
-                          </div>
-
-                          <div className="overflow-x-auto">
-                            <table className="min-w-full border-2 border-gray-400">
-                              <thead className="bg-gray-100 border-b-2 border-gray-400">
-                                <tr>
-                                  <th
-                                    className="py-6 px-8 text-left text-lg font-bold uppercase tracking-wider border border-gray-400"
-                                    style={{ fontFamily: '"Times New Roman", serif' }}
-                                  >
-                                    Document Category
-                                  </th>
-                                  <th
-                                    className="py-6 px-8 text-left text-lg font-bold uppercase tracking-wider border border-gray-400"
-                                    style={{ fontFamily: '"Times New Roman", serif' }}
-                                  >
-                                    Specific Document
-                                  </th>
-                                  <th
-                                    className="py-6 px-8 text-left text-lg font-bold uppercase tracking-wider border border-gray-400"
-                                    style={{ fontFamily: '"Times New Roman", serif' }}
-                                  >
-                                    Requirement Reference
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-400">
-                                {missingDocsData.documentList.map((doc, index) => (
-                                  <tr key={index} className="hover:bg-gray-50">
-                                    <td
-                                      className="py-6 px-8 border border-gray-400"
-                                      style={{
-                                        fontFamily: '"Times New Roman", serif',
-                                        color: '#1a202c'
-                                      }}
-                                    >
-                                      {formatTextWithBold(doc.documentCategory)}
-                                    </td>
-                                    <td
-                                      className="py-6 px-8 border border-gray-400"
-                                      style={{
-                                        fontFamily: '"Times New Roman", serif',
-                                        color: '#1a202c'
-                                      }}
-                                    >
-                                      {formatTextWithBold(doc.specificDocument)}
-                                    </td>
-                                    <td
-                                      className="py-6 px-8 border border-gray-400"
-                                      style={{
-                                        fontFamily: '"Times New Roman", serif',
-                                        color: '#1a202c'
-                                      }}
-                                    >
-                                      {formatTextWithBold(doc.requirementReference)}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      )}
+                          </motion.div>
+                        ))}
+                      </div>
                     </div>
-                  );
-                })()}
-              </div>
-            </motion.div>
-          )}
+                  )}                  {/* Suggested Terms */}
+                  {decisionData?.suggestedTerms && decisionData.suggestedTerms.length > 0 && (
+                    <div className="p-8 border border-gray-300 bg-white">
+                      <div className="flex items-center mb-8">
+                        <div className="p-2 border border-gray-400 mr-4 bg-gray-50">
+                          <FiCheckCircle className="text-xl text-gray-600" />
+                        </div>
+                        <h4
+                          className="text-2xl font-bold uppercase tracking-wide"
+                          style={{ fontFamily: '"Times New Roman", serif' }}
+                        >
+                          Suggested Terms
+                        </h4>
+                      </div>
+                      <div className="space-y-4">
+                        {decisionData.suggestedTerms.map((term, index) => (
+                          <motion.div
+                            key={index}
+                            className="flex items-start group hover:bg-gray-50 p-4 rounded-lg transition-all duration-200"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.1, duration: 0.3 }}
+                          >
+                            <div className="flex-shrink-0 mt-1 mr-4">
+                              <div className="relative">
+                                <div className="w-8 h-8 bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-lg flex items-center justify-center shadow-lg border-2 border-emerald-500 group-hover:shadow-xl transition-all duration-200">
+                                  <FiCheckCircle className="text-white text-sm" />
+                                </div>
+                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full opacity-75"></div>
+                              </div>
+                            </div>
+                            <div className="flex-1">
+                              <span
+                                className="leading-relaxed block"
+                                style={{
+                                  fontFamily: '"Times New Roman", serif',
+                                  textAlign: 'justify',
+                                  color: '#1a202c'
+                                }}
+                              >
+                                {formatTextWithBold(term)}
+                              </span>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </SectionCard>
+        )}      {/* Missing Documents Section */}
+        {(report.missingDocuments || legalAnalysis?.missingDocuments) && (
+          <SectionCard
+            title="Missing Documents & Information Gaps"
+            icon={<FiFileMinus />}
+            delay={0.45}
+            isOpen={activeSections['Missing Documents & Information Gaps']}
+            toggleOpen={() => toggleSection('Missing Documents & Information Gaps')}
+          >
+            {(() => {
+              const missingDocsData = report.missingDocuments || legalAnalysis?.missingDocuments;
+              return (
+                <div className="space-y-6">                  {/* Impact Assessment */}
+                  {missingDocsData?.note && (
+                    <div className="p-8 border border-gray-300 bg-white mb-10">
+                      <div className="flex items-start">
+                        <div className="p-2 border border-gray-400 mr-4 bg-gray-50 flex-shrink-0">
+                          <FiInfo className="text-xl text-gray-600" />
+                        </div>
+                        <div>
+                          <h4
+                            className="text-2xl font-bold mb-6 uppercase tracking-wide"
+                            style={{ fontFamily: '"Times New Roman", serif' }}
+                          >
+                            Impact Assessment
+                          </h4>
+                          <p
+                            className="leading-relaxed"
+                            style={{
+                              fontFamily: '"Times New Roman", serif',
+                              textAlign: 'justify',
+                              color: '#1a202c'
+                            }}
+                          >
+                            {formatTextWithBold(missingDocsData.note)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}                  {/* Missing Documents List */}
+                  {missingDocsData?.documentList && missingDocsData.documentList.length > 0 && (
+                    <div className="p-10 border-2 border-gray-400 bg-white">
+                      <div className="flex items-center mb-8">
+                        <div className="p-2 border border-gray-400 mr-4 bg-gray-50">
+                          <FiFileText className="text-xl text-gray-600" />
+                        </div>
+                        <h4
+                          className="text-2xl font-bold uppercase tracking-wide"
+                          style={{ fontFamily: '"Times New Roman", serif' }}
+                        >
+                          Missing Documents ({missingDocsData.documentList.length})
+                        </h4>
+                      </div>
 
-          {/* Detailed Findings Section */}
-          {(report.detailedFindings || legalAnalysis?.detailedFindings) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.6 }}
-              className="mb-10"
-            >
-              <SectionHeader title="Detailed Findings" icon={<FiZoomIn />} />
-              <div className="px-8 py-8">
-                {(() => {
-                  const findingsData = report.detailedFindings || legalAnalysis?.detailedFindings;
-                  return (
-                    <div className="space-y-6">
-                      {findingsData?.map((finding, index) => (
-                        <div key={index} className="bg-white shadow-lg border border-slate-200 hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden">                      <div
-                        className="px-6 py-4 border-b"
-                        style={{
-                          background: colours.legalDD.background.accent,
-                          borderColor: colours.legalDD.border.light
-                        }}
-                      >
-                        <div className="flex justify-between items-center">
-                          <h4 className="text-lg font-bold" style={{ color: colours.legalDD.text.primary }}>{finding.area}</h4>
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${finding.riskLevel === 'Critical' ? 'bg-red-100 text-red-800' :
-                            finding.riskLevel === 'High' ? 'bg-orange-100 text-orange-800' :
-                              finding.riskLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-green-100 text-green-800'
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full border-2 border-gray-400">
+                          <thead className="bg-gray-100 border-b-2 border-gray-400">
+                            <tr>
+                              <th
+                                className="py-6 px-8 text-left text-lg font-bold uppercase tracking-wider border border-gray-400"
+                                style={{ fontFamily: '"Times New Roman", serif' }}
+                              >
+                                Document Category
+                              </th>
+                              <th
+                                className="py-6 px-8 text-left text-lg font-bold uppercase tracking-wider border border-gray-400"
+                                style={{ fontFamily: '"Times New Roman", serif' }}
+                              >
+                                Specific Document
+                              </th>
+                              <th
+                                className="py-6 px-8 text-left text-lg font-bold uppercase tracking-wider border border-gray-400"
+                                style={{ fontFamily: '"Times New Roman", serif' }}
+                              >
+                                Requirement Reference
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-400">
+                            {missingDocsData.documentList.map((doc, index) => (
+                              <tr key={index} className="hover:bg-gray-50">
+                                <td
+                                  className="py-6 px-8 border border-gray-400"
+                                  style={{
+                                    fontFamily: '"Times New Roman", serif',
+                                    color: '#1a202c'
+                                  }}
+                                >
+                                  {formatTextWithBold(doc.documentCategory)}
+                                </td>
+                                <td
+                                  className="py-6 px-8 border border-gray-400"
+                                  style={{
+                                    fontFamily: '"Times New Roman", serif',
+                                    color: '#1a202c'
+                                  }}
+                                >
+                                  {formatTextWithBold(doc.specificDocument)}
+                                </td>
+                                <td
+                                  className="py-6 px-8 border border-gray-400"
+                                  style={{
+                                    fontFamily: '"Times New Roman", serif',
+                                    color: '#1a202c'
+                                  }}
+                                >
+                                  {formatTextWithBold(doc.requirementReference)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </SectionCard>
+        )}      {/* Detailed Findings Section */}
+        {(report.detailedFindings || legalAnalysis?.detailedFindings) && (
+          <SectionCard
+            title="Detailed Findings"
+            icon={<FiZoomIn />}
+            delay={0.5}
+            isOpen={activeSections['Detailed Findings']}
+            toggleOpen={() => toggleSection('Detailed Findings')}
+          >
+            {(() => {
+              const findingsData = report.detailedFindings || legalAnalysis?.detailedFindings;
+              return (
+                <div className="space-y-6">
+                  {findingsData?.map((finding, index) => (
+                    <div key={index} className="bg-white shadow-lg border border-slate-200 hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden">                      <div
+                      className="px-6 py-4 border-b"
+                      style={{
+                        background: colours.legalDD.background.accent,
+                        borderColor: colours.legalDD.border.light
+                      }}
+                    >
+                      <div className="flex justify-between items-center">
+                        <h4 className="text-lg font-bold" style={{ color: colours.legalDD.text.primary }}>{finding.area}</h4>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${finding.riskLevel === 'Critical' ? 'bg-red-100 text-red-800' :
+                          finding.riskLevel === 'High' ? 'bg-orange-100 text-orange-800' :
+                            finding.riskLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
                           }`}>
                           {finding.riskLevel}
                         </span>
-                        </div>
-                      </div>                      <div className="p-6 space-y-4">
+                      </div>
+                    </div>                      <div className="p-6 space-y-4">
                         {finding.document && (
                           <div
                             className="p-3 rounded-lg border"
@@ -1729,72 +1691,67 @@ const LegalDueDiligenceReportContent: React.FC<LegalDueDiligenceReportContentPro
 
         {/* Report Metadata Section */}
         {(report.legalAnalysis?.reportMetadata || legalAnalysis?.reportMetadata) && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.8 }}
-            className="mb-10"
+          <SectionCard
+            title="Report Metadata"
+            icon={<FiDatabase />}
+            delay={0.6}
+            isOpen={activeSections['Report Metadata']}
+            toggleOpen={() => toggleSection('Report Metadata')}
           >
-            <SectionHeader title="Report Metadata" icon={<FiDatabase />} />
-            <div className="px-8 py-8">
-              {(() => {
-                const metadataData = report.legalAnalysis?.reportMetadata || legalAnalysis?.reportMetadata;
-                return (
-                  <div className="bg-white p-6 rounded-lg shadow-md border border-slate-100">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <InfoItem icon={<FiFileText />} label="Documents Reviewed" value={metadataData?.documentsReviewed} />
-                      <InfoItem icon={<FiCheckCircle />} label="Compliance Areas" value={metadataData?.complianceAreasChecked} />
-                      <InfoItem icon={<FiList />} label="Total Findings" value={metadataData?.totalFindings} />
-                      <InfoItem icon={<FiAlertCircle />} label="Critical Issues" value={metadataData?.criticalIssuesCount} />
-                      <InfoItem icon={<FiAlertTriangle />} label="High Priority" value={metadataData?.highPriorityIssuesCount} />
-                      <InfoItem icon={<FiActivity />} label="Medium Priority" value={metadataData?.mediumPriorityIssuesCount} />
-                      <InfoItem icon={<FiInfo />} label="Low Priority" value={metadataData?.lowPriorityIssuesCount} />
-                    </div>
+            {(() => {
+              const metadataData = report.legalAnalysis?.reportMetadata || legalAnalysis?.reportMetadata;
+              return (
+                <div className="bg-white p-6 rounded-lg shadow-md border border-slate-100">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <InfoItem icon={<FiFileText />} label="Documents Reviewed" value={metadataData?.documentsReviewed} />
+                    <InfoItem icon={<FiCheckCircle />} label="Compliance Areas" value={metadataData?.complianceAreasChecked} />
+                    <InfoItem icon={<FiList />} label="Total Findings" value={metadataData?.totalFindings} />
+                    <InfoItem icon={<FiAlertCircle />} label="Critical Issues" value={metadataData?.criticalIssuesCount} />
+                    <InfoItem icon={<FiAlertTriangle />} label="High Priority" value={metadataData?.highPriorityIssuesCount} />
+                    <InfoItem icon={<FiActivity />} label="Medium Priority" value={metadataData?.mediumPriorityIssuesCount} />
+                    <InfoItem icon={<FiInfo />} label="Low Priority" value={metadataData?.lowPriorityIssuesCount} />
                   </div>
-                );
-              })()}
-            </div>
-          </motion.div>
+                </div>
+              );
+            })()}
+          </SectionCard>
         )}        {/* Disclaimer Section */}
         {(report.disclaimer || legalAnalysis?.disclaimer) && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.9 }}
+          <SectionCard
+            title="Disclaimer"
+            icon={<FiHelpCircle />}
+            delay={0.65}
+            isOpen={activeSections['Disclaimer']}
+            toggleOpen={() => toggleSection('Disclaimer')}
           >
-            <SectionHeader title="Disclaimer" icon={<FiHelpCircle />} />
-            <div className="px-8 py-8">
-              <div className="p-8 border-2 border-gray-400 bg-gray-50">
-                <div className="flex items-start">
-                  <div className="p-2 border border-gray-400 mr-4 bg-white flex-shrink-0">
-                    <FiAlertTriangle className="text-2xl text-gray-600" />
-                  </div>
-                  <div>
-                    <h4
-                      className="text-2xl font-bold mb-6 uppercase tracking-wide"
-                      style={{ fontFamily: '"Times New Roman", serif' }}
-                    >
-                      Legal Disclaimer
-                    </h4>
-                    <p
-                      className="leading-relaxed text-lg"
-                      style={{
-                        fontFamily: '"Times New Roman", serif',
-                        textAlign: 'justify',
-                        color: '#1a202c',
-                        fontStyle: 'italic'
-                      }}
-                    >
-                      {formatTextWithBold(report.disclaimer || legalAnalysis?.disclaimer)}
-                    </p>
-                  </div>
+            <div className="p-8 border-2 border-gray-400 bg-gray-50">
+              <div className="flex items-start">
+                <div className="p-2 border border-gray-400 mr-4 bg-white flex-shrink-0">
+                  <FiAlertTriangle className="text-2xl text-gray-600" />
+                </div>
+                <div>
+                  <h4
+                    className="text-2xl font-bold mb-6 uppercase tracking-wide"
+                    style={{ fontFamily: '"Times New Roman", serif' }}
+                  >
+                    Legal Disclaimer
+                  </h4>
+                  <p
+                    className="leading-relaxed text-lg"
+                    style={{
+                      fontFamily: '"Times New Roman", serif',
+                      textAlign: 'justify',
+                      color: '#1a202c',
+                      fontStyle: 'italic'
+                    }}
+                  >
+                    {formatTextWithBold(report.disclaimer || legalAnalysis?.disclaimer)}
+                  </p>
                 </div>
               </div>
             </div>
-          </motion.div>
-        )}
-
-        {/* Professional Report Footer */}
+          </SectionCard>
+        )}{/* Professional Report Footer */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
