@@ -1,0 +1,16 @@
+# Run comprehensive tests after successful commit
+echo "🚀 Running post-commit comprehensive tests..."
+echo "📊 Running full test suite with coverage..."
+
+# Run in background so commit completes quickly
+(
+  cd Backend
+  npm run test:coverage
+  if [ $? -eq 0 ]; then
+    echo "✅ All tests passed with coverage report generated!"
+  else
+    echo "⚠️ Some tests failed. Check the output above for details."
+  fi
+) &
+
+echo "✅ Commit successful! Tests running in background..."

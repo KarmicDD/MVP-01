@@ -1,0 +1,44 @@
+# Docker Compose for Test Environment
+version: '3.8'
+
+services:
+  # PostgreSQL Test Database
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: karmicdd-postgres-test
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: karmicdd_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    command: postgres -c log_statement=all -c log_destination=stderr
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U test_user -d karmicdd_test" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB Test Database
+  mongodb-test:
+    image: mongo:7.0
+    container_name: karmicdd-mongodb-test
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: test_user
+      MONGO_INITDB_ROOT_PASSWORD: test_password
+      MONGO_INITDB_DATABASE: karmicdd_test
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongodb_test_data:/data/db
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_test_data:
+  mongodb_test_data:

@@ -88,14 +88,18 @@ class RecommendationService {
      * @param perspective Perspective to generate recommendations from ('startup' or 'investor')
      * @param forceRefresh Whether to force a refresh of recommendations even if cached
      * @returns Personalized recommendations
-     */
-    async generateRecommendations(
+     */    async generateRecommendations(
         startupId: string,
         investorId: string,
         perspective: 'startup' | 'investor',
         forceRefresh: boolean = false
     ): Promise<RecommendationResult> {
         try {
+            // Validate perspective parameter
+            if (!perspective || (perspective !== 'startup' && perspective !== 'investor')) {
+                throw new Error(`Invalid perspective: ${perspective}. Must be 'startup' or 'investor'`);
+            }
+
             // Check for cached recommendations if not forcing refresh
             if (!forceRefresh) {
                 console.log(`Checking for cached recommendations for startup ${startupId} and investor ${investorId} with perspective ${perspective}`);
@@ -187,6 +191,11 @@ class RecommendationService {
             return recommendations;
         } catch (error) {
             console.error('Error generating recommendations:', error);
+
+            // If this is a validation error, rethrow it instead of providing fallbacks
+            if (error instanceof Error && error.message.includes('Invalid perspective:')) {
+                throw error;
+            }
 
             // If there's an error, check for any existing recommendations regardless of age
             try {

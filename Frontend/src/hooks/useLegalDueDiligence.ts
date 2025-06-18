@@ -40,6 +40,8 @@ export interface LegalCompliance {
 }
 
 export interface LegalExecutiveSummary {
+    headline?: string; // Added: Concise headline for the summary
+    summary?: string; // Added: Overall summary of legal findings
     overallRisk: 'Critical' | 'High' | 'Medium' | 'Low';
     legalStructureRating: 'Excellent' | 'Good' | 'Fair' | 'Poor';
     complianceRating: 'Excellent' | 'Good' | 'Fair' | 'Poor';
@@ -153,19 +155,11 @@ export interface LegalAnalysis {
     };
 
     // Enhanced executive summary (inspired by Financial DD)
-    executiveSummary?: {
-        headline: string; // Concise headline for the summary
-        summary: string; // Overall summary of legal findings
-        keyFindings: string[]; // Bullet points of most critical findings
-        recommendedActions: string[]; // High-level recommended actions
-    };
+    executiveSummary: LegalExecutiveSummary; // MODIFIED: Use LegalExecutiveSummary and make required
 
     complianceAssessment?: LegalCompliance;
     riskScore?: LegalRiskScore;
-    missingDocuments: {
-        documentList: LegalDocumentItem[];
-        note: string;
-    };
+    missingDocuments: LegalMissingDocuments; // MODIFIED: Use LegalMissingDocuments
 
     corporateStructureAnalysis?: {
         incorporationDetails: string;

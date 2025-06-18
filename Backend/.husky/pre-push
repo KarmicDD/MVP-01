@@ -1,0 +1,19 @@
+# Run comprehensive tests before push
+echo "🔍 Running pre-push comprehensive checks..."
+echo "🧪 Running full test suite..."
+cd Backend
+
+npm run test:coverage
+if [ $? -ne 0 ]; then
+  echo "❌ Tests failed. Push aborted."
+  exit 1
+fi
+
+echo "🔧 Running integration tests..."
+npm run test:integration
+if [ $? -ne 0 ]; then
+  echo "❌ Integration tests failed. Push aborted."
+  exit 1
+fi
+
+echo "✅ All checks passed! Push proceeding..."
