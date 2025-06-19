@@ -288,7 +288,12 @@ Remember to:
                 return await legalAnalysisModel.generateContent(analysisPrompt);
             });
 
-            const response = await result.response;
+            if (!result || !result.response) {
+                console.error('Invalid or empty response from Gemini API.');
+                throw new Error('Invalid response from AI service');
+            }
+
+            const response = result.response;
             let responseText = response.text();
 
             console.log('Received response from Gemini API for legal analysis');

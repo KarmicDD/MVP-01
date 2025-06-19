@@ -33,12 +33,11 @@ export const getUserType = async (req: Request, res: Response): Promise<void> =>
         if (!user) {
             res.status(404).json({ message: 'User not found' });
             return;
-        }
-
-        res.json({
+        } res.json({
             userId: user.user_id,
             email: user.email,
-            role: user.role
+            role: user.role,
+            userType: user.role  // Add userType for backward compatibility with tests
         });
     } catch (error) {
         console.error('Get user type error:', error);

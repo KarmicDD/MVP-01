@@ -3,6 +3,14 @@
 ## Overview
 This document outlines the Phase 1 implementation of the testing strategy for KarmicDD Backend, focusing on establishing a robust testing infrastructure with local-only testing, environment variable protection, and automated quality gates.
 
+## Testing Strategy & Exclusions
+**Services Excluded from Unit Testing** (API-only testing):
+- **NewFinancialDueDiligenceService**: Complex AI integration and financial document processing
+- **NewLegalDueDiligenceService**: Legal document analysis with AI-powered risk assessment
+- **MemoryBasedOcrPdfService**: PDF OCR processing with memory management
+
+These services involve complex AI integrations and file processing that are better validated through comprehensive end-to-end API testing rather than unit tests.
+
 ## Completed Components
 
 ### 1. Testing Infrastructure ✅

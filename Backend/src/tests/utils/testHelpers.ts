@@ -42,13 +42,16 @@ export class TestDataFactory {
         return await prisma.profileShare.create({
             data: { ...defaultShare, ...overrides }
         });
-    }
-    static generateMockJWT(userId: string, email: string, role: string = 'startup') {
+    } static generateMockJWT(userId: string, email: string, role: string = 'startup') {
         return jwt.sign(
             { userId, email, role },
             process.env.JWT_SECRET || 'test_secret',
             { expiresIn: process.env.JWT_EXPIRES_IN || '1h' } as jwt.SignOptions
         );
+    }
+
+    static generateJWT(userId: string, email: string = `test${Date.now()}@example.com`, role: string = 'startup') {
+        return this.generateMockJWT(userId, email, role);
     }
 
     static createMockRequest(overrides: any = {}): Partial<Request> {

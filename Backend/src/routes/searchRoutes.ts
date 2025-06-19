@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticateJWT } from '../middleware/auth';
+import { searchRateLimit } from '../middleware/rateLimiter';
 import { getFilterOptions, searchInvestors, searchStartups } from '../controllers/searchControllers';
 
 
@@ -58,7 +59,7 @@ const router = express.Router();
  *       '500':
  *         description: Server error
  */
-router.get('/startups', authenticateJWT, searchStartups);
+router.get('/startups', searchRateLimit, authenticateJWT, searchStartups);
 
 /**
  * @swagger
@@ -108,7 +109,7 @@ router.get('/startups', authenticateJWT, searchStartups);
  *       '500':
  *         description: Server error
  */
-router.get('/investors', authenticateJWT, searchInvestors);
+router.get('/investors', searchRateLimit, authenticateJWT, searchInvestors);
 
 /**
  * @swagger

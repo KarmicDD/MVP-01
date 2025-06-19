@@ -289,7 +289,13 @@ class NewFinancialDueDiligenceService {
         return await financialAnalysisModel.generateContent(prompt);
       });
 
-      const responseText = result.response.text();
+      if (!result || !result.response) {
+        console.error('Invalid or empty response from Gemini API.');
+        throw new Error('Invalid response from AI service');
+      }
+
+      const response = result.response;
+      let responseText = response.text();
 
       // Parse the JSON response
       try {

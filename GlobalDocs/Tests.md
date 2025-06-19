@@ -2,6 +2,14 @@ I'll analyze your Backend and Frontend code to prepare an extensive testing plan
 
 ## 🧪 **COMPREHENSIVE TESTING STRATEGY**
 
+### **TESTING EXCLUSIONS**
+The following services are **NOT UNIT TESTED** and will only be tested via API endpoints:
+- **NewFinancialDueDiligenceService**: Financial document processing, OCR integration, and AI analysis pipelines
+- **NewLegalDueDiligenceService**: Legal document analysis, risk assessment, and compliance validation  
+- **MemoryBasedOcrPdfService**: PDF OCR processing, memory management, and text extraction accuracy
+
+These services involve complex AI integrations and file processing that are better validated through end-to-end API testing.
+
 ### **PHASE 1: BACKEND TESTING FRAMEWORK SETUP**
 
 #### **1.1 Testing Infrastructure**
@@ -21,19 +29,19 @@ I'll analyze your Backend and Frontend code to prepare an extensive testing plan
 
 ### **PHASE 2: BACKEND UNIT TESTS**
 
-#### **2.1 Service Layer Tests** (15 test suites)
+#### **2.1 Service Layer Tests** (12 test suites)
 
 **RecommendationService.test.ts**
 - Tests MongoDB connection validation and CRUD operations for user recommendations
 
-**NewFinancialDueDiligenceService.test.ts** 
-- Tests financial document processing, OCR integration, and AI analysis pipelines
+**NewFinancialDueDiligenceService** - ❌ **NOT TESTED** (API-only testing)
+- Financial document processing, OCR integration, and AI analysis pipelines will be tested via API endpoints only
 
-**NewLegalDueDiligenceService.test.ts**
-- Tests legal document analysis, risk assessment, and compliance validation
+**NewLegalDueDiligenceService** - ❌ **NOT TESTED** (API-only testing)
+- Legal document analysis, risk assessment, and compliance validation will be tested via API endpoints only
 
-**MemoryBasedOcrPdfService.test.ts**
-- Tests PDF OCR processing, memory management, and text extraction accuracy
+**MemoryBasedOcrPdfService** - ❌ **NOT TESTED** (API-only testing)
+- PDF OCR processing, memory management, and text extraction accuracy will be tested via API endpoints only
 
 **MLMatchingService.test.ts**
 - Tests machine learning algorithms for startup-investor compatibility scoring
@@ -283,3 +291,15 @@ I'll analyze your Backend and Frontend code to prepare an extensive testing plan
 ---
 
 This comprehensive testing plan ensures **100% code coverage**, **security compliance**, **performance optimization**, and **robust error handling** following SOLID/DRY principles. Each test focuses on a specific aspect of functionality while maintaining clean, maintainable test code.
+
+---
+
+## **SERVICES NOT UNIT TESTED**
+
+The following services are **EXCLUDED** from unit testing and will only be validated through API endpoint testing:
+
+1. **NewFinancialDueDiligenceService** - Complex AI integration for financial document processing
+2. **NewLegalDueDiligenceService** - AI-powered legal document analysis and risk assessment  
+3. **MemoryBasedOcrPdfService** - PDF OCR processing with memory management
+
+**Rationale**: These services involve complex AI integrations, file processing, and external service dependencies that are more effectively validated through comprehensive end-to-end API testing rather than isolated unit tests.

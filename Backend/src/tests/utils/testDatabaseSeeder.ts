@@ -8,13 +8,34 @@ export class TestDatabaseSeeder {
 
     constructor(prisma: PrismaClient) {
         this.prisma = prisma;
-    } async connectMongoDB() {
+    }
+
+    async connectMongoDB() {
         if (!this.mongodb) {
             const client = new MongoClient(process.env.MONGODB_URI || 'mongodb://localhost:27018/karmicdd_test');
             await client.connect();
             this.mongodb = client.db();
         }
         return this.mongodb;
+    }
+
+    async cleanup() {
+        console.log('Cleaning up test database...');
+        try {
+            // Delete from tables with foreign keys first
+            await this.prisma.profileShare.deleteMany({});
+            await this.prisma.user.deleteMany({});
+
+            const mongodb = await this.connectMongoDB();
+            if (mongodb) {
+                await mongodb.collection('startupprofiles').deleteMany({});
+                await mongodb.collection('investorprofiles').deleteMany({});
+                await mongodb.collection('recommendations').deleteMany({});
+            }
+            console.log('Test database cleaned up successfully.');
+        } catch (error) {
+            console.error('Error cleaning up test database:', error);
+        }
     }
 
     async seedTestUsers() {
@@ -53,9 +74,7 @@ export class TestDatabaseSeeder {
                 created_at: new Date(),
                 updated_at: new Date()
             }
-        ];
-
-        for (const user of users) {
+        ]; for (const user of users) {
             await this.prisma.user.upsert({
                 where: { email: user.email },
                 update: user,
@@ -166,7 +185,11 @@ export class TestDatabaseSeeder {
         await mongodb.collection('recommendations').insertMany(recommendations);
 
         return recommendations;
-    } async seedTestProfileShares() {
+    }
+
+    async seedTestProfileShares() {
+        const users = await this.seedTestUsers();
+
         const shares = [
             {
                 user_id: 'test-startup-1',
@@ -187,11 +210,16 @@ export class TestDatabaseSeeder {
         ];
 
         for (const share of shares) {
-            await this.prisma.profileShare.upsert({
-                where: { share_token: share.share_token },
-                update: share,
-                create: share
-            });
+            const userExists = users.some(u => u.user_id === share.user_id);
+            if (userExists) {
+                await this.prisma.profileShare.upsert({
+                    where: { share_token: share.share_token },
+                    update: share,
+                    create: share
+                });
+            } else {
+                console.warn(`User with user_id: ${share.user_id} not found. Skipping profile share seeding.`);
+            }
         }
 
         return shares;
@@ -199,6 +227,9 @@ export class TestDatabaseSeeder {
 
     async seedAll() {
         console.log('Seeding test database...');
+
+        // Clean up any existing test data first
+        await this.cleanup();
 
         const users = await this.seedTestUsers();
         console.log(`Seeded ${users.length} test users`);
@@ -224,23 +255,6 @@ export class TestDatabaseSeeder {
             recommendations,
             profileShares
         };
-    }
-    async cleanup() {
-        console.log('Cleaning up test database...');
-
-        // Clean up PostgreSQL tables
-        await this.prisma.profileShare.deleteMany({});
-        await this.prisma.user.deleteMany({});
-
-        // Clean up MongoDB collections
-        if (this.mongodb) {
-            await this.mongodb.collection('startupprofiles').deleteMany({});
-            await this.mongodb.collection('investorprofiles').deleteMany({});
-            await this.mongodb.collection('extendedprofiles').deleteMany({});
-            await this.mongodb.collection('recommendations').deleteMany({});
-        }
-
-        console.log('Test database cleanup completed');
     }
 }
 
