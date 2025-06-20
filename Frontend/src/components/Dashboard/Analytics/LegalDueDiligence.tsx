@@ -6,7 +6,6 @@ import { profileService } from '../../../services/api';
 import { toast } from 'react-hot-toast';
 import { useLegalDueDiligence } from '../../../hooks/useLegalDueDiligence';
 import LegalDueDiligenceReportContent from './LegalDueDiligenceReportContent';
-import NewLegalDueDiligenceReportContent from './NewLegalDueDiligenceReportContent';
 import { LoadingSpinner } from '../../Loading';
 import TutorialButton from '../../Tutorial/TutorialButton';
 import { useTutorial } from '../../../hooks/useTutorial';
@@ -18,9 +17,10 @@ interface LegalDueDiligenceProps {
         role: 'startup' | 'investor';
     };
     selectedMatchId: string | null;
+    isSelfAnalysis?: boolean; // Flag to indicate if this is self-analysis
 }
 
-const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, selectedMatchId }) => {
+const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, selectedMatchId, isSelfAnalysis = false }) => {
     const [entityName, setEntityName] = useState<string>('the entity');
 
     // Determine which entity to analyze based on the selected match and user role
@@ -28,12 +28,18 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
     let entityType: 'startup' | 'investor' = 'startup';
 
     if (selectedMatchId && userProfile) {
-        // We want to analyze the selected entity (the counterparty), not the logged-in user
-        entityId = selectedMatchId;
+        if (isSelfAnalysis) {
+            // For self-analysis, analyze the user's own entity
+            entityId = userProfile.userId;
+            entityType = userProfile.role; // Same as user's role
+        } else {
+            // We want to analyze the selected entity (the counterparty), not the logged-in user
+            entityId = selectedMatchId;
 
-        // If user is a startup, we want to analyze the investor
-        // If user is an investor, we want to analyze the startup
-        entityType = userProfile.role === 'startup' ? 'investor' : 'startup';
+            // If user is a startup, we want to analyze the investor
+            // If user is an investor, we want to analyze the startup
+            entityType = userProfile.role === 'startup' ? 'investor' : 'startup';
+        }
     }
 
     useTutorial('legal-dd-tutorial');
@@ -53,9 +59,7 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
         generateReport,
         formatDate,
         reportRef
-    } = useLegalDueDiligence(entityId, entityType);
-
-    // Update entity name when entity info changes
+    } = useLegalDueDiligence(entityId, entityType);    // Update entity name when entity info changes
     useEffect(() => {
         if (entityInfo && entityInfo.companyName) {
             setEntityName(entityInfo.companyName);
@@ -63,20 +67,33 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
             // Fetch entity name if not provided by the hook
             const fetchEntityName = async () => {
                 try {
-                    // Use getProfile method instead of getProfileByUserId
-                    // The entityType is the opposite of the user's role
-                    const profile = await profileService.getProfile(selectedMatchId, entityType);
-                    if (profile && profile.companyName) {
-                        setEntityName(profile.companyName);
+                    if (isSelfAnalysis) {
+                        // For self-analysis, get the user's own profile
+                        const profile = await profileService.getProfile(userProfile.userId, userProfile.role);
+                        if (profile && profile.companyName) {
+                            setEntityName(profile.companyName);
+                        } else {
+                            setEntityName('Your Company');
+                        }
+                    } else {
+                        // Use getProfile method instead of getProfileByUserId
+                        // The entityType is the opposite of the user's role
+                        const profile = await profileService.getProfile(selectedMatchId, entityType);
+                        if (profile && profile.companyName) {
+                            setEntityName(profile.companyName);
+                        }
                     }
                 } catch (error) {
                     console.error('Error fetching entity name:', error);
+                    if (isSelfAnalysis) {
+                        setEntityName('Your Company');
+                    }
                 }
             };
 
             fetchEntityName();
         }
-    }, [entityInfo, selectedMatchId, entityType]);
+    }, [entityInfo, selectedMatchId, entityType, isSelfAnalysis, userProfile.userId, userProfile.role]);
 
     // Get formatted document type for display
     const getFormattedDocumentType = (docType: string) => {
@@ -85,16 +102,18 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
             .split('_')
             .map(word => word.charAt(0).toUpperCase() + word.slice(1))
             .join(' ');
-    };
-
-    if (!selectedMatchId) {
+    }; if (!selectedMatchId) {
         return (
             <div className="text-center py-10">
-                <h3 className="text-xl font-medium text-gray-700 mb-2">Select a match to view legal due diligence</h3>
-                <p className="text-gray-500">Click on any match card to see legal analysis</p>
+                <h3 className="text-xl font-medium text-gray-700 mb-2">
+                    {isSelfAnalysis ? 'Self-Analysis Ready' : 'Select a match to view legal due diligence'}
+                </h3>
+                <p className="text-gray-500">
+                    {isSelfAnalysis ? 'Review your own legal compliance and documents' : 'Click on any match card to see legal analysis'}
+                </p>
             </div>
         );
-    }    // Show loading state while checking documents or loading report
+    }// Show loading state while checking documents or loading report
     if (checkingDocuments || loading) {
         return <LoadingSpinner message="Preparing Legal Analysis" submessage="Loading legal due diligence data..." />;
     }
@@ -143,10 +162,11 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
     // Display report if available
     if (report) {
         return (
-            <div className="space-y-6">
-                {/* Header with help button */}
+            <div className="space-y-6">                {/* Header with help button */}
                 <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold text-gray-800">Legal Due Diligence Report</h2>
+                    <h2 className="text-2xl font-bold text-gray-800">
+                        {isSelfAnalysis ? 'Legal Self-Analysis Report' : 'Legal Due Diligence Report'}
+                    </h2>
                     <TutorialButton tutorialId="legal-dd-tutorial" />
                 </div>
 
@@ -156,13 +176,16 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
                         <FiInfo size={18} />
                     </div>
                     <div>
-                        <h3 className="font-medium text-blue-800 mb-1">Legal Analysis Instructions</h3>
+                        <h3 className="font-medium text-blue-800 mb-1">
+                            {isSelfAnalysis ? 'Legal Self-Analysis Instructions' : 'Legal Analysis Instructions'}
+                        </h3>
                         <p className="text-blue-700 text-sm">
                             This comprehensive legal due diligence report analyzes corporate structure, compliance status,
-                            regulatory adherence, and legal risks for {entityName}.
+                            regulatory adherence, and legal risks for {isSelfAnalysis ? 'your company' : entityName}.
+                            {isSelfAnalysis && ' Use this to identify and address potential legal issues before external due diligence.'}
                         </p>
                     </div>
-                </div>                {/* Main content */}
+                </div>{/* Main content */}
                 <div ref={reportRef}>
                     <LegalDueDiligenceReportContent
                         report={report}
@@ -193,20 +216,19 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
                     </div>
                 </div>
 
-                <div className="p-6">
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-                        <div className="flex">
-                            <FiInfo className="text-amber-500 mt-1 mr-3 flex-shrink-0" />
-                            <div>
-                                <p className="text-gray-700 mb-2">
-                                    {entityName} hasn't uploaded any legal documents yet. Legal due diligence requires documents like incorporation certificates, agreements, and regulatory filings.
-                                </p>
-                                <p className="text-sm text-gray-600">
-                                    Legal documents may include incorporation certificates, shareholder agreements, contracts, regulatory filings, and intellectual property documents.
-                                </p>
-                            </div>
+                <div className="p-6">                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                    <div className="flex">
+                        <FiInfo className="text-amber-500 mt-1 mr-3 flex-shrink-0" />
+                        <div>
+                            <p className="text-gray-700 mb-2">
+                                {isSelfAnalysis ? 'You haven\'t uploaded any legal documents yet' : `${entityName} hasn't uploaded any legal documents yet`}. Legal due diligence requires documents like incorporation certificates, agreements, and regulatory filings.
+                            </p>
+                            <p className="text-sm text-gray-600">
+                                Legal documents may include incorporation certificates, shareholder agreements, contracts, regulatory filings, and intellectual property documents.
+                            </p>
                         </div>
                     </div>
+                </div>
 
                     <div className="space-y-4">
                         <h4 className="font-medium text-gray-700">Required Documents:</h4>
@@ -221,7 +243,7 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
                             ))}
                         </div>                        <div className="mt-6 text-center">
                             <p className="text-gray-600 mb-4">
-                                Please ask {entityName} to upload the required legal documents in their profile.
+                                {isSelfAnalysis ? 'Please upload the required legal documents in your profile to enable self-analysis.' : `Please ask ${entityName} to upload the required legal documents in their profile.`}
                             </p>
                             <div className="flex flex-col md:flex-row justify-center gap-3 mt-4">
                                 <motion.button
@@ -233,15 +255,17 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
                                     <FiUpload className="mr-2" />
                                     Go to Profile Documents
                                 </motion.button>
-                                <motion.button
-                                    className="px-4 py-2 bg-amber-600 text-white rounded-lg shadow-sm hover:bg-amber-700 transition-colors flex items-center mx-auto"
-                                    whileHover={{ scale: 1.03 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    onClick={() => toast("Document request feature will be implemented soon")}
-                                >
-                                    <FiFileText className="mr-2" />
-                                    Request Documents from {entityName}
-                                </motion.button>
+                                {!isSelfAnalysis && (
+                                    <motion.button
+                                        className="px-4 py-2 bg-amber-600 text-white rounded-lg shadow-sm hover:bg-amber-700 transition-colors flex items-center mx-auto"
+                                        whileHover={{ scale: 1.03 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => toast("Document request feature will be implemented soon")}
+                                    >
+                                        <FiFileText className="mr-2" />
+                                        Request Documents from {entityName}
+                                    </motion.button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -252,10 +276,11 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
 
     // Show document availability and generate option
     return (
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden p-6">
-            {/* Header with help button */}
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden p-6">            {/* Header with help button */}
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">Legal Due Diligence</h2>
+                <h2 className="text-2xl font-bold text-gray-800">
+                    {isSelfAnalysis ? 'Legal Self-Analysis' : 'Legal Due Diligence'}
+                </h2>
                 <TutorialButton tutorialId="legal-dd-tutorial" />
             </div>
 
@@ -270,13 +295,11 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
                         Select a match from the Matches tab to view legal due diligence analysis and reports.
                     </p>
                 </div>
-            </div>
-
-            {/* Entity Documents List */}
+            </div>            {/* Entity Documents List */}
             {availableDocuments && availableDocuments.length > 0 ? (
                 <div className="mb-6">
                     <p className="text-sm text-gray-600 mb-3">
-                        The following legal documents were uploaded by {entityName} and will be used for analysis:
+                        The following legal documents {isSelfAnalysis ? 'you have uploaded' : `were uploaded by ${entityName}`} and will be used for analysis:
                     </p>
                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                         <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -318,9 +341,7 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
                         </div>
                     </div>
                 </div>
-            )}
-
-            {/* Generate Report Button */}
+            )}            {/* Generate Report Button */}
             <div className="mt-8 flex justify-center">
                 <button
                     onClick={() => generateReport()}
@@ -328,13 +349,15 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
                     disabled={!availableDocuments || availableDocuments.length === 0}
                 >
                     <FiShield className="mr-2" />
-                    Generate Legal Due Diligence Report
+                    {isSelfAnalysis ? 'Generate Legal Self-Analysis Report' : 'Generate Legal Due Diligence Report'}
                 </button>
             </div>
 
             {/* What to Expect Section */}
             <div className="mt-8 bg-gray-50 p-6 rounded-lg">
-                <h4 className="font-medium text-gray-800 mb-3">What to Expect in Your Legal Due Diligence Report</h4>
+                <h4 className="font-medium text-gray-800 mb-3">
+                    What to Expect in Your {isSelfAnalysis ? 'Legal Self-Analysis' : 'Legal Due Diligence'} Report
+                </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
                     <div>
                         <h5 className="font-medium text-gray-700 mb-2">Corporate Structure Analysis</h5>

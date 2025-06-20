@@ -402,7 +402,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         // Find user by email
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user) {
-            res.status(401).json({ message: 'Invalid credentials' });
+            res.status(401).json({ message: 'No account found with this email address. Please register first.' });
             return;
         }
 

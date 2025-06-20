@@ -47,7 +47,7 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, selectedRole }) => {
     const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const navigate = useNavigate();
-    console.log('selectedRole:', selectedRole);    const handleSubmit = async (e: React.FormEvent) => {
+    console.log('selectedRole:', selectedRole); const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!selectedRole) {
@@ -78,11 +78,22 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, selectedRole }) => {
                     navigate('/dashboard');
                 }
             }, 800);
-
         } catch (err: Error | unknown) {
             setShowSuccess(false);
-            setError(err instanceof Error ? err.message : 'Login failed. Please check your credentials.');
+            const errorMessage = err instanceof Error ? err.message : 'Login failed. Please check your credentials.';
+            setError(errorMessage);
             setLoading(false);
+
+            // If user is not registered, scroll to error message for better visibility
+            if (errorMessage.toLowerCase().includes('no account found') ||
+                errorMessage.toLowerCase().includes('register first')) {
+                setTimeout(() => {
+                    const errorElement = document.querySelector('[data-error-display]');
+                    if (errorElement) {
+                        errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
+            }
         }
     };
 
@@ -99,14 +110,14 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, selectedRole }) => {
     };
 
     return (
-        <div className="p-8">
-            {error && (
-                <AuthErrorDisplay
-                    error={error}
-                    type="signin"
-                    onDismiss={() => setError('')}
-                />
-            )}
+        <div className="p-8">            {error && (
+            <AuthErrorDisplay
+                error={error}
+                type="signin"
+                onDismiss={() => setError('')}
+                onSwitchToSignUp={() => setActiveView('createAccount')}
+            />
+        )}
 
             <motion.form
                 className="space-y-5"

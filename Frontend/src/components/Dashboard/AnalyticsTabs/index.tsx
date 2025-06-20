@@ -43,31 +43,30 @@ const AnalyticsTabs: React.FC<AnalyticsTabsProps> = ({
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Analytics Dashboard</h2>
 
           {/* Analytics tabs with improved UI */}
-          <div className="mb-8 analytics-tabs">
-            <nav className="flex space-x-1 overflow-x-auto scrollbar-hide">              {[
-              { id: 'belief', label: 'Belief System Analysis' },
-              // { id: 'financial', label: 'Draft-Financial Due Diligence' },
-              { id: 'new-financial', label: 'Financial Due Diligence' },
-              { id: 'legal', label: 'Legal Due Diligence' },
-              { id: 'performance', label: 'Performance Metrics' },
-              { id: 'coming-soon', label: 'More Coming Soon' }
-            ].map((tab) => (
-              <motion.button
-                key={tab.id}
-                onClick={() => setAnalyticsTab(tab.id)}
-                className={`px-4 py-3 font-medium text-sm transition-all rounded-lg ${analyticsTab === tab.id
-                  ? userProfile.role === 'investor'
-                    ? 'bg-green-50 text-green-700 border border-green-200'
-                    : 'bg-blue-50 text-blue-700 border border-blue-200'
-                  : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {tab.label}
-              </motion.button>
-            ))}
-            </nav>
+          <div className="mb-8 analytics-tabs">            <nav className="flex space-x-1 overflow-x-auto scrollbar-hide">              {[
+            { id: 'belief', label: 'Belief System Analysis' },
+            // { id: 'financial', label: 'Draft-Financial Due Diligence' },
+            { id: 'new-financial', label: 'Financial Due Diligence' },
+            { id: 'legal', label: 'Legal Due Diligence' },
+            { id: 'performance', label: 'Performance Metrics' },
+            { id: 'coming-soon', label: 'More Coming Soon' }
+          ].map((tab) => (
+            <motion.button
+              key={tab.id}
+              onClick={() => setAnalyticsTab(tab.id)}
+              className={`px-4 py-3 font-medium text-sm transition-all rounded-lg ${analyticsTab === tab.id
+                ? userProfile.role === 'investor'
+                  ? 'bg-green-50 text-green-700 border border-green-200'
+                  : 'bg-blue-50 text-blue-700 border border-blue-200'
+                : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              {tab.label}
+            </motion.button>
+          ))}
+          </nav>
           </div>
         </div>
       </motion.div>
@@ -111,9 +110,7 @@ const AnalyticsTabs: React.FC<AnalyticsTabsProps> = ({
             />
           )}
         </motion.div>
-      )}
-
-      {analyticsTab === 'legal' && (
+      )}      {analyticsTab === 'legal' && (
         <motion.div variants={itemVariants} className="legal-dd-container">
           {userProfile && (
             <LegalDueDiligence
@@ -126,7 +123,6 @@ const AnalyticsTabs: React.FC<AnalyticsTabsProps> = ({
           )}
         </motion.div>
       )}
-
 
       {(analyticsTab === 'performance' || analyticsTab === 'coming-soon') && (
         <motion.div variants={itemVariants}>

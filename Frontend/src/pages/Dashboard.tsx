@@ -36,6 +36,7 @@ import OverviewSection from '../components/Dashboard/Overview/OverviewSection';
 import MatchesSection from '../components/Dashboard/Matches/MatchesSection';
 import AnalyticsSection from '../components/Dashboard/Analytics/AnalyticsSection';
 import DocumentsSection from '../components/Dashboard/Documents/DocumentsSection';
+import SelfAnalysisSection from '../components/Dashboard/Analytics/SelfAnalysisSection';
 
 const Dashboard: React.FC = () => {
     // State - keeping your existing state
@@ -50,7 +51,7 @@ const Dashboard: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
     const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
-    const [activeTab, setActiveTab] = useState<string>('matches');
+    const [activeTab, setActiveTab] = useState<string>('overview');
     const [analyticsTab, setAnalyticsTab] = useState<string>('belief');
 
     // Use the tutorial hook with auto-start for first-time users
@@ -578,6 +579,23 @@ const Dashboard: React.FC = () => {
                     </motion.div>
                 )}
 
+                {activeTab === 'self-analysis' && (
+                    <motion.div
+                        key="self-analysis"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        <SelfAnalysisSection
+                            userProfile={{
+                                ...userProfile!,
+                                role: userProfile!.role as "startup" | "investor"
+                            }}
+                        />
+                    </motion.div>
+                )}
+
                 {activeTab === 'documents' && (
                     <motion.div
                         key="documents"
@@ -594,7 +612,7 @@ const Dashboard: React.FC = () => {
                     </motion.div>
                 )}
 
-                {!['overview', 'matches', 'analytics', 'documents'].includes(activeTab) && (
+                {!['overview', 'matches', 'analytics', 'self-analysis', 'documents'].includes(activeTab) && (
                     <motion.div
                         key="coming-soon"
                         initial={{ opacity: 0 }}

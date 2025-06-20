@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FiX, FiHome, FiUsers, FiBarChart2, FiFileText, FiSettings, FiMessageSquare, FiHelpCircle, FiUser } from 'react-icons/fi';
+import { FiX, FiHome, FiUsers, FiBarChart2, FiFileText, FiSettings, FiMessageSquare, FiHelpCircle, FiUser, FiTarget } from 'react-icons/fi';
 import { colours } from '../../../utils/colours';
 import { Logo } from '../../Auth/Logo';
 import TutorialButton from '../../Tutorial/TutorialButton';
@@ -38,6 +38,7 @@ const DashboardSidebar: React.FC<SidebarProps> = ({
     { icon: <FiHome size={20} />, label: 'Overview', id: 'overview' },
     { icon: <FiUsers size={20} />, label: 'Matches', id: 'matches' },
     { icon: <FiBarChart2 size={20} />, label: 'Analytics', id: 'analytics' },
+    { icon: <FiTarget size={20} />, label: 'Self-Analysis', id: 'self-analysis' },
     { icon: <FiFileText size={20} />, label: 'Documents', id: 'documents' },
     { icon: <FiMessageSquare size={20} />, label: 'Messages', id: 'messages' },
     { icon: <FiSettings size={20} />, label: 'Settings', id: 'settings' },

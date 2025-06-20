@@ -145,9 +145,20 @@ router.post('/register', authRateLimit, registerValidation, register);
  *                       format: email
  *                     role:
  *                       type: string
- *                       enum: [startup, investor]
- *       '400':
- *         description: Invalid credentials *       '500':
+ *                       enum: [startup, investor] *       '401':
+ *         description: Authentication failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   enum: 
+ *                     - "No account found with this email address. Please register first."
+ *                     - "Invalid credentials"
+ *                     - "This account uses social login. Please sign in with your social provider."
+ *       '500':
  *         description: Server error
  */
 router.post('/login', authRateLimit, loginValidation, login);

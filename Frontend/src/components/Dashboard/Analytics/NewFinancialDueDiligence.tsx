@@ -17,9 +17,10 @@ interface NewFinancialDueDiligenceProps {
     role: 'startup' | 'investor';
   };
   selectedMatchId: string | null;
+  isSelfAnalysis?: boolean; // Flag to indicate if this is self-analysis
 }
 
-const NewFinancialDueDiligence: React.FC<NewFinancialDueDiligenceProps> = ({ userProfile, selectedMatchId }) => {
+const NewFinancialDueDiligence: React.FC<NewFinancialDueDiligenceProps> = ({ userProfile, selectedMatchId, isSelfAnalysis = false }) => {
   const [entityName, setEntityName] = useState<string>('the entity');
 
   // Determine which entity to analyze based on the selected match and user role
@@ -27,12 +28,18 @@ const NewFinancialDueDiligence: React.FC<NewFinancialDueDiligenceProps> = ({ use
   let entityType: 'startup' | 'investor' = 'startup';
 
   if (selectedMatchId && userProfile) {
-    // We want to analyze the selected entity (the counterparty), not the logged-in user
-    entityId = selectedMatchId;
+    if (isSelfAnalysis) {
+      // For self-analysis, analyze the user's own entity
+      entityId = userProfile.userId;
+      entityType = userProfile.role; // Same as user's role
+    } else {
+      // We want to analyze the selected entity (the counterparty), not the logged-in user
+      entityId = selectedMatchId;
 
-    // If user is a startup, we want to analyze the investor
-    // If user is an investor, we want to analyze the startup
-    entityType = userProfile.role === 'startup' ? 'investor' : 'startup';
+      // If user is a startup, we want to analyze the investor
+      // If user is an investor, we want to analyze the startup
+      entityType = userProfile.role === 'startup' ? 'investor' : 'startup';
+    }
   }
 
   useTutorial('new-financial-dd-tutorial');
@@ -53,7 +60,6 @@ const NewFinancialDueDiligence: React.FC<NewFinancialDueDiligenceProps> = ({ use
     formatDate,
     reportRef
   } = useNewFinancialDueDiligence(entityId, entityType);
-
   // Update entity name when entity info changes
   useEffect(() => {
     if (entityInfo && entityInfo.companyName) {
@@ -62,20 +68,33 @@ const NewFinancialDueDiligence: React.FC<NewFinancialDueDiligenceProps> = ({ use
       // Fetch entity name if not provided by the hook
       const fetchEntityName = async () => {
         try {
-          // Use getProfile method instead of getProfileByUserId
-          // The entityType is the opposite of the user's role
-          const profile = await profileService.getProfile(selectedMatchId, entityType);
-          if (profile && profile.companyName) {
-            setEntityName(profile.companyName);
+          if (isSelfAnalysis) {
+            // For self-analysis, get the user's own profile
+            const profile = await profileService.getProfile(userProfile.userId, userProfile.role);
+            if (profile && profile.companyName) {
+              setEntityName(profile.companyName);
+            } else {
+              setEntityName('Your Company');
+            }
+          } else {
+            // Use getProfile method instead of getProfileByUserId
+            // The entityType is the opposite of the user's role
+            const profile = await profileService.getProfile(selectedMatchId, entityType);
+            if (profile && profile.companyName) {
+              setEntityName(profile.companyName);
+            }
           }
         } catch (error) {
           console.error('Error fetching entity name:', error);
+          if (isSelfAnalysis) {
+            setEntityName('Your Company');
+          }
         }
       };
 
       fetchEntityName();
     }
-  }, [entityInfo, selectedMatchId, entityType]);
+  }, [entityInfo, selectedMatchId, entityType, isSelfAnalysis, userProfile.userId, userProfile.role]);
 
   // Get formatted document type for display
   const getFormattedDocumentType = (docType: string) => {
@@ -85,8 +104,15 @@ const NewFinancialDueDiligence: React.FC<NewFinancialDueDiligenceProps> = ({ use
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
   };
-
   if (!selectedMatchId) {
+    if (isSelfAnalysis) {
+      return (
+        <div className="text-center py-10">
+          <h3 className="text-xl font-medium text-gray-700 mb-2">Self-Analysis Mode</h3>
+          <p className="text-gray-500">Ready to analyze your own company's financial documents</p>
+        </div>
+      );
+    }
     return (
       <div className="text-center py-10">
         <h3 className="text-xl font-medium text-gray-700 mb-2">Select a match to view financial due diligence</h3>

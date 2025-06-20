@@ -88,11 +88,9 @@ const login = async (req: Request, res: Response) => {
             where: {
                 email: email,
             },
-        });
-
-        // Check if user exists
+        });        // Check if user exists
         if (!user) {
-            res.status(401).json({ message: 'Invalid credentials' });
+            res.status(401).json({ message: 'No account found with this email address. Please register first.' });
             return;
         }
 

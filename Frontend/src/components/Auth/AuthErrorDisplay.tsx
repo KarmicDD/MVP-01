@@ -1,12 +1,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-    FaExclamationCircle, 
-    FaInfoCircle, 
-    FaLock, 
-    FaEnvelope, 
-    FaUserAlt, 
-    FaTimes 
+import {
+    FaExclamationCircle,
+    FaInfoCircle,
+    FaLock,
+    FaEnvelope,
+    FaUserAlt,
+    FaTimes
 } from 'react-icons/fa';
 import { colours } from '../../utils/colours';
 
@@ -15,28 +15,37 @@ interface AuthErrorDisplayProps {
     title?: string;
     onDismiss?: () => void;
     type?: 'signin' | 'signup' | 'general';
+    onSwitchToSignUp?: () => void;
 }
 
-const AuthErrorDisplay: React.FC<AuthErrorDisplayProps> = ({ 
-    error, 
-    title, 
+const AuthErrorDisplay: React.FC<AuthErrorDisplayProps> = ({
+    error,
+    title,
     onDismiss,
-    type = 'general'
+    type = 'general',
+    onSwitchToSignUp
 }) => {
     // Determine if we should show specific help messages
-    const showCredentialsHelp = error.toLowerCase().includes('credentials') || 
-                               error.toLowerCase().includes('invalid') || 
-                               error.toLowerCase().includes('password');
-                               
-    const showEmailHelp = error.toLowerCase().includes('email') && 
-                         !error.toLowerCase().includes('already exists');
-                         
-    const showAccountExistsHelp = error.toLowerCase().includes('already exists') || 
-                                 error.toLowerCase().includes('already registered');
-                                 
-    const showSocialLoginHelp = error.toLowerCase().includes('social login') || 
-                               error.toLowerCase().includes('google') || 
-                               error.toLowerCase().includes('linkedin');
+    const showCredentialsHelp = (error.toLowerCase().includes('credentials') ||
+        error.toLowerCase().includes('invalid') ||
+        error.toLowerCase().includes('password')) &&
+        !error.toLowerCase().includes('register') &&
+        !error.toLowerCase().includes('account found');
+
+    const showEmailHelp = error.toLowerCase().includes('email') &&
+        !error.toLowerCase().includes('already exists') &&
+        !error.toLowerCase().includes('account found');
+
+    const showAccountExistsHelp = error.toLowerCase().includes('already exists') ||
+        error.toLowerCase().includes('already registered');
+
+    const showNotRegisteredHelp = error.toLowerCase().includes('no account found') ||
+        error.toLowerCase().includes('register first') ||
+        error.toLowerCase().includes('not registered');
+
+    const showSocialLoginHelp = error.toLowerCase().includes('social login') ||
+        error.toLowerCase().includes('google') ||
+        error.toLowerCase().includes('linkedin');
 
     // Get the appropriate icon based on the error content
     const getErrorIcon = () => {
@@ -48,15 +57,16 @@ const AuthErrorDisplay: React.FC<AuthErrorDisplayProps> = ({
 
     // Get the appropriate title if not provided
     const errorTitle = title || (
-        type === 'signin' ? 'Sign In Failed' : 
-        type === 'signup' ? 'Sign Up Failed' : 
-        'Authentication Error'
+        type === 'signin' ? 'Sign In Failed' :
+            type === 'signup' ? 'Sign Up Failed' :
+                'Authentication Error'
     );
 
     return (
         <AnimatePresence>
             <motion.div
                 className="mb-6 overflow-hidden rounded-xl shadow-sm"
+                data-error-display
                 initial={{ opacity: 0, y: -20, height: 0 }}
                 animate={{ opacity: 1, y: 0, height: 'auto' }}
                 exit={{ opacity: 0, y: -20, height: 0 }}
@@ -66,7 +76,7 @@ const AuthErrorDisplay: React.FC<AuthErrorDisplayProps> = ({
                 <div className="relative bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl overflow-hidden">
                     {/* Decorative top border */}
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-400 to-red-500"></div>
-                    
+
                     {/* Error content */}
                     <div className="p-4 pt-5">
                         <div className="flex items-start">
@@ -76,7 +86,7 @@ const AuthErrorDisplay: React.FC<AuthErrorDisplayProps> = ({
                                     {getErrorIcon()}
                                 </span>
                             </div>
-                            
+
                             {/* Error message content */}
                             <div className="flex-1">
                                 <h3 className="text-base font-semibold text-red-800">
@@ -85,9 +95,31 @@ const AuthErrorDisplay: React.FC<AuthErrorDisplayProps> = ({
                                 <p className="mt-1 text-sm text-red-700">
                                     {error}
                                 </p>
-                                
+
                                 {/* Conditional help messages */}
                                 <div className="mt-3 space-y-2">
+                                    {showNotRegisteredHelp && (
+                                        <div className="flex items-start p-2.5 bg-white rounded-lg border border-red-100 shadow-sm">
+                                            <FaInfoCircle className="text-red-400 mt-0.5 mr-2 flex-shrink-0" />
+                                            <div className="flex-1">
+                                                <div className="text-xs text-gray-700 leading-relaxed">
+                                                    <p>This email address is not registered yet.</p>
+                                                    <p className="mt-1 font-medium text-blue-600">Please create an account first using the sign-up form.</p>
+                                                </div>
+                                                {onSwitchToSignUp && (
+                                                    <motion.button
+                                                        onClick={onSwitchToSignUp}
+                                                        className="mt-2 px-3 py-1.5 bg-blue-500 text-white text-xs font-medium rounded-md hover:bg-blue-600 transition-colors"
+                                                        whileHover={{ scale: 1.05 }}
+                                                        whileTap={{ scale: 0.95 }}
+                                                    >
+                                                        Create Account Now
+                                                    </motion.button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {showCredentialsHelp && (
                                         <div className="flex items-start p-2.5 bg-white rounded-lg border border-red-100 shadow-sm">
                                             <FaInfoCircle className="text-red-400 mt-0.5 mr-2 flex-shrink-0" />
@@ -96,7 +128,7 @@ const AuthErrorDisplay: React.FC<AuthErrorDisplayProps> = ({
                                             </p>
                                         </div>
                                     )}
-                                    
+
                                     {showEmailHelp && (
                                         <div className="flex items-start p-2.5 bg-white rounded-lg border border-red-100 shadow-sm">
                                             <FaInfoCircle className="text-red-400 mt-0.5 mr-2 flex-shrink-0" />
@@ -105,7 +137,7 @@ const AuthErrorDisplay: React.FC<AuthErrorDisplayProps> = ({
                                             </p>
                                         </div>
                                     )}
-                                    
+
                                     {showAccountExistsHelp && (
                                         <div className="flex items-start p-2.5 bg-white rounded-lg border border-red-100 shadow-sm">
                                             <FaInfoCircle className="text-red-400 mt-0.5 mr-2 flex-shrink-0" />
@@ -114,7 +146,7 @@ const AuthErrorDisplay: React.FC<AuthErrorDisplayProps> = ({
                                             </p>
                                         </div>
                                     )}
-                                    
+
                                     {showSocialLoginHelp && (
                                         <div className="flex items-start p-2.5 bg-white rounded-lg border border-red-100 shadow-sm">
                                             <FaInfoCircle className="text-red-400 mt-0.5 mr-2 flex-shrink-0" />
@@ -125,10 +157,10 @@ const AuthErrorDisplay: React.FC<AuthErrorDisplayProps> = ({
                                     )}
                                 </div>
                             </div>
-                            
+
                             {/* Dismiss button */}
                             {onDismiss && (
-                                <button 
+                                <button
                                     onClick={onDismiss}
                                     className="ml-2 p-1 rounded-full text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                                     aria-label="Dismiss"
