@@ -20,6 +20,7 @@ import {
 } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { profileService } from '../../services/api';
+import { truncateUploadName } from '../../utils/documentNameUtils';
 
 // Document type definitions based on backend schema
 const DOCUMENT_CATEGORIES = {
@@ -751,7 +752,7 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                                     key={fileData.id}
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: 'auto' }}
-                                    exit={{ opacity: 0, height: 0 }}                                    className="p-4 sm:p-6"
+                                    exit={{ opacity: 0, height: 0 }} className="p-4 sm:p-6"
                                 >
                                     <div className="flex flex-col sm:flex-row sm:items-start space-y-3 sm:space-y-0 sm:space-x-4">
                                         <div className="flex-shrink-0 mt-0 sm:mt-1">
@@ -760,26 +761,25 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-2">
-                                                <h4 className="text-sm font-medium text-gray-900 truncate">
-                                                    {fileData.file.name}
-                                                </h4>
-                                                <div className="flex items-center space-x-2">
-                                                    <button
-                                                        onClick={() => updateFileMetadata(fileData.id, { editMode: !fileData.editMode })}
-                                                        className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100"
-                                                    >
-                                                        {fileData.editMode ? <FiCheck className="w-4 h-4" /> : <FiEdit3 className="w-4 h-4" />}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => removeFile(fileData.id)}
-                                                        className="text-red-400 hover:text-red-600 p-1 rounded-md hover:bg-red-50"
-                                                    >
-                                                        <FiTrash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
+                                        <div className="flex-1 min-w-0">                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-2">
+                                            <h4 className="text-sm font-medium text-gray-900 truncate" title={fileData.file.name}>
+                                                {truncateUploadName(fileData.file.name)}
+                                            </h4>
+                                            <div className="flex items-center space-x-2">
+                                                <button
+                                                    onClick={() => updateFileMetadata(fileData.id, { editMode: !fileData.editMode })}
+                                                    className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100"
+                                                >
+                                                    {fileData.editMode ? <FiCheck className="w-4 h-4" /> : <FiEdit3 className="w-4 h-4" />}
+                                                </button>
+                                                <button
+                                                    onClick={() => removeFile(fileData.id)}
+                                                    className="text-red-400 hover:text-red-600 p-1 rounded-md hover:bg-red-50"
+                                                >
+                                                    <FiTrash2 className="w-4 h-4" />
+                                                </button>
                                             </div>
+                                        </div>
 
                                             <p className="text-xs sm:text-sm text-gray-500 mb-3 flex flex-wrap items-center gap-1 sm:gap-2">
                                                 <span>{formatFileSize(fileData.file.size)}</span>
@@ -936,15 +936,15 @@ const ComprehensiveDocumentUpload: React.FC = () => {
 
                 {isLoading && <div className="p-6 text-center">Loading documents...</div>}
 
-                {!isLoading && existingDocuments.length === 0 && (                    <div className="p-8 sm:p-12 text-center">
-                        <FiInbox className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
-                        <h4 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">
-                            No documents uploaded yet
-                        </h4>
-                        <p className="text-sm sm:text-base text-gray-500 mb-4 sm:mb-6">
-                            Use the uploader above to add your first document.
-                        </p>
-                    </div>
+                {!isLoading && existingDocuments.length === 0 && (<div className="p-8 sm:p-12 text-center">
+                    <FiInbox className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                    <h4 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">
+                        No documents uploaded yet
+                    </h4>
+                    <p className="text-sm sm:text-base text-gray-500 mb-4 sm:mb-6">
+                        Use the uploader above to add your first document.
+                    </p>
+                </div>
                 )}
 
                 {!isLoading && existingDocuments.length > 0 && (
@@ -961,16 +961,15 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                                         key={getDocumentId(document) || `existing-doc-${document.originalName || document.fileName}-${index}`}
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}                                        className="p-4 sm:p-6 hover:bg-gray-50 transition-colors duration-200"
+                                        exit={{ opacity: 0 }} className="p-4 sm:p-6 hover:bg-gray-50 transition-colors duration-200"
                                     >
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                             <div className="flex items-center space-x-3 sm:space-x-4">
                                                 <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                                                     <FiFile className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <h4 className="text-sm font-medium text-gray-900 truncate">
-                                                        {document.originalName || document.fileName}
+                                                </div>                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-sm font-medium text-gray-900 truncate" title={document.originalName || document.fileName}>
+                                                        {truncateUploadName(document.originalName || document.fileName)}
                                                     </h4>
                                                     <p className="text-xs sm:text-sm text-gray-500 flex flex-wrap items-center gap-1 sm:gap-2">
                                                         <span>{getDocumentTypesByCategory(document.category as keyof typeof DOCUMENT_CATEGORIES).find(dt => dt.value === document.documentType)?.label || document.documentType}</span>
@@ -1044,17 +1043,17 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                             selectedCategory === 'financial' ? doc.category === 'financial' :
                                 selectedCategory === 'legal' ? doc.category === 'legal' :
                                     doc.category === 'other'
-                        ).length === 0 && (                                <div className="p-8 sm:p-12 text-center text-gray-500">
-                                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                                        <FiInfo className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
-                                    </div>
-                                    <h4 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
-                                        No {DOCUMENT_CATEGORIES[selectedCategory].toLowerCase()} documents yet
-                                    </h4>
-                                    <p className="text-sm sm:text-base text-gray-500 mb-4">
-                                        Upload your first {DOCUMENT_CATEGORIES[selectedCategory].toLowerCase()} document to get started
-                                    </p>
-                                </div>
+                        ).length === 0 && (<div className="p-8 sm:p-12 text-center text-gray-500">
+                            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                                <FiInfo className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
+                            </div>
+                            <h4 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
+                                No {DOCUMENT_CATEGORIES[selectedCategory].toLowerCase()} documents yet
+                            </h4>
+                            <p className="text-sm sm:text-base text-gray-500 mb-4">
+                                Upload your first {DOCUMENT_CATEGORIES[selectedCategory].toLowerCase()} document to get started
+                            </p>
+                        </div>
                             )}
                     </div>
                 )}

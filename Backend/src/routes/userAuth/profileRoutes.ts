@@ -18,7 +18,6 @@ import {
     getDocumentById
 } from '../../controllers/profileController';
 import { authenticateJWT, authorizeRole } from '../../middleware/auth';
-import { uploadRateLimit, generalRateLimit } from '../../middleware/rateLimiter';
 import StartupProfileModel, { StartupProfile } from '../../models/Profile/StartupProfile';
 import InvestorProfileModel, { InvestorProfile } from '../../models/InvestorModels/InvestorProfile';
 import { prisma } from '../../config/db';
@@ -52,7 +51,7 @@ const router = express.Router();
  *       '500':
  *         description: Server error
  */
-router.get('/user-type', generalRateLimit, authenticateJWT, getUserType);
+router.get('/user-type', authenticateJWT, getUserType);
 
 /**
  * @swagger
@@ -513,7 +512,6 @@ router.get(
 // Document routes
 router.post(
     '/documents/upload',
-    uploadRateLimit,
     authenticateJWT,
     uploadDocument
 );

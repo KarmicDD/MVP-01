@@ -3,7 +3,6 @@ import express from 'express';
 import { body } from 'express-validator';
 import passport from '../../config/passport';
 import { register, login, updateOAuthUserRole, handleOAuthCallback } from '../../controllers/authController';
-import { authRateLimit } from '../../middleware/rateLimiter';
 
 const router = express.Router();
 
@@ -89,7 +88,7 @@ const loginValidation = [
  *       '500':
  *         description: Server error
  */
-router.post('/register', authRateLimit, registerValidation, register);
+router.post('/register', registerValidation, register);
 
 /**
  * @swagger
@@ -161,7 +160,7 @@ router.post('/register', authRateLimit, registerValidation, register);
  *       '500':
  *         description: Server error
  */
-router.post('/login', authRateLimit, loginValidation, login);
+router.post('/login', loginValidation, login);
 
 /**
  * @swagger
@@ -291,7 +290,6 @@ router.get('/linkedin/callback',
  */
 router.post(
     '/update-role',
-    authRateLimit,
     body('userId').exists().withMessage('User ID is required'),
     body('role').isIn(['startup', 'investor']).withMessage('Valid role is required'),
     updateOAuthUserRole
