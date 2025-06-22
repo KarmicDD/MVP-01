@@ -168,14 +168,13 @@ export const Footer: React.FC = () => {
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ duration: 0.6 }}
                 >
-                    <Logo Title="KarmicDD" />
-                    <motion.p
+                    <Logo Title="KarmicDD" />                    <motion.p
                         className="mt-4 text-center max-w-lg text-gray-300 font-light text-sm"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.3, duration: 0.6 }}
                     >
-                        Building the future of value-aligned startup and investor partnerships
+                        KarmicDD is building the future of value-aligned startup and investor partnerships through AI-powered due diligence
                     </motion.p>
                 </motion.div>
 
@@ -195,10 +194,9 @@ export const Footer: React.FC = () => {
                                 animate={{ width: "100%" }}
                                 transition={{ delay: 0.5, duration: 0.4 }}
                             />
-                        </h3>
-                        <p style={{ color: colours.gray400 }} className="mb-4 leading-relaxed">
-                            Connecting value-aligned startups and investors through innovative
-                            matching technology and a transparent platform.
+                        </h3>                        <p style={{ color: colours.gray400 }} className="mb-4 leading-relaxed">
+                            KarmicDD connects value-aligned startups and investors through innovative
+                            AI-powered due diligence technology and a transparent platform.
                         </p>
                         <div className="flex space-x-4 mt-6">
                             {[
@@ -390,14 +388,13 @@ export const Footer: React.FC = () => {
                     <p style={{ color: colours.gray400 }} className="text-sm">
                         © {new Date().getFullYear()} KarmicDD. All rights reserved.
                     </p>
-                    <p className="text-xs mt-3" style={{ color: colours.gray600 }}>
-                        <motion.span
-                            initial={{ opacity: 0.5 }}
-                            whileInView={{ opacity: 1 }}
-                            transition={{ duration: 1.5 }}
-                        >
-                            Empowering belief-based connections in the startup ecosystem.
-                        </motion.span>
+                    <p className="text-xs mt-3" style={{ color: colours.gray600 }}>                        <motion.span
+                        initial={{ opacity: 0.5 }}
+                        whileInView={{ opacity: 1 }}
+                        transition={{ duration: 1.5 }}
+                    >
+                        KarmicDD - Empowering belief-based connections in the startup ecosystem through AI-powered due diligence.
+                    </motion.span>
                     </p>
                 </motion.div>
             </div>

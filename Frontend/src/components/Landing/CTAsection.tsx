@@ -93,15 +93,14 @@ export const CTAsection: React.FC = () => {
                     <div className="grid md:grid-cols-5 gap-8 items-center">
                         {/* Left side: content */}
                         <div className="md:col-span-3">
-                            <motion.div variants={itemVariants} transition={{ duration: 0.6 }}>
-                                <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">
-                                    Ready to Find Your Perfect Match?
-                                </h2>
+                            <motion.div variants={itemVariants} transition={{ duration: 0.6 }}>                                <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">
+                                Ready to Experience KarmicDD?
+                            </h2>
                             </motion.div>
 
                             <motion.div variants={itemVariants} transition={{ duration: 0.6, delay: 0.2 }}>
                                 <p className="text-white/80 text-lg mb-6 max-w-lg">
-                                    Join KarmicDD today and discover investors and startups that share your vision and values.
+                                    Join KarmicDD today and discover investors and startups that share your vision and values through our AI-powered due diligence platform.
                                 </p>
                             </motion.div>
 

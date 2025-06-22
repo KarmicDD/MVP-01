@@ -15,6 +15,8 @@ import {
     PaginationType
 } from '../services/searchServices';
 import { useTutorial } from '../hooks/useTutorial';
+import { defaultSEO } from '../utils/seo';
+import SEOHead from '../components/SEO/SEOHead';
 
 // Define a custom pagination type for our components
 interface ComponentPaginationType {
@@ -464,170 +466,171 @@ const Dashboard: React.FC = () => {
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                         Retry
-                    </button>
-                </div>
+                    </button>                </div>
             </div>
         );
     }
 
     // Use the new dashboard layout
     return (
-        <DashboardLayout
-            userProfile={userProfile}
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-        >
-            <AnimatePresence mode="wait">
-                {activeTab === 'overview' && (
-                    <motion.div
-                        key="overview"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                    >
-                        <OverviewSection userProfile={userProfile} />
-                    </motion.div>
-                )}
+        <>
+            <SEOHead seoData={defaultSEO.dashboard} enableValidation={true} />
+            <DashboardLayout
+                userProfile={userProfile}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+            >
+                <AnimatePresence mode="wait">
+                    {activeTab === 'overview' && (
+                        <motion.div
+                            key="overview"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            <OverviewSection userProfile={userProfile} />
+                        </motion.div>
+                    )}
 
-                {activeTab === 'matches' && (
-                    <motion.div
-                        key="matches"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                    >
-                        {/* Legacy matches view - will be replaced by MatchesSection in future */}
-                        <div className="legacy-matches-view">
-                            <SearchFilters
-                                searchQuery={searchQuery}
-                                setSearchQuery={setSearchQuery}
-                                industry={industry}
-                                setIndustry={setIndustry}
-                                stage={stage}
-                                setStage={setStage}
-                                location={location}
-                                setLocation={setLocation}
-                                filterOptions={filterOptions}
-                                handleFilterChange={handleFilterChange}
-                                handleClearFilters={clearFilters}
-                                fetchMatches={fetchMatches}
-                                isFilterOpen={filtersOpen}
-                                setIsFilterOpen={setFiltersOpen}
-                                itemVariants={itemVariants}
-                            />
+                    {activeTab === 'matches' && (
+                        <motion.div
+                            key="matches"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            {/* Legacy matches view - will be replaced by MatchesSection in future */}
+                            <div className="legacy-matches-view">
+                                <SearchFilters
+                                    searchQuery={searchQuery}
+                                    setSearchQuery={setSearchQuery}
+                                    industry={industry}
+                                    setIndustry={setIndustry}
+                                    stage={stage}
+                                    setStage={setStage}
+                                    location={location}
+                                    setLocation={setLocation}
+                                    filterOptions={filterOptions}
+                                    handleFilterChange={handleFilterChange}
+                                    handleClearFilters={clearFilters}
+                                    fetchMatches={fetchMatches}
+                                    isFilterOpen={filtersOpen}
+                                    setIsFilterOpen={setFiltersOpen}
+                                    itemVariants={itemVariants}
+                                />
 
-                            <MatchesList
-                                matches={matches}
-                                loading={matchesLoading}
-                                error={error}
-                                sortBy={sortBy}
-                                sortOrder={sortOrder}
-                                setSortBy={setSortBy}
-                                setSortOrder={setSortOrder}
-                                pagination={pagination ? {
-                                    page: pagination.page,
-                                    pages: pagination.pages,
-                                    total: pagination.total
-                                } : { page: 1, pages: 1, total: 0 } as ComponentPaginationType}
-                                handlePageChange={handlePageChange}
+                                <MatchesList
+                                    matches={matches}
+                                    loading={matchesLoading}
+                                    error={error}
+                                    sortBy={sortBy}
+                                    sortOrder={sortOrder}
+                                    setSortBy={setSortBy}
+                                    setSortOrder={setSortOrder}
+                                    pagination={pagination ? {
+                                        page: pagination.page,
+                                        pages: pagination.pages,
+                                        total: pagination.total
+                                    } : { page: 1, pages: 1, total: 0 } as ComponentPaginationType}
+                                    handlePageChange={handlePageChange}
+                                    selectedMatchId={selectedMatchId}
+                                    setSelectedMatchId={handleMatchSelection}
+                                    bookmarkedMatches={bookmarkedMatches}
+                                    toggleBookmark={toggleBookmark}
+                                    userRole={userProfile?.role || ''}
+                                    itemVariants={itemVariants}
+                                />
+
+                                <CompatibilitySection
+                                    selectedMatchId={selectedMatchId}
+                                    loadingCompatibility={loadingCompatibility}
+                                    compatibilityData={compatibilityData}
+                                    itemVariants={itemVariants}
+                                    userProfile={userProfile}
+                                />
+                            </div>
+
+                            {/* Uncomment to use the new MatchesSection component */}
+                            {/* <MatchesSection userProfile={userProfile} /> */}
+                        </motion.div>
+                    )}
+
+                    {activeTab === 'analytics' && (
+                        <motion.div
+                            key="analytics"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            {/* Legacy analytics view */}
+                            <AnalyticsTabs
+                                analyticsTab={analyticsTab}
+                                setAnalyticsTab={setAnalyticsTab}
+                                userProfile={userProfile!}
                                 selectedMatchId={selectedMatchId}
-                                setSelectedMatchId={handleMatchSelection}
-                                bookmarkedMatches={bookmarkedMatches}
-                                toggleBookmark={toggleBookmark}
-                                userRole={userProfile?.role || ''}
                                 itemVariants={itemVariants}
                             />
 
-                            <CompatibilitySection
-                                selectedMatchId={selectedMatchId}
-                                loadingCompatibility={loadingCompatibility}
-                                compatibilityData={compatibilityData}
-                                itemVariants={itemVariants}
-                                userProfile={userProfile}
-                            />
-                        </div>
-
-                        {/* Uncomment to use the new MatchesSection component */}
-                        {/* <MatchesSection userProfile={userProfile} /> */}
-                    </motion.div>
-                )}
-
-                {activeTab === 'analytics' && (
-                    <motion.div
-                        key="analytics"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                    >
-                        {/* Legacy analytics view */}
-                        <AnalyticsTabs
-                            analyticsTab={analyticsTab}
-                            setAnalyticsTab={setAnalyticsTab}
-                            userProfile={userProfile!}
-                            selectedMatchId={selectedMatchId}
-                            itemVariants={itemVariants}
-                        />
-
-                        {/* Uncomment to use the new AnalyticsSection component */}
-                        {/* <AnalyticsSection
+                            {/* Uncomment to use the new AnalyticsSection component */}
+                            {/* <AnalyticsSection
                             userProfile={userProfile}
                             selectedMatchId={selectedMatchId}
                         /> */}
-                    </motion.div>
-                )}
+                        </motion.div>
+                    )}
 
-                {activeTab === 'self-analysis' && (
-                    <motion.div
-                        key="self-analysis"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                    >
-                        <SelfAnalysisSection
-                            userProfile={{
-                                ...userProfile!,
-                                role: userProfile!.role as "startup" | "investor"
-                            }}
-                        />
-                    </motion.div>
-                )}
+                    {activeTab === 'self-analysis' && (
+                        <motion.div
+                            key="self-analysis"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            <SelfAnalysisSection
+                                userProfile={{
+                                    ...userProfile!,
+                                    role: userProfile!.role as "startup" | "investor"
+                                }}
+                            />
+                        </motion.div>
+                    )}
 
-                {activeTab === 'documents' && (
-                    <motion.div
-                        key="documents"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                    >
-                        <DocumentsSection
-                            userProfile={userProfile}
-                            selectedMatchId={selectedMatchId}
-                            matches={matches}
-                        />
-                    </motion.div>
-                )}
+                    {activeTab === 'documents' && (
+                        <motion.div
+                            key="documents"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            <DocumentsSection
+                                userProfile={userProfile}
+                                selectedMatchId={selectedMatchId}
+                                matches={matches}
+                            />
+                        </motion.div>
+                    )}
 
-                {!['overview', 'matches', 'analytics', 'self-analysis', 'documents'].includes(activeTab) && (
-                    <motion.div
-                        key="coming-soon"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                    >
-                        <ComingSoon
-                            title={`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Coming Soon!`}
-                            subtitle="We're working hard to bring you this feature."
-                        />
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </DashboardLayout>
+                    {!['overview', 'matches', 'analytics', 'self-analysis', 'documents'].includes(activeTab) && (
+                        <motion.div
+                            key="coming-soon"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                        >
+                            <ComingSoon
+                                title={`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Coming Soon!`}
+                                subtitle="We're working hard to bring you this feature."
+                            />                    </motion.div>
+                    )}
+                </AnimatePresence>
+            </DashboardLayout>
+        </>
     );
 };
 

@@ -1,0 +1,45 @@
+User-agent: *
+Allow: /
+
+# Allow search engines to index public pages
+Allow: /auth
+Allow: /features
+Allow: /about
+Allow: /how-it-works
+Allow: /help
+Allow: /contact
+Allow: /privacy-policy
+Allow: /terms-of-service
+Allow: /blog/
+Allow: /resources/
+
+# Disallow private/protected areas
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /forms
+Disallow: /question
+Disallow: /api/
+Disallow: /admin/
+Disallow: /auth/callback
+Disallow: /auth/select-role
+Disallow: /document/
+Disallow: /loading
+Disallow: /coming-soon
+
+# Allow shared profiles for SEO (public company profiles)
+Allow: /shared-profile/
+Allow: /*_startup
+Allow: /*_investor
+
+# Block sensitive files
+Disallow: /*.env
+Disallow: /*.json
+Disallow: /src/
+Disallow: /node_modules/
+Disallow: /*.log
+
+# Sitemap location
+Sitemap: https://karmicdd.netlify.app/sitemap.xml
+
+# Crawl delay (optional - be respectful to servers)
+Crawl-delay: 1

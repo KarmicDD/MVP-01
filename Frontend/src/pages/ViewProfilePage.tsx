@@ -10,6 +10,8 @@ import EnhancedProfileCompleteness from '../components/Profile/EnhancedProfileCo
 import ProfileHeader from '../components/Profile/ProfileHeader';
 import ProfileContent from '../components/Profile/ProfileContent';
 import { authService } from '../services/api';
+import { defaultSEO } from '../utils/seo';
+import SEOHead from '../components/SEO/SEOHead';
 
 const ViewProfilePage: React.FC = () => {
   // Get parameters from URL
@@ -32,9 +34,24 @@ const ViewProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState<any>({});
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [formData, setFormData] = useState<any>({}); const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [publicDocuments, setPublicDocuments] = useState<any[]>([]);
+
+  // Dynamic SEO data based on profile
+  const dynamicSEOData = useMemo(() => {
+    if (!profileData) {
+      return defaultSEO.homepage; // Fallback to homepage SEO
+    }
+
+    const companyName = profileData.companyName || profileData.name || identifier;
+    const isStartup = profileData.role === 'startup' || profileData.companyName;
+
+    if (isStartup) {
+      return defaultSEO.startupProfile(companyName);
+    } else {
+      return defaultSEO.investorProfile(companyName);
+    }
+  }, [profileData, identifier]);
 
   // Check if user is logged in
   useEffect(() => {
@@ -325,10 +342,10 @@ const ViewProfilePage: React.FC = () => {
       </div>
     );
   }
-
   // For non-logged-in users (simplified view)
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <SEOHead seoData={dynamicSEOData} />
       <div className="max-w-4xl mx-auto">
         {/* Header with back button */}
         <motion.div

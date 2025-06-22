@@ -6,6 +6,8 @@ import SignIn from '../components/Auth/SignIn';
 import { Logo } from '../components/Auth/Logo';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
+import { defaultSEO } from '../utils/seo';
+import SEOHead from '../components/SEO/SEOHead';
 
 const pageVariants = {
     initial: { opacity: 0, y: 20 },
@@ -19,7 +21,9 @@ const AuthPage: React.FC = () => {
     const [pageTitle, setPageTitle] = useState<string>('Choose Your Role');
     const navigate = useNavigate();
     const location = useLocation();
-    const preselectedRole = location.state?.preselectedRole as 'startup' | 'investor' | undefined;
+    const preselectedRole = location.state?.preselectedRole as 'startup' | 'investor' | undefined; useEffect(() => {
+        // SEO is now handled by SEOHead component
+    }, []);
 
     useEffect(() => {
         // If role is preselected from navigation state, set it automatically
@@ -83,15 +87,14 @@ const AuthPage: React.FC = () => {
             default:
                 return <RoleSelection handleRoleSelection={handleRoleSelection} />;
         }
-    };
-
-    return (
+    }; return (
         <motion.div
             className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-indigo-50 via-blue-50 to-white"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
         >
+            <SEOHead seoData={defaultSEO.auth} enableValidation />
             <div className="w-full max-w-md relative">
                 {/* Logo Section (stays fixed) */}
                 <Logo Title="KarmicDD" />

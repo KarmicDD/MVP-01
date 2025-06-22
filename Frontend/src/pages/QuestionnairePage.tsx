@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { Loader2 } from 'lucide-react';
 import QuestionnaireForm from '../components/Dashboard/LoginForm/QuestionnaireForm';
+import { defaultSEO } from '../utils/seo';
+import SEOHead from '../components/SEO/SEOHead';
 
 const QuestionnairePage = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -56,10 +58,10 @@ const QuestionnairePage = () => {
       </div>
     );
   }
-
   // Only show questionnaire if both user role exists and profile is complete
   return (
     <div className="min-h-screen bg-gray-50">
+      <SEOHead seoData={defaultSEO.questionnaire} />
       {userRole && profileComplete && (
         <QuestionnaireForm userRole={userRole} userId={userId} />
       )}
