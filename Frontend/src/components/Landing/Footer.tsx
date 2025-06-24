@@ -5,6 +5,8 @@ import { FaLinkedinIn, FaTwitter, FaInstagram, FaGithub, FaPaperPlane, FaCheck }
 import { Logo } from "../Auth/Logo";
 import { toast } from "react-toastify";
 import axios from "axios";
+import { isValidEmail } from "../../utils/validation";
+import { sanitizeUserInput } from "../../utils/security";
 
 export const Footer: React.FC = () => {
     const [email, setEmail] = useState("");
@@ -54,9 +56,17 @@ export const Footer: React.FC = () => {
         setIsSubmitting(true);
 
         try {
+            // Validate and sanitize email
+            if (!isValidEmail(email)) {
+                toast.error("Invalid email address. Please enter a valid email.");
+                setIsSubmitting(false);
+                return;
+            }
+
+            const sanitizedEmail = sanitizeUserInput(email);
 
             // Make the API call to send welcome email
-            const response = await axios.post('https://mvp-01.onrender.com/api/email/welcome', { email });
+            const response = await axios.post('https://mvp-01.onrender.com/api/email/welcome', { email: sanitizedEmail });
 
             if (response.status !== 200) {
                 // const errorData = response.data;

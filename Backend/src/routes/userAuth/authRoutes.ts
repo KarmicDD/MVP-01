@@ -3,23 +3,16 @@ import express from 'express';
 import { body } from 'express-validator';
 import passport from '../../config/passport';
 import { register, login, updateOAuthUserRole, handleOAuthCallback } from '../../controllers/authController';
+import { authRateLimit, validationSchemas, validateRequest } from '../../middleware/security';
 
 const router = express.Router();
 
 // Initialize passport
 router.use(passport.initialize());
 
-// Validation middleware
-const registerValidation = [
-    body('email').isEmail().withMessage('Valid email is required'),
-    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
-    body('role').isIn(['startup', 'investor']).withMessage('Valid role is required')
-];
-
-const loginValidation = [
-    body('email').isEmail().withMessage('Valid email is required'),
-    body('password').exists().withMessage('Password is required')
-];
+// Use our enhanced validation schemas from security middleware
+const registerValidation = validationSchemas.userRegistration;
+const loginValidation = validationSchemas.userLogin;
 
 /**
  * @swagger
@@ -88,7 +81,7 @@ const loginValidation = [
  *       '500':
  *         description: Server error
  */
-router.post('/register', registerValidation, register);
+router.post('/register', authRateLimit, registerValidation, validateRequest, register);
 
 /**
  * @swagger
@@ -160,7 +153,7 @@ router.post('/register', registerValidation, register);
  *       '500':
  *         description: Server error
  */
-router.post('/login', loginValidation, login);
+router.post('/login', authRateLimit, loginValidation, validateRequest, login);
 
 /**
  * @swagger

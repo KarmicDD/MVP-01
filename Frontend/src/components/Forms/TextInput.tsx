@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { sanitizeUserInput } from '../../utils/security';
 
 interface TextInputProps {
     label: string;
@@ -24,6 +25,12 @@ const TextInput: React.FC<TextInputProps> = ({
     description,
     rows = 4
 }) => {
+    // Handle input changes with sanitization
+    const handleInputChange = (inputValue: string) => {
+        const sanitizedValue = sanitizeUserInput(inputValue);
+        onChange(sanitizedValue);
+    };
+
     return (
         <div className={className}>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -39,7 +46,7 @@ const TextInput: React.FC<TextInputProps> = ({
                     placeholder={placeholder}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                     value={value}
-                    onChange={(e) => onChange(e.target.value)}
+                    onChange={(e) => handleInputChange(e.target.value)}
                     whileFocus={{ scale: 1.01 }}
                     required={required}
                 />
@@ -48,7 +55,7 @@ const TextInput: React.FC<TextInputProps> = ({
                     placeholder={placeholder}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                     value={value}
-                    onChange={(e) => onChange(e.target.value)}
+                    onChange={(e) => handleInputChange(e.target.value)}
                     whileFocus={{ scale: 1.01 }}
                     rows={rows}
                     required={required}

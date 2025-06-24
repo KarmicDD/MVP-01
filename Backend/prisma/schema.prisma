@@ -21,6 +21,9 @@ model User {
   documentViews         DocumentView[]
   profileShareAnalytics ProfileShareAnalytics[]
   profileShares         ProfileShare[]
+  // Enhanced activity tracking
+  userActivities        UserActivity[]
+  sessionLogs           SessionLog[]
 
   @@map("users")
 }
@@ -100,4 +103,178 @@ model DailyAnalytics {
   @@index([user_id])
   @@index([date])
   @@map("daily_analytics")
+}
+
+// ===============================
+// ENHANCED ACTIVITY TRACKING MODELS
+// ===============================
+
+model UserActivity {
+  id                String            @id @default(uuid())
+  user_id           String
+  activity_type     UserActivityType
+  activity_category ActivityCategory
+  action            String            // Specific action taken
+  description       String?           // Human-readable description
+  metadata          Json?             // Additional context data
+  ip_address        String?
+  user_agent        String?
+  referrer          String?
+  // Performance metrics
+  response_time_ms  Int?
+  request_size      Int?
+  response_size     Int?
+  // Business context
+  entity_type       String?           // e.g., 'startup', 'investor', 'document'
+  entity_id         String?           // ID of the affected entity
+  session_id        String?
+  // Timestamps
+  created_at        DateTime          @default(now())
+  
+  // Relations
+  user              User              @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  session           SessionLog?       @relation(fields: [session_id], references: [id])
+
+  @@index([user_id])
+  @@index([activity_type])
+  @@index([activity_category])
+  @@index([created_at])
+  @@index([entity_type, entity_id])
+  @@index([session_id])
+  @@map("user_activities")
+}
+
+model SessionLog {
+  id                String         @id @default(uuid())
+  user_id           String
+  session_token     String?        @unique
+  ip_address        String
+  user_agent        String
+  device_type       String?        // 'desktop', 'mobile', 'tablet'
+  browser           String?
+  os                String?
+  country           String?
+  city              String?
+  // Session lifecycle
+  login_at          DateTime       @default(now())
+  last_activity_at  DateTime       @default(now())
+  logout_at         DateTime?
+  session_duration  Int?           // in seconds
+  is_active         Boolean        @default(true)
+  // Session metrics
+  pages_visited     Int            @default(0)
+  actions_count     Int            @default(0)
+  
+  // Relations
+  user              User           @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  activities        UserActivity[]
+
+  @@index([user_id])
+  @@index([session_token])
+  @@index([login_at])
+  @@index([is_active])
+  @@map("session_logs")
+}
+
+model PageView {
+  id                String    @id @default(uuid())
+  user_id           String?   // Null for anonymous users
+  session_id        String?
+  page_path         String
+  page_title        String?
+  referrer          String?
+  ip_address        String?
+  user_agent        String?
+  // Performance metrics
+  load_time_ms      Int?
+  time_on_page_ms   Int?
+  bounce            Boolean   @default(false)
+  // Timestamps
+  viewed_at         DateTime  @default(now())
+  left_at           DateTime?
+
+  @@index([user_id])
+  @@index([session_id])
+  @@index([page_path])
+  @@index([viewed_at])
+  @@map("page_views")
+}
+
+model FeatureUsage {
+  id                String              @id @default(uuid())
+  user_id           String
+  feature_name      String
+  feature_category  FeatureCategory
+  usage_context     Json?               // Additional context about usage
+  success           Boolean             @default(true)
+  error_message     String?
+  used_at           DateTime            @default(now())
+
+  @@index([user_id])
+  @@index([feature_name])
+  @@index([feature_category])
+  @@index([used_at])
+  @@map("feature_usage")
+}
+
+model UserEngagement {
+  id                  String   @id @default(uuid())
+  user_id             String   @unique
+  // Daily metrics
+  daily_login_streak  Int      @default(0)
+  last_login_date     DateTime?
+  total_sessions      Int      @default(0)
+  total_time_spent    Int      @default(0) // in seconds
+  // Weekly/Monthly aggregates
+  avg_session_duration Float?   // in seconds
+  pages_per_session   Float?
+  bounce_rate         Float?
+  // Feature adoption
+  features_used_count Int      @default(0)
+  core_actions_count  Int      @default(0)
+  // Updated timestamps
+  updated_at          DateTime @updatedAt
+  created_at          DateTime @default(now())
+
+  @@index([user_id])
+  @@index([daily_login_streak])
+  @@index([last_login_date])
+  @@map("user_engagement")
+}
+
+// ===============================
+// ENUMS FOR ACTIVITY TRACKING
+// ===============================
+
+enum UserActivityType {
+  AUTHENTICATION   // login, logout, register, password_reset
+  NAVIGATION      // page_view, route_change, menu_click
+  PROFILE         // profile_view, profile_edit, profile_share
+  DOCUMENT        // upload, download, view, delete, share
+  MATCHING        // run_analysis, view_matches, contact_match
+  QUESTIONNAIRE   // start, complete, save_draft
+  ANALYTICS       // view_dashboard, export_data, generate_report
+  COMMUNICATION   // send_message, view_message, email_sent
+  SEARCH          // search_query, filter_applied, sort_changed
+  SYSTEM          // error, api_call, background_job
+  BUSINESS        // subscription_change, billing_event, feature_unlock
+}
+
+enum ActivityCategory {
+  USER_MANAGEMENT
+  CONTENT_INTERACTION
+  BUSINESS_PROCESS
+  SYSTEM_EVENT
+  SECURITY_EVENT
+  PERFORMANCE_EVENT
+}
+
+enum FeatureCategory {
+  CORE              // Essential features like profile creation
+  ANALYTICS         // Dashboard, reports, insights
+  MATCHING          // Compatibility analysis, match viewing
+  COMMUNICATION     // Messaging, email, notifications
+  DOCUMENTATION     // Document management
+  ADVANCED          // Premium or complex features
+  ADMIN             // Administrative functions
 }

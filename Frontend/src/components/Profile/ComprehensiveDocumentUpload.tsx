@@ -21,6 +21,8 @@ import {
 import { toast } from 'react-hot-toast';
 import { profileService } from '../../services/api';
 import { truncateUploadName } from '../../utils/documentNameUtils';
+import { sanitizeUserInput } from '../../utils/security';
+import { validateDocumentMetadata, hasSuspiciousContent } from '../../utils/validation';
 
 // Document type definitions based on backend schema
 const DOCUMENT_CATEGORIES = {
@@ -272,11 +274,42 @@ const ComprehensiveDocumentUpload: React.FC = () => {
         }));
 
         setFiles(prev => [...prev, ...newFiles]);
-    };
+    }; const updateFileMetadata = (fileId: string, updates: Partial<FileWithMetadata>) => {
+        // Validate and sanitize text inputs
+        const sanitizedUpdates = { ...updates };
 
-    const updateFileMetadata = (fileId: string, updates: Partial<FileWithMetadata>) => {
+        if (updates.description && typeof updates.description === 'string') {
+            // Check for suspicious content
+            if (hasSuspiciousContent(updates.description)) {
+                toast.error('Invalid description content detected');
+                return;
+            }
+            // Validate using document metadata validation
+            const validation = validateDocumentMetadata({
+                description: updates.description,
+                documentType: 'other', // default
+                category: 'other',
+                timePeriod: ''
+            });
+
+            if (!validation.isValid) {
+                toast.error(validation.errors[0].message);
+                return;
+            }
+
+            sanitizedUpdates.description = sanitizeUserInput(updates.description);
+        }
+
+        if (updates.documentType && typeof updates.documentType === 'string') {
+            sanitizedUpdates.documentType = sanitizeUserInput(updates.documentType);
+        }
+
+        if (updates.timePeriod && typeof updates.timePeriod === 'string') {
+            sanitizedUpdates.timePeriod = sanitizeUserInput(updates.timePeriod);
+        }
+
         setFiles(prev => prev.map(file =>
-            file.id === fileId ? { ...file, ...updates } : file
+            file.id === fileId ? { ...file, ...sanitizedUpdates } : file
         ));
     };
 

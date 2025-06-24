@@ -93,13 +93,19 @@ const TutorialContent: React.FC<TutorialContentProps> = ({ step }) => {
               <img
                 src={step.image}
                 alt={`${step.title} illustration`}
-                className="w-full h-auto object-cover"
-                onError={(e) => {
+                className="w-full h-auto object-cover" onError={(e) => {
                   // Fallback if image fails to load
                   e.currentTarget.style.display = 'none';
-                  // Show a message
-                  e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center', 'h-48', 'bg-gray-100');
-                  e.currentTarget.parentElement!.innerHTML = '<p class="text-gray-500">Image not available</p>';
+                  // Show a message safely without innerHTML
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    parent.classList.add('flex', 'items-center', 'justify-center', 'h-48', 'bg-gray-100');
+                    // Create safe text element instead of using innerHTML
+                    const messageElement = document.createElement('p');
+                    messageElement.className = 'text-gray-500';
+                    messageElement.textContent = 'Image not available';
+                    parent.appendChild(messageElement);
+                  }
                 }}
               />
             </div>

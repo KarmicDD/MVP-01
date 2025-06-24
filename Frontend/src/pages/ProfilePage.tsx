@@ -10,6 +10,7 @@ import { colours } from '../utils/colours';
 import EnhancedProfileCompleteness from '../components/Profile/EnhancedProfileCompleteness';
 import ProfileHeader from '../components/Profile/ProfileHeader';
 import ProfileContent from '../components/Profile/ProfileContent';
+import { validateProfile, sanitizeAndValidateInput } from '../utils/validation';
 
 // Define interfaces for new profile data
 interface SocialLink {
@@ -235,40 +236,23 @@ const ProfilePage: React.FC = () => {
         setFormData(profileData || {});
         setIsEditing(false);
         toast.error('Changes discarded');
-    };
-
-    // Within ProfilePage.tsx, update the validateForm function
-
+    };    // Enhanced validation using security utilities
     const validateForm = () => {
-        if (!formData.companyName?.trim()) {
-            toast.error('Company name is required');
+        if (!userType) {
+            toast.error('User type not determined');
             return false;
         }
 
-        if (userType === 'startup') {
-            if (!formData.industry) {
-                toast.error('Industry is required');
-                return false;
-            }
-            if (!formData.fundingStage) {
-                toast.error('Funding stage is required');
-                return false;
-            }
-        } else if (userType === 'investor') {
-            if (!formData.industriesOfInterest?.length) {
-                toast.error('At least one industry of interest is required');
-                return false;
-            }
-            if (!formData.preferredStages?.length) {
-                toast.error('At least one preferred funding stage is required');
-                return false;
-            }
-        }
+        // Use comprehensive validation
+        const validationResult = validateProfile(formData, userType as 'startup' | 'investor');
 
-        return true;
+        if (!validationResult.isValid) {
+            // Show the first error
+            toast.error(validationResult.errors[0].message);
+            return false;
+        } return true;
     };
 
-    // And update the handleSave function to use validation
     const handleSave = async () => {
         if (!userType) return;
 
@@ -279,20 +263,24 @@ const ProfilePage: React.FC = () => {
         try {
             setError(null);
 
+            // Sanitize form data before sending
+            const sanitizedFormData = sanitizeAndValidateInput(formData);
+            const sanitizedExtendedData = sanitizeAndValidateInput(extendedData);
+
             // Save main profile data
             let profileResponse;
             if (userType === 'startup') {
-                profileResponse = await profileService.updateStartupProfile(formData);
+                profileResponse = await profileService.updateStartupProfile(sanitizedFormData);
             } else {
-                profileResponse = await profileService.updateInvestorProfile(formData);
+                profileResponse = await profileService.updateInvestorProfile(sanitizedFormData);
             }
 
             // Save extended profile data
             const extendedProfileData = {
-                avatarUrl: extendedData.avatarUrl,
-                socialLinks: extendedData.socialLinks,
-                teamMembers: userType === 'startup' ? extendedData.teamMembers : [],
-                investmentHistory: userType === 'investor' ? extendedData.investmentHistory : []
+                avatarUrl: sanitizedExtendedData.avatarUrl,
+                socialLinks: sanitizedExtendedData.socialLinks,
+                teamMembers: userType === 'startup' ? sanitizedExtendedData.teamMembers : [],
+                investmentHistory: userType === 'investor' ? sanitizedExtendedData.investmentHistory : []
             };
 
             await profileService.updateExtendedProfile(extendedProfileData);

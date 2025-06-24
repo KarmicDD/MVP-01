@@ -5,24 +5,46 @@ import { hashPassword, comparePassword } from '../utils/passwordUtils';
 import { generateToken } from '../config/jwt';
 // @ts-ignore
 import { validationResult } from 'express-validator';
+import { sanitizeEmail, sanitizeInput, checkRateLimit } from '../utils/security';
 
 const frontendUrl = 'https://karmicdd.netlify.app';
 // Register new user
 const register = async (req: Request, res: Response): Promise<void> => {
-    // Validate request
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        res.status(400).json({ errors: errors.array() });
-        return;
-    }
-
-    const { email, password, role } = req.body;
-
     try {
+        // Rate limiting check
+        const clientIP = req.ip || 'unknown';
+        const rateLimitResult = checkRateLimit(`register:${clientIP}`, 5, 15 * 60 * 1000); // 5 attempts per 15 minutes
+
+        if (!rateLimitResult.allowed) {
+            res.status(429).json({
+                message: 'Too many registration attempts. Please try again later.',
+                retryAfter: Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
+            });
+            return;
+        }
+
+        // Validate request
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            res.status(400).json({ errors: errors.array() });
+            return;
+        }
+
+        // Sanitize input data
+        const sanitizedBody = sanitizeInput(req.body);
+        const { email, password, role } = sanitizedBody;
+
+        // Additional email validation and sanitization
+        const sanitizedEmail = sanitizeEmail(email);
+        if (!sanitizedEmail) {
+            res.status(400).json({ message: 'Invalid email address format' });
+            return;
+        }
+
         // Check if user already exists
         const userCheck = await prisma.user.findUnique({
             where: {
-                email: email,
+                email: sanitizedEmail,
             },
         });
 
@@ -31,14 +53,14 @@ const register = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        // Hash password
+        // Hash password with enhanced security
         const passwordHash = await hashPassword(password);
 
-        // Create user in Prisma
+        // Create user in Prisma with sanitized data
         const newUser = await prisma.user.create({
             data: {
                 user_id: uuidv4(),
-                email: email,
+                email: sanitizedEmail,
                 password_hash: passwordHash,
                 role: role,
             },
@@ -73,22 +95,43 @@ const register = async (req: Request, res: Response): Promise<void> => {
 
 // Login with email/password
 const login = async (req: Request, res: Response) => {
-    // Validate request
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        res.status(400).json({ errors: errors.array() });
-        return;
-    }
-
-    const { email, password } = req.body;
-
     try {
-        // Find user by email
+        // Rate limiting check for login attempts
+        const clientIP = req.ip || 'unknown';
+        const rateLimitResult = checkRateLimit(`login:${clientIP}`, 10, 15 * 60 * 1000); // 10 attempts per 15 minutes
+
+        if (!rateLimitResult.allowed) {
+            res.status(429).json({
+                message: 'Too many login attempts. Please try again later.',
+                retryAfter: Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
+            });
+            return;
+        }
+
+        // Validate request
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            res.status(400).json({ errors: errors.array() });
+            return;
+        }
+
+        // Sanitize input data
+        const sanitizedBody = sanitizeInput(req.body);
+        const { email, password } = sanitizedBody;
+
+        // Additional email validation and sanitization
+        const sanitizedEmail = sanitizeEmail(email);
+        if (!sanitizedEmail) {
+            res.status(400).json({ message: 'Invalid email address format' });
+            return;
+        }        // Find user by email with sanitized email
         const user = await prisma.user.findUnique({
             where: {
-                email: email,
+                email: sanitizedEmail,
             },
-        });        // Check if user exists
+        });
+
+        // Check if user exists
         if (!user) {
             res.status(401).json({ message: 'No account found with this email address. Please register first.' });
             return;

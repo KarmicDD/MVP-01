@@ -1355,10 +1355,11 @@ export const generateFinancialDueDiligenceReport = async (req: Request, res: Res
         if (!req.user?.userId) {
             res.status(401).json({ message: 'Unauthorized' });
             return;
-        }
-
-        const { entityId } = req.params;
-        const entityType = req.body.entityType as 'startup' | 'investor' || 'startup';
+        } const { entityId } = req.params;
+        // Sanitize and validate entityType from req.body
+        const entityType = (req.body.entityType === 'startup' || req.body.entityType === 'investor')
+            ? req.body.entityType as 'startup' | 'investor'
+            : 'startup';
         const version = req.query.version as string;
 
         if (!entityId) {

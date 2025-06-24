@@ -7,6 +7,8 @@ import { colours } from '../../utils/colours';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/api';
 import AuthErrorDisplay from './AuthErrorDisplay';
+import { validateLogin, sanitizeAndValidateInput } from '../../utils/validation';
+import { sanitizeUserInput } from '../../utils/security';
 
 interface SignInProps {
     setActiveView: (view: 'signIn' | 'createAccount' | 'chooseRole') => void;
@@ -53,18 +55,28 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, selectedRole }) => {
         if (!selectedRole) {
             setError('Please select a role first');
             return;
+        }        // Validate input data using security utilities
+        const validationResult = validateLogin({
+            email: email,
+            password: password
+        });
+
+        if (!validationResult.isValid) {
+            setError(validationResult.errors.map(err => err.message).join('. '));
+            return;
         }
 
         try {
             setLoading(true);
-            setError('');
-
-            // Login with email/password
-            const response = await authService.login({
-                email,
-                password,
+            setError('');            // Sanitize input data before sending
+            const sanitizedData = sanitizeAndValidateInput({
+                email: email.trim().toLowerCase(),
+                password: password,
                 role: selectedRole
             });
+
+            // Login with email/password
+            const response = await authService.login(sanitizedData);
 
             // Only show success state after successful login
             setShowSuccess(true);

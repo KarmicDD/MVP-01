@@ -7,6 +7,8 @@ import { colours } from '../../utils/colours';
 import { authService } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import AuthErrorDisplay from './AuthErrorDisplay';
+import { validateRegistration, sanitizeAndValidateInput } from '../../utils/validation';
+import { validatePassword } from '../../utils/validation';
 
 interface SignUpProps {
     setActiveView: (view: 'signIn') => void;
@@ -61,13 +63,19 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
         if (/[0-9]/.test(pass)) strength += 1;
         if (/[^A-Za-z0-9]/.test(pass)) strength += 1;
         setPasswordStrength(strength);
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
+    }; const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!isFormValid) {
-            setError('Please fill out all fields correctly');
+        // Comprehensive validation using our security utilities
+        const validationResult = validateRegistration({
+            fullName: name,
+            email: email,
+            password: password,
+            role: selectedRole || ''
+        });
+
+        if (!validationResult.isValid) {
+            setError(validationResult.errors.map(err => err.message).join('. '));
             return;
         }
 
@@ -80,13 +88,16 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
             setLoading(true);
             setError('');
 
-            // Register with email/password
-            const response = await authService.register({
-                name,
-                email,
-                password,
+            // Sanitize input data before sending
+            const sanitizedData = sanitizeAndValidateInput({
+                name: name.trim(),
+                email: email.trim().toLowerCase(),
+                password: password,
                 role: selectedRole
             });
+
+            // Register with email/password
+            const response = await authService.register(sanitizedData);
 
             // Success animation before redirect
             setTimeout(() => {

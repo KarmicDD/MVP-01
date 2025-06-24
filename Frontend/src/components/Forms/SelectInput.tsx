@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
+import { sanitizeUserInput } from '../../utils/security';
 
 interface SelectInputProps {
     label: string;
@@ -22,6 +23,15 @@ const SelectInput: React.FC<SelectInputProps> = ({
     required = false,
     description
 }) => {
+    // Handle select changes with validation
+    const handleSelectChange = (selectedValue: string) => {
+        // Validate that the selected value is in the allowed options
+        if (selectedValue === '' || options.includes(selectedValue)) {
+            const sanitizedValue = sanitizeUserInput(selectedValue);
+            onChange(sanitizedValue);
+        }
+    };
+
     return (
         <div className={className}>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -34,7 +44,7 @@ const SelectInput: React.FC<SelectInputProps> = ({
                 <select
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none appearance-none bg-white transition-all"
                     value={value}
-                    onChange={(e) => onChange(e.target.value)}
+                    onChange={(e) => handleSelectChange(e.target.value)}
                     required={required}
                 >
                     <option value="">{placeholder}</option>
