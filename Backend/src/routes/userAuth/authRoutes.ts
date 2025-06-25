@@ -4,6 +4,7 @@ import { body } from 'express-validator';
 import passport from '../../config/passport';
 import { register, login, updateOAuthUserRole, handleOAuthCallback } from '../../controllers/authController';
 import { authRateLimit, validationSchemas, validateRequest } from '../../middleware/security';
+import { authenticateJWT } from '../../middleware/auth';
 
 const router = express.Router();
 
@@ -285,6 +286,7 @@ router.post(
     '/update-role',
     body('userId').exists().withMessage('User ID is required'),
     body('role').isIn(['startup', 'investor']).withMessage('Valid role is required'),
+    validateRequest,
     updateOAuthUserRole
 );
 

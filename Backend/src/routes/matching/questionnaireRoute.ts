@@ -38,7 +38,7 @@ router.use(authenticateJWT);
  *       '500':
  *         description: Server error
  */
-router.get('/status', getQuestionnaireStatus, authenticateJWT);
+router.get('/status', authenticateJWT, getQuestionnaireStatus);
 
 /**
  * @swagger
@@ -72,7 +72,7 @@ router.get('/status', getQuestionnaireStatus, authenticateJWT);
  *       '500':
  *         description: Server error
  */
-router.get('/:role', getQuestionnaireResponses, authenticateJWT);
+router.get('/:role', authenticateJWT, getQuestionnaireResponses);
 
 /**
  * @swagger
@@ -125,7 +125,7 @@ router.get('/:role', getQuestionnaireResponses, authenticateJWT);
  *       '500':
  *         description: Server error
  */
-router.post('/:role/save', saveDraftResponses, authenticateJWT);
+router.post('/:role/save', authenticateJWT, saveDraftResponses);
 
 /**
  * @swagger
@@ -189,6 +189,6 @@ router.post('/:role/save', saveDraftResponses, authenticateJWT);
  *       '500':
  *         description: Server error
  */
-router.post('/:role/submit', submitQuestionnaire, authenticateJWT);
+router.post('/:role/submit', authenticateJWT, submitQuestionnaire);
 
 export default router;

@@ -9,7 +9,7 @@ const router = express.Router();
  * @desc Send welcome email to a new user
  * @access Private (admin only)
  */
-router.post('/welcome', async (req, res): Promise<void> => {
+router.post('/welcome', authenticateJWT, async (req, res): Promise<void> => {
     try {
         // Validate request
         const { email } = req.body;
