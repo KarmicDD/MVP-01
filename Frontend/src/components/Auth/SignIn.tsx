@@ -48,7 +48,7 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, selectedRole }) => {
     const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const navigate = useNavigate();
-    console.log('selectedRole:', selectedRole); const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!selectedRole) {

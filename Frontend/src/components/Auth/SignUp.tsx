@@ -77,12 +77,7 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
     }; const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        console.log('SignUp form submission - Current state:', {
-            name: name,
-            email: email,
-            passwordLength: password.length,
-            selectedRole: selectedRole
-        });
+        // Form submission validation
 
         // Basic client-side validation first
         if (!name.trim()) {
@@ -114,7 +109,6 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
         });
 
         if (!validationResult.isValid) {
-            console.log('Validation errors:', validationResult.errors);
             setError(validationResult.errors.map(err => err.message).join('. '));
             return;
         }
@@ -131,15 +125,10 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
                 role: selectedRole
             };
 
-            console.log('Sending registration data:', {
-                ...userData,
-                password: '[REDACTED]'
-            });
-
             // Register with email/password
             const response = await authService.register(userData);
 
-            console.log('Registration successful');
+            // Success - redirect to dashboard
 
             // Success animation before redirect
             setTimeout(() => {
@@ -151,7 +140,6 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
                 }
             }, 1000);
         } catch (err: unknown) {
-            console.error('Registration error:', err);
             const errorMessage = err instanceof Error ? err.message : 'Registration failed. Please try again.';
             setError(errorMessage);
         } finally {

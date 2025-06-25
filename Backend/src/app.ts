@@ -103,17 +103,13 @@ export const createApp = (): Application => {
     // Handle CORS Preflight Requests
     app.options('*', cors(corsOptions)); // Ensure preflight requests also use these options
 
-    // Add request logging middleware
-    app.use((req: Request, res: Response, next: NextFunction) => {
-        console.log(`\n=== INCOMING REQUEST ===`);
-        console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
-        console.log(`Headers:`, JSON.stringify(req.headers, null, 2));
-        console.log(`Body:`, req.body ? JSON.stringify(req.body, null, 2) : 'No body');
-        console.log(`Query:`, JSON.stringify(req.query, null, 2));
-        console.log(`IP:`, req.ip);
-        console.log(`========================\n`);
-        next();
-    });
+    // Secure request logging middleware (only in development, no sensitive data)
+    if (process.env.NODE_ENV === 'development') {
+        app.use((req: Request, res: Response, next: NextFunction) => {
+            console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+            next();
+        });
+    }
 
     // CSRF Protection (after session and before routes)
     console.log('Applying CSRF protection middleware');

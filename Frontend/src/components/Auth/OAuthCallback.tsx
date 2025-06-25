@@ -22,15 +22,9 @@ const OAuthCallback: React.FC = () => {
                 const token = params.get('token');
                 const userId = params.get('userId');
 
-                console.log("OAuth callback received:", {
-                    token: token ? `${token.substring(0, 20)}...` : null,
-                    userId
-                });
-
                 if (token) {
                     // Store token
                     localStorage.setItem('token', token);
-                    console.log("Token stored in localStorage");
 
                     // Check if we need to select role
                     if (userId) {
@@ -45,7 +39,6 @@ const OAuthCallback: React.FC = () => {
                         const tokenParts = token.split('.');
                         if (tokenParts.length === 3) {
                             const payload = JSON.parse(atob(tokenParts[1]));
-                            console.log("Token payload:", payload);
 
                             // Store userId and userRole in localStorage
                             if (payload.userId) {
@@ -66,7 +59,6 @@ const OAuthCallback: React.FC = () => {
 
                         // Token has role, fetch user profile
                         const response = await api.get('/users/profile');
-                        console.log("Profile response:", response.data);
 
                         if (response.data) {
                             localStorage.setItem('user', JSON.stringify(response.data));
@@ -166,22 +158,6 @@ const OAuthCallback: React.FC = () => {
                         <h2 className="text-xl font-bold mb-4">Authentication Error</h2>
                         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
                             <p className="text-red-600">{error}</p>
-                        </div>
-
-                        {/* Add the debug button here */}
-                        <div className="mb-4">
-                            <button
-                                onClick={() => {
-                                    console.log("localStorage contents:", {
-                                        token: localStorage.getItem('token'),
-                                        user: localStorage.getItem('user')
-                                    });
-                                    alert("Check browser console for localStorage data");
-                                }}
-                                className="px-3 py-1 bg-gray-200 text-gray-800 rounded text-sm"
-                            >
-                                Debug: Check Storage
-                            </button>
                         </div>
 
                         <motion.button

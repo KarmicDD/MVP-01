@@ -42,12 +42,8 @@ const countRequest = (req: Request, res: Response, next: NextFunction): void => 
     // Add timestamp to request object for later use
     req.requestStartTime = Date.now();
 
-    console.log(`Request #${stats.count} [${req.method}] ${route}`);
-    console.log("-----Request starts-----");
-
-    // Clear directories every 2 requests
-    if (stats.count % 2 === 0) {
-        console.log(`Request count is ${stats.count}, clearing directories...`);
+    // Clear directories every 10 requests to prevent disk space issues
+    if (stats.count % 10 === 0) {
         const logsDir = path.join(__dirname, '..', '..', 'logs');
         const ocrOutputDir = path.join(__dirname, '..', '..', 'ocr_outputs');
         emptyDirectoryContents(logsDir).catch(err => console.error("Error clearing logs directory:", err));
@@ -77,9 +73,10 @@ const trackTime = (req: Request, res: Response, next: NextFunction): void => {
             stats.routes[route].avgTime = stats.routes[route].totalTime / stats.routes[route].count;
         }
 
-        console.log(`Time taken: ${duration}ms`);
-        console.log(`Status: ${res.statusCode}`);
-        console.log('----####Request Ends####----');
+        // Only log slow requests (>1000ms) or errors (status >= 400)
+        if (duration > 1000 || res.statusCode >= 400) {
+            console.log(`[${req.method}] ${route} - ${duration}ms - Status: ${res.statusCode}`);
+        }
 
         // Call the original end method
         return originalEnd.call(this, chunk, encoding, callback);

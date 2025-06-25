@@ -21,15 +21,8 @@ export const generateCSRFToken = (): string => {
  * CSRF Protection Middleware
  */
 export const csrfProtection = (req: Request, res: Response, next: NextFunction): void => {
-    console.log('=== CSRF PROTECTION CHECK ===');
-    console.log('Request method:', req.method);
-    console.log('Request path:', req.path);
-    console.log('Request URL:', req.url);
-    console.log('Original URL:', req.originalUrl);
-
     // Skip CSRF for GET, HEAD, OPTIONS requests
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-        console.log('Skipping CSRF for safe method:', req.method);
         return next();
     }
 
@@ -44,26 +37,17 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
         '/api/auth/linkedin/callback'
     ];
 
-    console.log('Checking skip paths against:', req.path);
-    console.log('Skip paths:', skipPaths);
-
     // Check if the request path matches any skip paths
     const shouldSkip = skipPaths.some(path => {
-        const matches = req.path === path || req.path.startsWith(path);
-        console.log(`Comparing "${req.path}" with "${path}": ${matches}`);
-        return matches;
+        return req.path === path || req.path.startsWith(path);
     });
 
     if (shouldSkip) {
-        console.log('Skipping CSRF protection for auth endpoint:', req.path);
         return next();
     }
 
-    console.log('CSRF protection required for:', req.path);
-
     // Ensure session exists
     if (!req.session) {
-        console.log('No session found - returning 500');
         res.status(500).json({ message: 'Session not configured' });
         return;
     }
