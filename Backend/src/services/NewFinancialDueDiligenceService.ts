@@ -130,7 +130,7 @@ class NewFinancialDueDiligenceService {
     updatedAt?: string
   }>): Promise<string> {
     try {
-      console.log(`Processing ${documents.length} documents using memory-based OCR service`);
+      console.log(`[FINANCIAL DD] Processing ${documents.length} financial documents using memory-based OCR service`);
 
       // Filter PDF documents for OCR processing
       const pdfDocuments = documents.filter(doc => {
@@ -148,7 +148,7 @@ class NewFinancialDueDiligenceService {
 
       // Process PDF documents with memory-based OCR
       if (pdfDocuments.length > 0) {
-        console.log(`Processing ${pdfDocuments.length} PDF documents with memory-based OCR using combine-first approach`);
+        console.log(`[FINANCIAL DD] Processing ${pdfDocuments.length} PDF documents with memory-based OCR using combine-first approach`);
 
         // Prepare documents for memory-based processing
         const documentsWithBuffers: Array<{
@@ -187,7 +187,7 @@ class NewFinancialDueDiligenceService {
         // Process PDFs with memory-based OCR service using the new combine-first approach
         if (documentsWithBuffers.length > 0) {
           try {
-            console.log(`Using new combine-first approach: will combine ${documentsWithBuffers.length} PDFs into one before chunking`);
+            console.log(`[FINANCIAL DD] Using new combine-first approach: will combine ${documentsWithBuffers.length} PDFs into one before chunking`);
 
             // Use the new processMultiplePdfDocuments method which combines first, then chunks
             const ocrResult = await this.memoryBasedOcrService.processMultiplePdfDocuments(
@@ -204,7 +204,7 @@ class NewFinancialDueDiligenceService {
 
       // Process non-PDF documents with traditional methods (if any)
       if (nonPdfDocuments.length > 0) {
-        console.log(`Processing ${nonPdfDocuments.length} non-PDF documents with traditional methods`);
+        console.log(`[FINANCIAL DD] Processing ${nonPdfDocuments.length} non-PDF documents with traditional methods`);
 
         for (const doc of nonPdfDocuments) {
           try {
@@ -260,7 +260,7 @@ class NewFinancialDueDiligenceService {
     missingDocumentTypes: string[] = []
   ): Promise<any> {
     try {
-      console.log(`Generating financial due diligence report for ${companyName} (${entityType})`);
+      console.log(`[FINANCIAL DD] Generating financial due diligence report for ${companyName} (${entityType})`);
 
       // Create missing documents context
       const missingDocumentsContext = missingDocumentTypes.length > 0
@@ -284,7 +284,7 @@ class NewFinancialDueDiligenceService {
       `;
 
       // Call Gemini API
-      console.log('Calling Gemini API for financial due diligence analysis...');
+      console.log('[FINANCIAL DD] Calling Gemini API for financial due diligence analysis...');
       const result = await executeGeminiWithDynamicRetry(async () => {
         return await financialAnalysisModel.generateContent(prompt);
       });
@@ -299,7 +299,7 @@ class NewFinancialDueDiligenceService {
 
       // Parse the JSON response
       try {
-        console.log('Received response from Gemini API, cleaning and parsing JSON...');
+        console.log('[FINANCIAL DD] Received response from Gemini API, cleaning and parsing JSON...');
 
         // Log the entire response to a file (but not to console)
         const logFilePath = fileLogger.logToFile(responseText, 'financial_dd_raw_response');

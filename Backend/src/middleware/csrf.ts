@@ -26,15 +26,14 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
         return next();
     }
 
-    // Skip CSRF for API authentication endpoints (login/register)
+    // Skip CSRF only for OAuth endpoints and GET requests
+    // LOGIN and REGISTER should be protected by CSRF tokens
     const skipPaths = [
-        '/api/auth/login',
-        '/api/auth/register',
-        '/api/auth/refresh',
         '/api/auth/google',
         '/api/auth/linkedin',
         '/api/auth/google/callback',
-        '/api/auth/linkedin/callback'
+        '/api/auth/linkedin/callback',
+        '/api/csrf-token'  // Allow getting CSRF token without validation
     ];
 
     // Check if the request path matches any skip paths
@@ -65,7 +64,10 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
         logSecurityEvent('CSRF_TOKEN_INVALID', req, {
             providedToken: token ? 'provided' : 'missing',
             sessionToken: req.session.csrfToken ? 'exists' : 'missing',
-            path: req.path
+            path: req.path,
+            method: req.method,
+            userAgent: req.get('User-Agent'),
+            referer: req.get('Referer')
         });
 
         res.status(403).json({
@@ -74,6 +76,12 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
         });
         return;
     }
+
+    // Log successful CSRF validation for monitoring
+    logSecurityEvent('CSRF_TOKEN_VALID', req, {
+        path: req.path,
+        method: req.method
+    });
 
     next();
 };

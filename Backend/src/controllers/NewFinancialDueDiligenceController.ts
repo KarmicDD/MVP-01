@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import NewFinancialDueDiligenceReport from '../models/Analytics/NewFinancialDueDiligenceReport';
-import DocumentModel, { DocumentType } from '../models/Profile/Document';
+import DocumentModel, { DocumentType, FinancialDocumentType } from '../models/Profile/Document';
 import ApiUsageModel from '../models/ApiUsageModel/ApiUsage';
 import StartupProfileModel from '../models/Profile/StartupProfile';
 import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
@@ -11,6 +11,7 @@ import { MemoryBasedOcrPdfService, DocumentMetadata } from '../services/MemoryBa
 import fs from 'fs/promises';
 import path from 'path';
 import { Types } from 'mongoose';
+import { getAllFinancialDocumentTypes, getFinancialDocumentsQuery } from '../utils/documentTypes';
 
 // Load environment variables
 dotenv.config();
@@ -60,8 +61,22 @@ export const checkDocumentsAvailability = async (req: Request, res: Response): P
       return;
     }
 
-    // Find ALL documents for the entity to ensure comprehensive analysis
-    const documents = await DocumentModel.find({ userId: entityId });
+    // Use the complete financial document types from the model definition
+    const financialDocumentTypes = getAllFinancialDocumentTypes();
+
+    // Find documents that are financial - use flexible categorization
+    // This includes both explicit financial document types AND documents that contain financial keywords
+    const documents = await DocumentModel.find({
+      userId: entityId,
+      $or: [
+        // Explicit financial document types
+        { documentType: { $in: financialDocumentTypes } },
+        // Documents with financial keywords in name (case insensitive)
+        { originalName: { $regex: /financial|balance|income|cash|revenue|profit|loss|statement|report|audit|tax|gst|bank/i } },
+        // Documents with category set to financial
+        { category: 'financial' }
+      ]
+    });
 
     // Get entity profile information
     let entityProfile;
@@ -73,6 +88,8 @@ export const checkDocumentsAvailability = async (req: Request, res: Response): P
 
     // Check if documents are available
     const documentsAvailable = documents.length > 0;
+
+    console.log(`[FINANCIAL DD] Document availability check for ${entityId}: ${documentsAvailable} (${documents.length} financial documents found)`);
 
     res.status(200).json({
       documentsAvailable,
@@ -126,24 +143,47 @@ export const analyzeNewFinancialDueDiligence = async (req: Request, res: Respons
       });
 
       if (existingAnalysis) {
-        console.log('Found recent analysis in cache, returning cached result');
+        console.log('[FINANCIAL DD] Found recent analysis in cache, returning cached result');
         res.status(200).json(existingAnalysis.toObject());
         return;
       }
 
-      // Find financial documents for the entity
+      // Use the complete financial document types from the model definition
+      const financialDocumentTypes = getAllFinancialDocumentTypes();
+
+      // Find financial documents using flexible categorization
+      // This includes both explicit financial document types AND documents that contain financial keywords
       const documents = await DocumentModel.find({
-        userId: entityId
+        userId: entityId,
+        $or: [
+          // Explicit financial document types
+          { documentType: { $in: financialDocumentTypes } },
+          // Documents with financial keywords in name (case insensitive)
+          { originalName: { $regex: /financial|balance|income|cash|revenue|profit|loss|statement|report|audit|tax|gst|bank/i } },
+          // Documents with category set to financial
+          { category: 'financial' },
+          // Include ALL "other" category documents for comprehensive financial analysis
+          { category: 'other' }
+        ]
       });
 
       if (documents.length === 0) {
-        console.log('No financial documents found for entity');
+        console.log('[FINANCIAL DD] No documents found for entity');
         res.status(404).json({
-          message: 'No financial documents found for this entity',
-          documentsAvailable: false
+          message: 'No documents found for financial analysis',
+          documentsAvailable: false,
+          errorCode: 'NO_DOCUMENTS_FOR_FINANCIAL_ANALYSIS',
+          suggestion: 'Please upload financial documents such as balance sheets, income statements, cash flow statements, or any other relevant documents for financial due diligence analysis.'
         });
         return;
       }
+
+      console.log(`[FINANCIAL DD] Found ${documents.length} documents for financial analysis (including financial, other category, and relevant documents)`);
+      console.log('[FINANCIAL DD] Document breakdown:', documents.map(doc => ({
+        type: doc.documentType,
+        category: doc.category,
+        name: doc.originalName
+      })));
 
       // Get entity profile information
       let entityProfile;
@@ -156,22 +196,15 @@ export const analyzeNewFinancialDueDiligence = async (req: Request, res: Respons
         companyName = entityProfile?.companyName || 'Investor Company';
       }
 
-      // Check for missing document types
-      const allFinancialDocumentTypes: DocumentType[] = [
-        'financial_balance_sheet',
-        'financial_income_statement',
-        'financial_cash_flow',
-        'financial_tax_returns',
-        'financial_audit_report',
-        'financial_bank_statements',
-        'financial_gst_returns',
-        'financial_projections'
-      ];
+      // Check for missing financial document types
+      const allFinancialDocumentTypes = getAllFinancialDocumentTypes();
 
       const availableDocumentTypes = documents.map(doc => doc.documentType);
       const missingDocumentTypes = allFinancialDocumentTypes.filter(
         (type: DocumentType) => !availableDocumentTypes.includes(type)
       );
+
+      console.log(`[FINANCIAL DD] Processing ${documents.length} financial documents, ${missingDocumentTypes.length} document types missing`);
 
       const pdfsToProcess: Array<{ buffer: Buffer; metadata: DocumentMetadata }> = [];
       let otherDocumentsContent = '';
@@ -186,7 +219,7 @@ export const analyzeNewFinancialDueDiligence = async (req: Request, res: Respons
 
         if (doc.fileType?.toLowerCase() === 'pdf' || doc.originalName.toLowerCase().endsWith('.pdf')) {
           try {
-            console.log(`Preparing PDF for OCR: ${doc.originalName}`);
+            console.log(`[FINANCIAL DD] Preparing PDF for OCR: ${doc.originalName} (Type: ${doc.documentType})`);
             const pdfBuffer = await fs.readFile(filePath);
             const metadata: DocumentMetadata = {
               originalName: doc.originalName,
@@ -217,12 +250,12 @@ export const analyzeNewFinancialDueDiligence = async (req: Request, res: Respons
 
       let combinedOcrText = '';
       if (pdfsToProcess.length > 0) {
-        console.log(`Processing ${pdfsToProcess.length} PDF documents with MemoryBasedOcrPdfService...`);
+        console.log(`[FINANCIAL DD] Processing ${pdfsToProcess.length} PDF documents with MemoryBasedOcrPdfService...`);
         try {
           combinedOcrText = await memoryBasedOcrService.processMultiplePdfDocuments(pdfsToProcess);
-          console.log(`PDF OCR processing complete. Text length: ${combinedOcrText.length}`);
+          console.log(`[FINANCIAL DD] PDF OCR processing complete. Text length: ${combinedOcrText.length}`);
         } catch (ocrError) {
-          console.error('Error during batch PDF OCR processing:', ocrError);
+          console.error('[FINANCIAL DD] Error during batch PDF OCR processing:', ocrError);
           combinedOcrText = `\n\n--- ERROR DURING BATCH PDF OCR ---\nError: ${ocrError instanceof Error ? ocrError.message : String(ocrError)}\n--- END OF OCR ERROR ---`;
         }
       }
@@ -233,7 +266,8 @@ ${combinedOcrText}
 ${otherDocumentsContent}
       `.trim();
 
-      console.log('Generating financial due diligence report...');
+      console.log(`[FINANCIAL DD] Preparing to call Gemini for financial analysis...`);
+      console.log(`[FINANCIAL DD] Generating financial due diligence report for ${companyName} (${entityType})`);
       const financialData = await newFinancialDueDiligenceService.generateFinancialDueDiligenceReport(
         fullDocumentContext,
         companyName,
@@ -325,7 +359,7 @@ export const getNewFinancialDueDiligenceReport = async (req: Request, res: Respo
     const { entityId } = req.params;
     const entityType = req.query.entityType as 'startup' | 'investor';
 
-    console.log(`Getting financial due diligence report for entityId: ${entityId}, entityType: ${entityType}`);
+    console.log(`[FINANCIAL DD] Getting financial due diligence report for entityId: ${entityId}, entityType: ${entityType}`);
 
     if (!entityId) {
       res.status(400).json({ message: 'Entity ID is required' });
@@ -333,7 +367,7 @@ export const getNewFinancialDueDiligenceReport = async (req: Request, res: Respo
     }
 
     if (!entityType) {
-      console.log('No entityType provided, defaulting to startup');
+      console.log('[FINANCIAL DD] No entityType provided, defaulting to startup');
     }
 
     const finalEntityType = entityType || 'startup';
@@ -345,23 +379,39 @@ export const getNewFinancialDueDiligenceReport = async (req: Request, res: Respo
       }).sort({ createdAt: -1 });
 
       if (!report) {
-        console.log(`No report found for entityId: ${entityId}, entityType: ${finalEntityType}`);
+        console.log(`[FINANCIAL DD] No report found for entityId: ${entityId}, entityType: ${finalEntityType}`);
 
+        // Use the complete financial document types from the model definition
+        // Use the complete financial document types from the model definition
+        const financialDocumentTypes = getAllFinancialDocumentTypes();
+
+        // Find financial documents using flexible categorization
+        // This includes both explicit financial document types AND documents that contain financial keywords
         const documents = await DocumentModel.find({
-          userId: entityId
+          userId: entityId,
+          $or: [
+            // Explicit financial document types
+            { documentType: { $in: financialDocumentTypes } },
+            // Documents with financial keywords in name (case insensitive)
+            { originalName: { $regex: /financial|balance|income|cash|revenue|profit|loss|statement|report|audit|tax|gst|bank/i } },
+            // Documents with category set to financial
+            { category: 'financial' }
+          ]
         });
 
         if (documents.length === 0) {
-          console.log('No financial documents found for entity');
+          console.log('[FINANCIAL DD] No financial documents found for entity');
           res.status(404).json({
             message: 'No financial documents found for this entity',
-            documentsAvailable: false
+            documentsAvailable: false,
+            errorCode: 'NO_FINANCIAL_DOCUMENTS',
+            suggestion: 'Please upload financial documents such as balance sheets, income statements, cash flow statements, etc.'
           });
           return;
         }
 
         res.status(404).json({
-          message: 'Financial due diligence report not found. Documents are available, please generate a report.',
+          message: 'Financial due diligence report not found. Financial documents are available, please generate a report.',
           documentsAvailable: true,
           documentCount: documents.length
         });
@@ -369,7 +419,7 @@ export const getNewFinancialDueDiligenceReport = async (req: Request, res: Respo
       }
 
       if (report.reportCalculated === false) {
-        console.log('Report exists but was not successfully calculated');
+        console.log('[FINANCIAL DD] Report exists but was not successfully calculated');
         res.status(200).json({
           ...report.toObject(),
           message: 'Financial due diligence report exists but was not successfully calculated',
@@ -379,7 +429,7 @@ export const getNewFinancialDueDiligenceReport = async (req: Request, res: Respo
         return;
       }
 
-      console.log('Found valid report, returning data');
+      console.log('[FINANCIAL DD] Found valid report, returning data');
       res.status(200).json(report.toObject());
     } catch (dbError) {
       console.error('Database error when fetching report:', dbError);
@@ -418,14 +468,29 @@ export const generateNewFinancialDueDiligenceReport = async (req: Request, res: 
       return handleControllerError(res, new Error('Entity type is required'), 'Entity type missing', 400);
     }
 
-    console.log(`Generating report for entityId: ${entityId}, entityType: ${entityType}`);
+    console.log(`[FINANCIAL DD] Generating report for entityId: ${entityId}, entityType: ${entityType}`);
 
-    const entityDocuments = await DocumentModel.find({ userId: entityId });
+    // Use the complete financial document types from the model definition
+    const financialDocumentTypes = getAllFinancialDocumentTypes();
+
+    // Fetch financial documents using flexible categorization
+    const entityDocuments = await DocumentModel.find({
+      userId: entityId,
+      $or: [
+        // Explicit financial document types
+        { documentType: { $in: financialDocumentTypes } },
+        // Documents with financial keywords in name (case insensitive)
+        { originalName: { $regex: /financial|balance|income|cash|revenue|profit|loss|statement|report|audit|tax|gst|bank/i } },
+        // Documents with category set to financial
+        { category: 'financial' }
+      ]
+    });
 
     if (!entityDocuments || entityDocuments.length === 0) {
-      return handleControllerError(res, new Error('No documents found for this entity'), 'No documents available', 404);
+      return handleControllerError(res, new Error('No financial documents found for this entity'), 'No financial documents available', 404);
     }
-    console.log(`Found ${entityDocuments.length} documents for entity ${entityId}`);
+    console.log(`[FINANCIAL DD] Found ${entityDocuments.length} financial documents for entity ${entityId}:`,
+      entityDocuments.map(doc => ({ type: doc.documentType, name: doc.originalName })));
 
     const pdfsToProcess: Array<{ buffer: Buffer; metadata: DocumentMetadata }> = [];
     let otherDocumentsContent = '';
@@ -440,7 +505,7 @@ export const generateNewFinancialDueDiligenceReport = async (req: Request, res: 
 
       if (doc.fileType?.toLowerCase() === 'pdf' || doc.originalName.toLowerCase().endsWith('.pdf')) {
         try {
-          console.log(`Preparing PDF for OCR: ${doc.originalName}`);
+          console.log(`[FINANCIAL DD] Preparing PDF for OCR: ${doc.originalName} (Type: ${doc.documentType})`);
           const pdfBuffer = await fs.readFile(filePath);
           const metadata: DocumentMetadata = {
             originalName: doc.originalName,
@@ -450,7 +515,7 @@ export const generateNewFinancialDueDiligenceReport = async (req: Request, res: 
           };
           pdfsToProcess.push({ buffer: pdfBuffer, metadata });
         } catch (fileReadError) {
-          console.error(`Error reading PDF file ${doc.originalName} at ${filePath}:`, fileReadError);
+          console.error(`[FINANCIAL DD] Error reading PDF file ${doc.originalName} at ${filePath}:`, fileReadError);
           otherDocumentsContent += `\n\n--- ERROR READING DOCUMENT: ${doc.originalName} ---\nError: ${fileReadError instanceof Error ? fileReadError.message : String(fileReadError)}\n--- END OF ERROR ---`;
         }
       } else {
@@ -463,7 +528,7 @@ export const generateNewFinancialDueDiligenceReport = async (req: Request, res: 
             otherDocumentsContent += `\n\n--- DOCUMENT METADATA: ${doc.originalName} ---\nType: ${doc.documentType}\nFile Type: ${doc.fileType || 'unknown'}\n(Content not extracted for this file type)\n--- END OF METADATA ---`;
           }
         } catch (fileReadError) {
-          console.error(`Error reading non-PDF file ${doc.originalName} at ${filePath}:`, fileReadError);
+          console.error(`[FINANCIAL DD] Error reading non-PDF file ${doc.originalName} at ${filePath}:`, fileReadError);
           otherDocumentsContent += `\n\n--- ERROR READING DOCUMENT: ${doc.originalName} ---\nError: ${fileReadError instanceof Error ? fileReadError.message : String(fileReadError)}\n--- END OF ERROR ---`;
         }
       }
@@ -474,9 +539,9 @@ export const generateNewFinancialDueDiligenceReport = async (req: Request, res: 
       console.log(`Processing ${pdfsToProcess.length} PDF documents with MemoryBasedOcrPdfService...`);
       try {
         combinedOcrText = await memoryBasedOcrService.processMultiplePdfDocuments(pdfsToProcess);
-        console.log(`PDF OCR processing complete. Text length: ${combinedOcrText.length}`);
+        console.log(`[FINANCIAL DD] PDF OCR processing complete. Text length: ${combinedOcrText.length}`);
       } catch (ocrError) {
-        console.error('Error during batch PDF OCR processing:', ocrError);
+        console.error('[FINANCIAL DD] Error during batch PDF OCR processing:', ocrError);
         combinedOcrText = `\n\n--- ERROR DURING BATCH PDF OCR ---\nError: ${ocrError instanceof Error ? ocrError.message : String(ocrError)}\n--- END OF OCR ERROR ---`;
       }
     }
@@ -487,7 +552,7 @@ ${combinedOcrText}
 ${otherDocumentsContent}
     `.trim();
 
-    console.log('Preparing to call Gemini for financial analysis...');
+    console.log('[FINANCIAL DD] Preparing to call Gemini for financial analysis...');
 
     // Entity IDs are UUIDs (strings), not MongoDB ObjectIds
     if (!entityId || typeof entityId !== 'string') {

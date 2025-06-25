@@ -221,10 +221,10 @@ const LegalDueDiligence: React.FC<LegalDueDiligenceProps> = ({ userProfile, sele
                         <FiInfo className="text-amber-500 mt-1 mr-3 flex-shrink-0" />
                         <div>
                             <p className="text-gray-700 mb-2">
-                                {isSelfAnalysis ? 'You haven\'t uploaded any legal documents yet' : `${entityName} hasn't uploaded any legal documents yet`}. Legal due diligence requires documents like incorporation certificates, agreements, and regulatory filings.
+                                {isSelfAnalysis ? 'You haven\'t uploaded any legal or other documents yet' : `${entityName} hasn't uploaded any legal or other documents yet`}. Legal documents and documents from the "other" category are required to generate a comprehensive legal due diligence report.
                             </p>
                             <p className="text-sm text-gray-600">
-                                Legal documents may include incorporation certificates, shareholder agreements, contracts, regulatory filings, and intellectual property documents.
+                                Legal due diligence analyzes legal documents and other category documents (excluding financial documents). This may include incorporation certificates, shareholder agreements, contracts, regulatory filings, intellectual property documents, presentations, reports, and other relevant business documents.
                             </p>
                         </div>
                     </div>

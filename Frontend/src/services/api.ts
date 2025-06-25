@@ -128,11 +128,8 @@ api.interceptors.request.use(
 
         // Add CSRF token for non-GET requests
         if (config.method && !['get', 'head', 'options'].includes(config.method.toLowerCase())) {
-            // Skip CSRF for auth endpoints
+            // Skip CSRF only for OAuth endpoints
             const skipPaths = [
-                '/auth/login',
-                '/auth/register',
-                '/auth/refresh',
                 '/auth/google',
                 '/auth/linkedin',
                 '/auth/google/callback',
@@ -149,6 +146,8 @@ api.interceptors.request.use(
                     config.headers['X-CSRF-Token'] = token;
                 } catch (error) {
                     console.error('Failed to get CSRF token for request:', error);
+                    // Don't fail the request if CSRF token fetch fails
+                    // This allows for graceful degradation
                 }
             }
         }
@@ -160,7 +159,14 @@ api.interceptors.request.use(
 
 // Response interceptor for handling auth errors
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        // Check for new CSRF token in response headers
+        const newCSRFToken = response.headers['x-new-csrf-token'];
+        if (newCSRFToken) {
+            csrfToken = newCSRFToken;
+        }
+        return response;
+    },
     async (error) => {
         // Log the error for debugging
         console.error('API Error:', error);

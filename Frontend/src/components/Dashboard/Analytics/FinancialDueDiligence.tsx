@@ -204,10 +204,10 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
                 <FiInfo className="text-amber-500 mt-1 mr-3 flex-shrink-0" />
                 <div>
                   <p className="text-gray-700 mb-2">
-                    {entityName} has not uploaded any financial documents yet. Financial documents are required to generate a due diligence report.
+                    {entityName} has not uploaded any financial or other documents yet. Financial documents and documents from the "other" category are required to generate a comprehensive financial due diligence report.
                   </p>
                   <p className="text-sm text-gray-600">
-                    Financial documents may include balance sheets, income statements, cash flow statements, and other financial records.
+                    Financial due diligence analyzes financial documents and other category documents (excluding legal documents). This may include balance sheets, income statements, cash flow statements, presentations, reports, and other relevant business documents.
                   </p>
                 </div>
               </div>
@@ -256,22 +256,22 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
             onDismiss={() => window.location.reload()}
           />
 
-          {availableDocuments && availableDocuments.length > 0 && (            <div className="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <h4 className="font-medium text-gray-700 mb-3">Available Documents</h4>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {availableDocuments.map((doc, index) => (                  <div key={index} className="flex items-center p-2 hover:bg-white rounded-md">
-                    <FiFileText className="text-indigo-500 mr-2" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{doc.originalName}</p>
-                      <p className="text-xs text-gray-500">
-                        {getFormattedDocumentType(doc.documentType)} •
-                        Uploaded: {new Date(doc.createdAt || '').toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+          {availableDocuments && availableDocuments.length > 0 && (<div className="mt-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <h4 className="font-medium text-gray-700 mb-3">Available Documents</h4>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {availableDocuments.map((doc, index) => (<div key={index} className="flex items-center p-2 hover:bg-white rounded-md">
+                <FiFileText className="text-indigo-500 mr-2" />
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{doc.originalName}</p>
+                  <p className="text-xs text-gray-500">
+                    {getFormattedDocumentType(doc.documentType)} •
+                    Uploaded: {new Date(doc.createdAt || '').toLocaleDateString()}
+                  </p>
+                </div>
               </div>
+              ))}
             </div>
+          </div>
           )}
         </div>
       );
@@ -308,185 +308,185 @@ const FinancialDueDiligence: React.FC<FinancialDueDiligenceProps> = ({ userProfi
 
       {/* Main content */}
       <div ref={reportRef}>        {report ? (
-          <NewFinancialDueDiligenceReportContent
-            report={report}
-            formatDate={formatDate}
-            handleExportPDF={handleExportPDF}
-            handleShareReport={handleShareReport}
-            isCompact={true}
-          />
-        ) : (
-          <div className="space-y-8 p-6">
-            <div className="bg-indigo-50 rounded-lg p-6 border border-indigo-100">
-              <h3 className="text-lg font-semibold text-indigo-800 mb-3 flex items-center">
-                <FiFileText className="mr-2" />
-                Draft-Financial Due Diligence
-              </h3>
-              <p className="text-gray-700 mb-4">
-                Our AI-powered financial due diligence tool analyzes financial documents uploaded by {entityName} to provide comprehensive insights and recommendations compliant with Indian company standards.
-              </p>
+        <NewFinancialDueDiligenceReportContent
+          report={report}
+          formatDate={formatDate}
+          handleExportPDF={handleExportPDF}
+          handleShareReport={handleShareReport}
+          isCompact={true}
+        />
+      ) : (
+        <div className="space-y-8 p-6">
+          <div className="bg-indigo-50 rounded-lg p-6 border border-indigo-100">
+            <h3 className="text-lg font-semibold text-indigo-800 mb-3 flex items-center">
+              <FiFileText className="mr-2" />
+              Draft-Financial Due Diligence
+            </h3>
+            <p className="text-gray-700 mb-4">
+              Our AI-powered financial due diligence tool analyzes financial documents uploaded by {entityName} to provide comprehensive insights and recommendations compliant with Indian company standards.
+            </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-50">
-                  <div className="text-indigo-600 text-xl mb-2">1</div>
-                  <h4 className="font-medium text-gray-800 mb-1">Review Documents</h4>
-                  <p className="text-sm text-gray-600">Review the financial documents uploaded by {entityName}</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-50">
-                  <div className="text-indigo-600 text-xl mb-2">2</div>
-                  <h4 className="font-medium text-gray-800 mb-1">Select Report Type</h4>
-                  <p className="text-sm text-gray-600">Choose between Financial Analysis or Audit Report</p>
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-50">
-                  <div className="text-indigo-600 text-xl mb-2">3</div>
-                  <h4 className="font-medium text-gray-800 mb-1">Generate Report</h4>
-                  <p className="text-sm text-gray-600">Generate the report to receive detailed insights and recommendations</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-50">
+                <div className="text-indigo-600 text-xl mb-2">1</div>
+                <h4 className="font-medium text-gray-800 mb-1">Review Documents</h4>
+                <p className="text-sm text-gray-600">Review the financial documents uploaded by {entityName}</p>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-50">
+                <div className="text-indigo-600 text-xl mb-2">2</div>
+                <h4 className="font-medium text-gray-800 mb-1">Select Report Type</h4>
+                <p className="text-sm text-gray-600">Choose between Financial Analysis or Audit Report</p>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-50">
+                <div className="text-indigo-600 text-xl mb-2">3</div>
+                <h4 className="font-medium text-gray-800 mb-1">Generate Report</h4>
+                <p className="text-sm text-gray-600">Generate the report to receive detailed insights and recommendations</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Report Description */}
+          <div className="bg-white rounded-lg p-6 border border-gray-200 analysis-types-section">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Comprehensive Draft-Financial Due Diligence</h3>
+
+            <div className="p-4 rounded-lg border border-indigo-100 bg-indigo-50">
+              <div className="flex items-start">
+                <div className="ml-3">
+                  <h4 className="font-medium text-gray-900">Complete Financial Analysis & Audit</h4>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Our comprehensive report combines financial analysis and audit in one complete package, providing:
+                  </p>
+                  <ul className="mt-2 space-y-1 text-sm text-gray-600 list-disc pl-5">
+                    <li>Executive summary with key metrics and findings</li>
+                    <li>Detailed financial analysis with trends and projections</li>
+                    <li>Compliance assessment based on Indian regulatory standards</li>
+                    <li>Risk assessment and mitigation recommendations</li>
+                    <li>Tax compliance evaluation</li>
+                    <li>Audit findings and recommendations</li>
+                  </ul>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Report Description */}
-            <div className="bg-white rounded-lg p-6 border border-gray-200 analysis-types-section">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Comprehensive Draft-Financial Due Diligence</h3>
+          {/* Available Documents Section */}
+          <div className="bg-white rounded-lg p-6 border border-gray-200">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Available Financial Documents</h3>
 
-              <div className="p-4 rounded-lg border border-indigo-100 bg-indigo-50">
-                <div className="flex items-start">
-                  <div className="ml-3">
-                    <h4 className="font-medium text-gray-900">Complete Financial Analysis & Audit</h4>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Our comprehensive report combines financial analysis and audit in one complete package, providing:
-                    </p>
-                    <ul className="mt-2 space-y-1 text-sm text-gray-600 list-disc pl-5">
-                      <li>Executive summary with key metrics and findings</li>
-                      <li>Detailed financial analysis with trends and projections</li>
-                      <li>Compliance assessment based on Indian regulatory standards</li>
-                      <li>Risk assessment and mitigation recommendations</li>
-                      <li>Tax compliance evaluation</li>
-                      <li>Audit findings and recommendations</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
+              {financialReports.length > 0 && (
+                <button
+                  onClick={() => setShowReportsList(!showReportsList)}
+                  className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center"
+                >
+                  <FiList className="mr-1" />
+                  {showReportsList ? 'Hide' : 'Show'} Previous Reports
+                </button>
+              )}
             </div>
 
-            {/* Available Documents Section */}
-            <div className="bg-white rounded-lg p-6 border border-gray-200">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">Available Financial Documents</h3>
-
-                {financialReports.length > 0 && (
-                  <button
-                    onClick={() => setShowReportsList(!showReportsList)}
-                    className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center"
-                  >
-                    <FiList className="mr-1" />
-                    {showReportsList ? 'Hide' : 'Show'} Previous Reports
-                  </button>
-                )}
-              </div>
-
-              {/* Previous Reports List */}
-              {showReportsList && financialReports.length > 0 && (
-                <div className="mb-6 bg-white p-4 rounded-lg border border-gray-200">
-                  <h4 className="font-medium text-gray-800 mb-2">Previous Reports</h4>
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {financialReports.map((report) => (
-                      <div key={report._id} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded-md">
-                        <div>
-                          <p className="font-medium text-gray-800">{report.companyName}</p>
-                          <p className="text-xs text-gray-500">
-                            {report.reportType === 'analysis' ? 'Financial Analysis' : 'Audit Report'} •
-                            {new Date(report.reportDate).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => fetchReportDetails(report._id)}
-                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-full"
-                            title="View Report"
-                          >
-                            <FiFileText size={16} />
-                          </button>
-                          <button
-                            onClick={() => downloadReport(report._id)}
-                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-full"
-                            title="Download PDF"
-                          >
-                            <FiDownload size={16} />
-                          </button>
-                        </div>
+            {/* Previous Reports List */}
+            {showReportsList && financialReports.length > 0 && (
+              <div className="mb-6 bg-white p-4 rounded-lg border border-gray-200">
+                <h4 className="font-medium text-gray-800 mb-2">Previous Reports</h4>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {financialReports.map((report) => (
+                    <div key={report._id} className="flex justify-between items-center p-2 hover:bg-gray-50 rounded-md">
+                      <div>
+                        <p className="font-medium text-gray-800">{report.companyName}</p>
+                        <p className="text-xs text-gray-500">
+                          {report.reportType === 'analysis' ? 'Financial Analysis' : 'Audit Report'} •
+                          {new Date(report.reportDate).toLocaleDateString()}
+                        </p>
                       </div>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => fetchReportDetails(report._id)}
+                          className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-full"
+                          title="View Report"
+                        >
+                          <FiFileText size={16} />
+                        </button>
+                        <button
+                          onClick={() => downloadReport(report._id)}
+                          className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-full"
+                          title="Download PDF"
+                        >
+                          <FiDownload size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Entity Documents List */}
+            {availableDocuments && availableDocuments.length > 0 ? (
+              <div className="mb-6">
+                <p className="text-sm text-gray-600 mb-3">
+                  The following financial documents were uploaded by {entityName} and will be used for analysis:
+                </p>
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {availableDocuments.map((doc, index) => (<div key={index} className="flex items-center p-2 hover:bg-white rounded-md">
+                      <FiFileText className="text-indigo-500 mr-2" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{doc.originalName}</p>
+                        <p className="text-xs text-gray-500">
+                          {getFormattedDocumentType(doc.documentType)} •
+                          Uploaded: {new Date(doc.createdAt || '').toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
                     ))}
                   </div>
                 </div>
-              )}
-
-              {/* Entity Documents List */}
-              {availableDocuments && availableDocuments.length > 0 ? (
-                <div className="mb-6">
-                  <p className="text-sm text-gray-600 mb-3">
-                    The following financial documents were uploaded by {entityName} and will be used for analysis:
-                  </p>
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {availableDocuments.map((doc, index) => (                        <div key={index} className="flex items-center p-2 hover:bg-white rounded-md">
-                          <FiFileText className="text-indigo-500 mr-2" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-800">{doc.originalName}</p>
-                            <p className="text-xs text-gray-500">
-                              {getFormattedDocumentType(doc.documentType)} •
-                              Uploaded: {new Date(doc.createdAt || '').toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+              </div>
+            ) : (
+              <div className="mb-6 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                <div className="flex items-start">
+                  <FiInfo className="text-yellow-500 mt-1 mr-2 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-medium text-gray-800 mb-1">No Financial Documents Available</h4>
+                    <p className="text-sm text-gray-600">
+                      {entityName} has not uploaded any financial documents yet. Financial documents need to be uploaded in their profile before analysis can be performed.
+                    </p>
                   </div>
                 </div>
-              ) : (
-                <div className="mb-6 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                  <div className="flex items-start">
-                    <FiInfo className="text-yellow-500 mt-1 mr-2 flex-shrink-0" />
-                    <div>
-                      <h4 className="font-medium text-gray-800 mb-1">No Financial Documents Available</h4>
-                      <p className="text-sm text-gray-600">
-                        {entityName} has not uploaded any financial documents yet. Financial documents need to be uploaded in their profile before analysis can be performed.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Generate Report Button */}
-            <div className="text-center">
-              <motion.button
-                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md flex items-center mx-auto generate-report-button"
-                onClick={handleGenerateReportClick}
-                disabled={isGenerating || !availableDocuments || availableDocuments.length === 0}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                {isGenerating ? (
-                  <>
-                    <SimpleSpinner size="sm" color="text-white" />
-                    <span className="ml-2">Generating Report...</span>
-                  </>
-                ) : (
-                  <>
-                    <FiBarChart2 className="mr-2" />
-                    Generate Draft-Financial Due Diligence Report
-                  </>
-                )}
-              </motion.button>
-              <p className="text-sm text-gray-500 mt-2">
-                {!availableDocuments || availableDocuments.length === 0
-                  ? `No financial documents available from ${entityName}`
-                  : `Generate a comprehensive financial due diligence report based on ${entityName}'s documents`}
-              </p>
-            </div>
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Generate Report Button */}
+          <div className="text-center">
+            <motion.button
+              className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md flex items-center mx-auto generate-report-button"
+              onClick={handleGenerateReportClick}
+              disabled={isGenerating || !availableDocuments || availableDocuments.length === 0}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {isGenerating ? (
+                <>
+                  <SimpleSpinner size="sm" color="text-white" />
+                  <span className="ml-2">Generating Report...</span>
+                </>
+              ) : (
+                <>
+                  <FiBarChart2 className="mr-2" />
+                  Generate Draft-Financial Due Diligence Report
+                </>
+              )}
+            </motion.button>
+            <p className="text-sm text-gray-500 mt-2">
+              {!availableDocuments || availableDocuments.length === 0
+                ? `No financial documents available from ${entityName}`
+                : `Generate a comprehensive financial due diligence report based on ${entityName}'s documents`}
+            </p>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

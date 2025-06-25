@@ -24,7 +24,8 @@ In 2–3 paragraphs, include:
    * Clearly outline goals: verify financial accuracy, assess internal control strength, evaluate ratio credibility, detect anomalies, and test assumptions.
 
 2. **Methodology**
-   * List sources (audited financials, management notes, tax filings, GST returns, contracts, bank statements, board minutes, etc.).
+   * List sources (audited financials, management notes, tax filings, GST returns, contracts, bank statements, board minutes, financial reports, presentations, and other relevant business documents provided).
+   * Note that FINANCIAL and OTHER CATEGORY documents are analyzed for financial implications and insights.
    * Describe your audit-style process:
      * Line-by-line verification
      * Ratio benchmarking and contradiction detection

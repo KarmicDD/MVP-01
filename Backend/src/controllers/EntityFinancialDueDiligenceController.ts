@@ -2,8 +2,9 @@ import { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import FinancialDueDiligenceReport from '../models/Analytics/FinancialDueDiligenceReport';
 import NewFinancialDueDiligenceReport from '../models/Analytics/NewFinancialDueDiligenceReport';
-import DocumentModel, { DocumentType } from '../models/Profile/Document';
+import DocumentModel, { DocumentType, FinancialDocumentType } from '../models/Profile/Document';
 import ApiUsageModel from '../models/ApiUsageModel/ApiUsage';
+import { getAllFinancialDocumentTypes, getRequiredFinancialDocumentTypes, getStartupSpecificFinancialDocumentTypes, getInvestorSpecificFinancialDocumentTypes } from '../utils/documentTypes';
 import StartupProfileModel from '../models/Profile/StartupProfile';
 import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
 import ExtendedProfileModel from '../models/Profile/ExtendedProfile';
@@ -141,26 +142,11 @@ async function checkRateLimit(userId: string): Promise<RateLimitResult> {
  * @returns Object containing available documents and missing document types
  */
 async function getEntityDocuments(entityId: string, entityType: 'startup' | 'investor') {
-    // Define required financial document types
-    const requiredFinancialDocumentTypes: DocumentType[] = [
-        'financial_balance_sheet',
-        'financial_income_statement',
-        'financial_cash_flow',
-        'financial_tax_returns',
-        'financial_gst_returns',
-        'financial_bank_statements'
-    ];
-
-    // Additional startup-specific document types
-    const startupSpecificDocumentTypes: DocumentType[] = [
-        'financial_projections',
-        'financial_cap_table'
-    ];
-
-    // Additional investor-specific document types
-    const investorSpecificDocumentTypes: DocumentType[] = [
-        'financial_audit_report'
-    ];
+    // Use the centralized document type utilities
+    const allFinancialDocumentTypes = getAllFinancialDocumentTypes();
+    const requiredFinancialDocumentTypes = getRequiredFinancialDocumentTypes();
+    const startupSpecificDocumentTypes = getStartupSpecificFinancialDocumentTypes();
+    const investorSpecificDocumentTypes = getInvestorSpecificFinancialDocumentTypes();
 
     // Determine which document types to look for based on entity type
     const documentTypesToCheck = [
@@ -168,11 +154,33 @@ async function getEntityDocuments(entityId: string, entityType: 'startup' | 'inv
         ...(entityType === 'startup' ? startupSpecificDocumentTypes : []),
         ...(entityType === 'investor' ? investorSpecificDocumentTypes : [])];
 
-    // Fetch ALL documents for the entity to ensure comprehensive analysis
-    // This matches the approach used in NewFinancialDueDiligenceController
-    const documents = await DocumentModel.find({
+    // Fetch ALL documents for the entity using flexible categorization
+    // This includes documents that might have 'other' as documentType but are actually financial
+    const allDocuments = await DocumentModel.find({
         userId: entityId
     });
+
+    // Filter documents that are actually financial using flexible categorization
+    const financialDocuments = allDocuments.filter(doc =>
+        doc.documentType.startsWith('financial_') ||
+        doc.category === 'financial' ||
+        (doc.originalName && doc.originalName.toLowerCase().includes('financial')) ||
+        (doc.originalName && doc.originalName.toLowerCase().includes('balance')) ||
+        (doc.originalName && doc.originalName.toLowerCase().includes('income')) ||
+        (doc.originalName && doc.originalName.toLowerCase().includes('cash')) ||
+        (doc.originalName && doc.originalName.toLowerCase().includes('revenue')) ||
+        (doc.originalName && doc.originalName.toLowerCase().includes('profit')) ||
+        (doc.originalName && doc.originalName.toLowerCase().includes('loss')) ||
+        (doc.originalName && doc.originalName.toLowerCase().includes('statement')) ||
+        (doc.originalName && doc.originalName.toLowerCase().includes('report')) ||
+        (doc.originalName && doc.originalName.toLowerCase().includes('audit')) ||
+        (doc.originalName && doc.originalName.toLowerCase().includes('tax')) ||
+        (doc.originalName && doc.originalName.toLowerCase().includes('gst')) ||
+        (doc.originalName && doc.originalName.toLowerCase().includes('bank'))
+    );
+
+    // Use the filtered financial documents instead of all documents
+    const documents = financialDocuments;
 
     // Check which required documents are missing
     const availableDocumentTypes = documents.map(doc => doc.documentType);
@@ -1781,3 +1789,5 @@ function splitTextIntoLines(text: string, maxCharsPerLine: number): string[] {
 
     return lines;
 }
+
+

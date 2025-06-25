@@ -203,10 +203,6 @@ export const mongoSanitizeMiddleware = mongoSanitize({
         logSecurityEvent('NOSQL_INJECTION_ATTEMPT', req, { key });
     }
 });
-
-/**
- * Enhanced rate limiting middleware with different limits for different endpoints
- */
 export const createRateLimiter = (
     windowMs: number = 15 * 60 * 1000, // 15 minutes
     max: number = 100,
@@ -274,6 +270,15 @@ export const uploadRateLimit = createRateLimit(
     60 * 60 * 1000, // 1 hour
     10, // 10 uploads
     'Too many file uploads, please try again after 1 hour'
+);
+
+/**
+ * CSRF token endpoint rate limiting
+ */
+export const csrfTokenRateLimit = createRateLimit(
+    60 * 1000, // 1 minute
+    30, // 30 requests per minute
+    'Too many CSRF token requests, please try again later'
 );
 
 /**
@@ -385,25 +390,37 @@ export const validateFileUpload = (allowedTypes: string[], maxSize: number = 10 
  * Security Headers Middleware
  */
 export const securityHeaders = (req: Request, res: Response, next: NextFunction): void => {
-    // Content Security Policy
-    res.setHeader('Content-Security-Policy', [
+    // Enhanced Content Security Policy - Remove unsafe-inline in production
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    const cspDirectives = [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://apis.google.com",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        isProduction
+            ? "script-src 'self' https://fonts.googleapis.com https://apis.google.com"
+            : "script-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://apis.google.com",
+        isProduction
+            ? "style-src 'self' https://fonts.googleapis.com"
+            : "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
         "img-src 'self' data: https: blob:",
-        "connect-src 'self' https://api.karmicdd.com https://mvp-01.onrender.com",
+        "connect-src 'self' https://api.karmicdd.com https://mvp-01.onrender.com https://karmicdd.netlify.app",
         "frame-ancestors 'none'",
         "base-uri 'self'",
-        "form-action 'self'"
-    ].join('; '));
+        "form-action 'self'",
+        "object-src 'none'",
+        "media-src 'self'",
+        "worker-src 'self'",
+        "manifest-src 'self'"
+    ];
+
+    res.setHeader('Content-Security-Policy', cspDirectives.join('; '));
 
     // Other security headers
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-XSS-Protection', '1; mode=block');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=(), usb=()');
 
     // HSTS for HTTPS
     if (req.secure || req.get('X-Forwarded-Proto') === 'https') {

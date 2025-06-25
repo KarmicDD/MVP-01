@@ -131,7 +131,7 @@ class NewLegalDueDiligenceService {
         updatedAt?: string
     }>): Promise<string> {
         try {
-            console.log(`Processing ${documents.length} legal documents using memory-based OCR service`);
+            console.log(`[LEGAL DD] Processing ${documents.length} legal documents using memory-based OCR service`);
 
             // Filter PDF documents for OCR processing
             const pdfDocuments = documents.filter(doc => {
@@ -149,7 +149,7 @@ class NewLegalDueDiligenceService {
 
             // Process PDF documents with memory-based OCR
             if (pdfDocuments.length > 0) {
-                console.log(`Processing ${pdfDocuments.length} PDF documents with memory-based OCR using combine-first approach`);
+                console.log(`[LEGAL DD] Processing ${pdfDocuments.length} PDF documents with memory-based OCR using combine-first approach`);
 
                 // Prepare documents for memory-based processing
                 const documentsWithBuffers: Array<{
@@ -188,7 +188,7 @@ class NewLegalDueDiligenceService {
                 // Process PDFs with memory-based OCR service using the new combine-first approach
                 if (documentsWithBuffers.length > 0) {
                     try {
-                        console.log(`Using new combine-first approach: will combine ${documentsWithBuffers.length} PDFs into one before chunking`);
+                        console.log(`[LEGAL DD] Using new combine-first approach: will combine ${documentsWithBuffers.length} PDFs into one before chunking`);
 
                         // Use the new processMultiplePdfDocuments method which combines first, then chunks
                         const ocrResult = await this.memoryBasedOcrService.processMultiplePdfDocuments(
@@ -205,7 +205,7 @@ class NewLegalDueDiligenceService {
 
             // Process non-PDF documents with traditional methods (if any)
             if (nonPdfDocuments.length > 0) {
-                console.log(`Processing ${nonPdfDocuments.length} non-PDF documents with traditional methods`);
+                console.log(`[LEGAL DD] Processing ${nonPdfDocuments.length} non-PDF documents with traditional methods`);
 
                 for (const doc of nonPdfDocuments) {
                     try {
@@ -257,7 +257,7 @@ class NewLegalDueDiligenceService {
         additionalContext?: string
     ): Promise<any> {
         try {
-            console.log(`Generating legal due diligence report for ${companyName}`);
+            console.log(`[LEGAL DD] Generating legal due diligence report for ${companyName}`);
 
             // Prepare the analysis prompt with document content
             const analysisPrompt = `
@@ -281,7 +281,7 @@ Remember to:
 6. Consider the transaction context in your analysis
 `;
 
-            console.log('Calling Gemini API for legal due diligence analysis...');
+            console.log('[LEGAL DD] Calling Gemini API for legal due diligence analysis...');
 
             // Use the retry mechanism for API calls
             const result = await executeGeminiWithDynamicRetry(async () => {
@@ -296,7 +296,7 @@ Remember to:
             const response = result.response;
             let responseText = response.text();
 
-            console.log('Received response from Gemini API for legal analysis');
+            console.log('[LEGAL DD] Received response from Gemini API for legal analysis');
 
             // Log the raw response for debugging
             fileLogger.logTextToFile(
@@ -320,7 +320,7 @@ Remember to:
                 'legal_dd_processed_report'
             );
 
-            console.log('Successfully generated legal due diligence report');
+            console.log('[LEGAL DD] Successfully generated legal due diligence report');
             return transformedReport;
 
         } catch (error) {
@@ -800,7 +800,7 @@ Remember to:
         additionalContext?: string
     ): Promise<any> {
         try {
-            console.log(`Starting complete legal due diligence process for ${companyName} with ${documents.length} documents`);
+            console.log(`[LEGAL DD] Starting complete legal due diligence process for ${companyName} with ${documents.length} documents`);
 
             // Step 1: Process all documents
             const processedContent = await this.processDocumentsInBatches(documents);
@@ -809,12 +809,12 @@ Remember to:
                 throw new Error('No content was extracted from the provided legal documents');
             }
 
-            console.log(`Processed content length: ${processedContent.length} characters`);
+            console.log(`[LEGAL DD] Processed content length: ${processedContent.length} characters`);
 
             // Step 2: Generate the legal due diligence report
             const report = await this.generateLegalDueDiligenceReport(processedContent, companyName, additionalContext);
 
-            console.log('Legal due diligence process completed successfully');
+            console.log('[LEGAL DD] Legal due diligence process completed successfully');
             return report;
 
         } catch (error) {

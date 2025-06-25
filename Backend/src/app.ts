@@ -12,11 +12,15 @@ import {
     mongoSanitizeMiddleware,
     generalRateLimit,
     securityHeaders,
-    logSecurityEvent
+    logSecurityEvent,
+    csrfTokenRateLimit
 } from './middleware/security';
 
 // CSRF protection middleware
 import { csrfProtection, getCSRFToken } from './middleware/csrf';
+
+// Session configuration
+import { createSessionConfig } from './config/session';
 
 // Routes import
 import routes from './routes';
@@ -61,18 +65,7 @@ export const createApp = (): Application => {
     app.use(cookieParser());
 
     // Session configuration for CSRF protection
-    app.use(session({
-        secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
-        resave: false,
-        saveUninitialized: false,
-        cookie: {
-            secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
-            httpOnly: true, // Prevent XSS attacks
-            maxAge: 24 * 60 * 60 * 1000, // 24 hours
-            sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax' // CSRF protection
-        },
-        name: 'karmicDD.sid' // Don't use default session name
-    }));
+    app.use(session(createSessionConfig()));
 
     // CORS Configuration
     const corsOptions = {
@@ -110,7 +103,7 @@ export const createApp = (): Application => {
 
     // CSRF token endpoint
     logger.info('Setting up CSRF token endpoint', { endpoint: '/api/csrf-token' }, 'SECURITY');
-    app.get('/api/csrf-token', getCSRFToken);
+    app.get('/api/csrf-token', csrfTokenRateLimit, getCSRFToken);
 
     // Custom middlewares
     app.use(countRequest);

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import FinancialDueDiligenceReport from '../models/Analytics/FinancialDueDiligenceReport';
-import DocumentModel, { DocumentType } from '../models/Profile/Document';
+import DocumentModel, { DocumentType, FinancialDocumentType } from '../models/Profile/Document';
 import ApiUsageModel from '../models/ApiUsageModel/ApiUsage';
 import StartupProfileModel from '../models/Profile/StartupProfile';
 import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
@@ -10,6 +10,7 @@ import ExtendedProfileModel from '../models/Profile/ExtendedProfile';
 import QuestionnaireSubmissionModel from '../models/question/QuestionnaireSubmission';
 import TaskModel from '../models/Task';
 import enhancedDocumentProcessingService from '../services/EnhancedDocumentProcessingService';
+import { getAllFinancialDocumentTypes } from '../utils/documentTypes';
 
 // Load environment variables
 dotenv.config();
@@ -265,26 +266,35 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
                 return;
             }
 
-            // Define required financial document types
-            const requiredFinancialDocumentTypes: DocumentType[] = [
-                'financial_balance_sheet',
-                'financial_income_statement',
-                'financial_cash_flow',
-                'financial_tax_returns',
-                'financial_gst_returns',
-                'financial_bank_statements'
+            // Use the complete financial document types from the model definition
+            const allFinancialDocumentTypes = getAllFinancialDocumentTypes();
+
+            // Define document type categories using constants to avoid hardcoding
+            const REQUIRED_FINANCIAL_TYPES = [
+                'financial_balance_sheet' as const, 'financial_income_statement' as const, 'financial_cash_flow' as const,
+                'financial_tax_returns' as const, 'financial_gst_returns' as const, 'financial_bank_statements' as const
             ];
 
-            // Additional startup-specific document types
-            const startupSpecificDocumentTypes: DocumentType[] = [
-                'financial_projections',
-                'financial_cap_table'
+            const STARTUP_SPECIFIC_TYPES = [
+                'financial_projections' as const, 'financial_cap_table' as const
             ];
 
-            // Additional investor-specific document types
-            const investorSpecificDocumentTypes: DocumentType[] = [
-                'financial_audit_report'
+            const INVESTOR_SPECIFIC_TYPES = [
+                'financial_audit_report' as const
             ];
+
+            // For compatibility, we can still categorize them if needed
+            const requiredFinancialDocumentTypes = allFinancialDocumentTypes.filter(type =>
+                REQUIRED_FINANCIAL_TYPES.includes(type as any)
+            );
+
+            const startupSpecificDocumentTypes = allFinancialDocumentTypes.filter(type =>
+                STARTUP_SPECIFIC_TYPES.includes(type as any)
+            );
+
+            const investorSpecificDocumentTypes = allFinancialDocumentTypes.filter(type =>
+                INVESTOR_SPECIFIC_TYPES.includes(type as any)
+            );
 
             // Determine which document types to look for based on perspective
             const documentTypesToCheck = [
@@ -298,10 +308,19 @@ export const analyzeFinancialDueDiligence = async (req: Request, res: Response):
 
             console.log(`Analyzing financial documents for entity ID: ${entityIdToAnalyze} with perspective: ${perspective}`);
 
+            // Only include financial and other category documents for financial due diligence
             const documents = await DocumentModel.find({
-                userId: entityIdToAnalyze
-                // No documentType filter here, to include all types (e.g., 'other', 'legal', etc.)
-                // This ensures all documents are available for the analysis process.
+                userId: entityIdToAnalyze,
+                $or: [
+                    // Explicit financial document types
+                    { documentType: { $in: allFinancialDocumentTypes } },
+                    // Documents with financial keywords in name (case insensitive)
+                    { originalName: { $regex: /financial|balance|income|cash|revenue|profit|loss|statement|report|audit|tax|gst|bank/i } },
+                    // Documents with category set to financial
+                    { category: 'financial' },
+                    // Include "other" category documents for comprehensive financial analysis
+                    { category: 'other' }
+                ]
             });
 
             // Gather all available information about the startup and investor

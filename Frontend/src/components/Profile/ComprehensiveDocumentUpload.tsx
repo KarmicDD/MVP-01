@@ -259,19 +259,62 @@ const ComprehensiveDocumentUpload: React.FC = () => {
     };
 
     const handleFiles = (selectedFiles: File[]) => {
-        const newFiles: FileWithMetadata[] = selectedFiles.map(file => ({
-            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            file,
-            category: bulkMetadata.category,
-            documentType: bulkMetadata.documentType || (getDocumentTypesByCategory(bulkMetadata.category)[0]?.value || 'other'),
-            timePeriod: bulkMetadata.timePeriod,
-            description: '',
-            isPublic: bulkMetadata.isPublic,
-            uploadProgress: 0,
-            isUploading: false,
-            isUploaded: false,
-            editMode: true
-        }));
+        const newFiles: FileWithMetadata[] = selectedFiles.map(file => {
+            // Ensure the category matches the currently selected tab
+            const fileCategory = selectedCategory;
+
+            // Get a smart default document type based on the category and filename
+            const getSmartDocumentType = (fileName: string, category: keyof typeof DOCUMENT_CATEGORIES): string => {
+                const lowerFileName = fileName.toLowerCase();
+
+                if (category === 'financial') {
+                    // Map common financial document names to specific types
+                    if (lowerFileName.includes('balance') || lowerFileName.includes('bs')) return 'financial_balance_sheet';
+                    if (lowerFileName.includes('income') || lowerFileName.includes('p&l') || lowerFileName.includes('profit')) return 'financial_income_statement';
+                    if (lowerFileName.includes('cash') || lowerFileName.includes('flow')) return 'financial_cash_flow';
+                    if (lowerFileName.includes('tax') || lowerFileName.includes('itr')) return 'financial_tax_returns';
+                    if (lowerFileName.includes('audit')) return 'financial_audit_report';
+                    if (lowerFileName.includes('gst')) return 'financial_gst_returns';
+                    if (lowerFileName.includes('bank') || lowerFileName.includes('statement')) return 'financial_bank_statements';
+                    if (lowerFileName.includes('projection') || lowerFileName.includes('forecast')) return 'financial_projections';
+                    if (lowerFileName.includes('valuation')) return 'financial_valuation_report';
+                    if (lowerFileName.includes('cap') && lowerFileName.includes('table')) return 'financial_cap_table';
+                    if (lowerFileName.includes('funding') || lowerFileName.includes('investment')) return 'financial_funding_history';
+                    if (lowerFileName.includes('debt') || lowerFileName.includes('loan')) return 'financial_debt_schedule';
+                    // Default to balance sheet for financial documents
+                    return 'financial_balance_sheet';
+                } else if (category === 'legal') {
+                    // Map common legal document names to specific types
+                    if (lowerFileName.includes('incorporation') || lowerFileName.includes('certificate')) return 'legal_incorporation_certificate';
+                    if (lowerFileName.includes('moa') || lowerFileName.includes('aoa') || lowerFileName.includes('bylaws')) return 'legal_moa_aoa';
+                    if (lowerFileName.includes('agreement') || lowerFileName.includes('contract')) return 'legal_nda_agreements';
+                    if (lowerFileName.includes('share') && lowerFileName.includes('agreement')) return 'legal_sha_ssa';
+                    if (lowerFileName.includes('board') || lowerFileName.includes('resolution')) return 'legal_board_resolutions';
+                    if (lowerFileName.includes('employment')) return 'legal_employment_agreements';
+                    if (lowerFileName.includes('license') || lowerFileName.includes('permit')) return 'legal_government_licenses';
+                    if (lowerFileName.includes('patent') || lowerFileName.includes('trademark')) return 'legal_patent_filings';
+                    // Default to incorporation certificate for legal documents
+                    return 'legal_incorporation_certificate';
+                }
+
+                // Default for 'other' category or fallback
+                return bulkMetadata.documentType || (getDocumentTypesByCategory(category)[0]?.value || 'other');
+            };
+
+            return {
+                id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                file,
+                category: fileCategory, // Always use the selected tab category
+                documentType: getSmartDocumentType(file.name, fileCategory),
+                timePeriod: bulkMetadata.timePeriod,
+                description: '',
+                isPublic: bulkMetadata.isPublic,
+                uploadProgress: 0,
+                isUploading: false,
+                isUploaded: false,
+                editMode: true
+            };
+        });
 
         setFiles(prev => [...prev, ...newFiles]);
     }; const updateFileMetadata = (fileId: string, updates: Partial<FileWithMetadata>) => {
@@ -588,6 +631,9 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                     <div className="text-center lg:text-left">
                         <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 sm:mb-3">Document Management Center</h2>
                         <p className="text-gray-600 text-sm sm:text-base lg:text-lg">Organize, upload, and manage your business documents with ease</p>
+                        <p className="text-blue-600 text-xs sm:text-sm font-medium mt-1">
+                            ℹ️ "Other" category documents are analyzed in both Financial and Legal Due Diligence (Financial DD excludes legal docs, Legal DD excludes financial docs)
+                        </p>
                     </div>
                     <div className="flex items-center justify-center space-x-3 bg-white rounded-lg px-3 sm:px-4 py-2 sm:py-3 shadow-sm border">
                         <FiFolder className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
@@ -640,6 +686,23 @@ const ComprehensiveDocumentUpload: React.FC = () => {
                         <FiPlus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                         Quick Upload Settings for {DOCUMENT_CATEGORIES[selectedCategory]}
                     </h3>
+
+                    {/* Special information for "other" category */}
+                    {selectedCategory === 'other' && (
+                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className="flex items-start">
+                                <FiInfo className="w-4 h-4 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
+                                <div>
+                                    <p className="text-sm text-blue-800 font-medium mb-1">
+                                        Enhanced Due Diligence Coverage
+                                    </p>
+                                    <p className="text-xs text-blue-700">
+                                        Documents uploaded in the "Other" category will be automatically analyzed in both Financial Due Diligence (along with financial documents) and Legal Due Diligence (along with legal documents), ensuring comprehensive coverage without cross-contamination between financial and legal analyses.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-4">
                         <div>

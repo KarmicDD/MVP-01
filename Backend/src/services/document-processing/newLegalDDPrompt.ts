@@ -51,7 +51,8 @@ In 2–3 paragraphs, include:
    * Clearly outline goals: verify corporate structure, assess compliance status, evaluate legal risks, identify regulatory issues, and review material agreements.
 
 2. **Methodology**
-   * List sources examined (incorporation documents, board resolutions, statutory registers, material agreements, compliance certificates, regulatory filings, IP documents, employment agreements, etc.).
+   * List sources examined (incorporation documents, board resolutions, statutory registers, material agreements, compliance certificates, regulatory filings, IP documents, employment agreements, legal reports, presentations, and other relevant business documents provided).
+   * Note that LEGAL and OTHER CATEGORY documents are analyzed for legal implications, compliance issues, and regulatory concerns.
    * Describe your legal audit process:
      * Document-by-document verification
      * Cross-referencing with statutory requirements

@@ -6,6 +6,7 @@ import { generateToken } from '../config/jwt';
 // @ts-ignore
 import { validationResult } from 'express-validator';
 import { sanitizeEmail, sanitizeInput, checkRateLimit } from '../utils/security';
+import { regenerateCSRFTokenForSession } from '../middleware/csrfRegeneration';
 
 const frontendUrl = 'https://karmicdd.netlify.app';
 // Register new user
@@ -78,6 +79,12 @@ const register = async (req: Request, res: Response): Promise<void> => {
             newUser.email,
             newUser.role
         );
+
+        // Regenerate CSRF token for new session
+        const newCSRFToken = regenerateCSRFTokenForSession(req);
+        if (newCSRFToken) {
+            res.setHeader('X-New-CSRF-Token', newCSRFToken);
+        }
 
         res.status(201).json({
             message: 'User registered successfully',
@@ -159,6 +166,12 @@ const login = async (req: Request, res: Response) => {
 
         // Generate JWT
         const token = generateToken(user.user_id, user.email, user.role);
+
+        // Regenerate CSRF token for new session
+        const newCSRFToken = regenerateCSRFTokenForSession(req);
+        if (newCSRFToken) {
+            res.setHeader('X-New-CSRF-Token', newCSRFToken);
+        }
 
         const responseData = {
             message: 'Login successful',

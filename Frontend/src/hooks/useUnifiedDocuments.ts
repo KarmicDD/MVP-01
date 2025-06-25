@@ -147,7 +147,17 @@ export function useUnifiedDocuments(
             doc.documentType.startsWith('financial_') ||
             doc.documentName.toLowerCase().includes('financial') ||
             doc.documentName.toLowerCase().includes('balance') ||
-            doc.documentName.toLowerCase().includes('income')
+            doc.documentName.toLowerCase().includes('income') ||
+            doc.documentName.toLowerCase().includes('cash') ||
+            doc.documentName.toLowerCase().includes('revenue') ||
+            doc.documentName.toLowerCase().includes('profit') ||
+            doc.documentName.toLowerCase().includes('loss') ||
+            doc.documentName.toLowerCase().includes('statement') ||
+            doc.documentName.toLowerCase().includes('report') ||
+            doc.documentName.toLowerCase().includes('audit') ||
+            doc.documentName.toLowerCase().includes('tax') ||
+            doc.documentName.toLowerCase().includes('gst') ||
+            doc.documentName.toLowerCase().includes('bank')
         );
     };
 

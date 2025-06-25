@@ -1,12 +1,13 @@
 import { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import LegalDueDiligenceReportModel from '../models/Analytics/LegalDueDiligenceReport';
-import DocumentModel, { DocumentType } from '../models/Profile/Document';
+import DocumentModel, { DocumentType, LegalDocumentType } from '../models/Profile/Document';
 import ApiUsageModel from '../models/ApiUsageModel/ApiUsage';
 import StartupProfileModel from '../models/Profile/StartupProfile';
 import InvestorProfileModel from '../models/InvestorModels/InvestorProfile';
 import NewLegalDueDiligenceService from '../services/NewLegalDueDiligenceService';
 import { Types } from 'mongoose';
+import { getAllLegalDocumentTypes } from '../utils/documentTypes';
 
 // Load environment variables
 dotenv.config();
@@ -87,17 +88,8 @@ export const checkLegalDocumentsAvailability = async (req: Request, res: Respons
             });
         }
 
-        // Using correct DocumentType enum values based on the schema
-        const legalDocumentTypes: DocumentType[] = [
-            'legal_incorporation_certificate',
-            'legal_moa_aoa',
-            'legal_board_resolutions',
-            'legal_shareholders_agreement',
-            'legal_share_certificates',
-            'legal_valuation_reports',
-            'legal_loan_agreements',
-            'legal_annual_filings'
-        ];
+        // Use the complete legal document types from the model definition
+        const legalDocumentTypes = getAllLegalDocumentTypes();
 
         // Find documents using userId field (not entityId) to match the document schema
         const documents = await DocumentModel.find({
@@ -156,7 +148,7 @@ export const analyzeNewLegalDueDiligence = async (req: Request, res: Response) =
         const { entityId } = req.params;
         const entityType = (req.query.entityType as 'startup' | 'investor') || 'startup';
 
-        console.log(`Processing legal due diligence request for entityId: ${entityId}, entityType: ${entityType}`);
+        console.log(`[LEGAL DD] Processing legal due diligence request for entityId: ${entityId}, entityType: ${entityType}`);
 
         if (!entityId) {
             return res.status(400).json({
@@ -165,8 +157,9 @@ export const analyzeNewLegalDueDiligence = async (req: Request, res: Response) =
             });
         }
 
-        const existingReport = await LegalDueDiligenceReportModel.findOne({ entityId, entityType }); if (existingReport) {
-            console.log(`Existing legal due diligence report found for entity ${entityId}`);
+        const existingReport = await LegalDueDiligenceReportModel.findOne({ entityId, entityType });
+        if (existingReport) {
+            console.log(`[LEGAL DD] Existing legal due diligence report found for entity ${entityId}`);
             return res.status(200).json({
                 message: 'Legal due diligence report already exists',
                 success: true,
@@ -175,7 +168,9 @@ export const analyzeNewLegalDueDiligence = async (req: Request, res: Response) =
                     processingStatus: 'completed'
                 }
             });
-        } let entityProfile;
+        }
+
+        let entityProfile;
 
         if (entityType === 'startup') {
             entityProfile = await StartupProfileModel.findOne({ userId: entityId });
@@ -190,7 +185,9 @@ export const analyzeNewLegalDueDiligence = async (req: Request, res: Response) =
                 errorCode: 'PROFILE_NOT_FOUND',
                 suggestion: 'Please ensure the entity profile is properly created before requesting legal due diligence analysis.'
             });
-        }        // Strict validation: Ensure company name is available
+        }
+
+        // Strict validation: Ensure company name is available
         const companyName = entityProfile.companyName;
         if (!companyName || companyName.trim() === '') {
             return res.status(422).json({
@@ -212,32 +209,35 @@ export const analyzeNewLegalDueDiligence = async (req: Request, res: Response) =
             });
         }
 
-        const legalDocumentTypes: DocumentType[] = [
-            'legal_incorporation_certificate',
-            'legal_moa_aoa',
-            'legal_board_resolutions',
-            'legal_shareholders_agreement',
-            'legal_share_certificates',
-            'legal_valuation_reports',
-            'legal_loan_agreements',
-            'legal_annual_filings'
-        ];
+        // Use the complete legal document types from the model definition
+        const legalDocumentTypes = getAllLegalDocumentTypes();
 
+        // Include legal documents AND other category documents for comprehensive legal analysis
         const legalDocuments = await DocumentModel.find({
             userId: entityId,
-            documentType: { $in: legalDocumentTypes }
+            $or: [
+                // Explicit legal document types
+                { documentType: { $in: legalDocumentTypes } },
+                // Documents with category set to legal
+                { category: 'legal' },
+                // Include ALL "other" category documents for comprehensive legal analysis
+                { category: 'other' },
+                // Documents with legal keywords in name (case insensitive) - ONLY legal keywords
+                { originalName: { $regex: /legal|agreement|contract|certificate|resolution|compliance|license|registration|patent|trademark|incorporation|moa|aoa|sha|ssa|nda/i } }
+            ]
         });
 
         if (legalDocuments.length === 0) {
             return res.status(404).json({
-                message: 'No legal documents found for analysis',
+                message: 'No documents found for legal analysis',
                 success: false,
-                errorCode: 'NO_LEGAL_DOCUMENTS',
-                suggestion: 'Please upload legal documents such as incorporation certificate, MOA/AOA, board resolutions, etc.'
+                errorCode: 'NO_DOCUMENTS_FOR_LEGAL_ANALYSIS',
+                suggestion: 'Please upload legal documents such as incorporation certificate, MOA/AOA, board resolutions, or any other relevant documents for legal due diligence analysis.'
             });
         }
 
-        console.log(`Found ${legalDocuments.length} legal documents for analysis`);
+        console.log(`[LEGAL DD] Found ${legalDocuments.length} documents for legal analysis (including legal, other category, and relevant documents):`,
+            legalDocuments.map(doc => ({ type: doc.documentType, category: doc.category, name: doc.originalName })));
 
         const documentsForProcessing = legalDocuments.map(doc => ({
             filePath: doc.filePath || `/path/to/uploads/${doc.fileName}`,
@@ -248,7 +248,9 @@ export const analyzeNewLegalDueDiligence = async (req: Request, res: Response) =
             fileSize: doc.fileSize,
             createdAt: doc.createdAt?.toISOString(),
             updatedAt: doc.updatedAt?.toISOString()
-        }));        // Process documents and generate report with strict validation
+        }));
+
+        // Process documents and generate report with strict validation
         let analysisResult;
         try {
             analysisResult = await newLegalDueDiligenceService.processLegalDocumentsAndGenerateReport(
@@ -285,7 +287,9 @@ export const analyzeNewLegalDueDiligence = async (req: Request, res: Response) =
 
             // Re-throw other errors to be handled by the general error handler
             throw analysisError;
-        } const reportData = {
+        }
+
+        const reportData = {
             entityId: entityId,
             entityType: entityType,
             entityProfile: {
@@ -307,8 +311,12 @@ export const analyzeNewLegalDueDiligence = async (req: Request, res: Response) =
             missingDocumentTypes: legalDocumentTypes.filter(
                 docType => !legalDocuments.map(doc => doc.documentType).includes(docType)
             )
-        }; const newReport = new LegalDueDiligenceReportModel(reportData);
+        };
+
+        const newReport = new LegalDueDiligenceReportModel(reportData);
         await newReport.save();
+
+        console.log(`[LEGAL DD] Legal due diligence analysis completed successfully for entity ${entityId}`);
 
         res.status(201).json({
             message: 'Legal due diligence report generated successfully',
@@ -352,23 +360,25 @@ export const getLegalDueDiligenceReports = async (req: Request, res: Response) =
 
         const reports = await LegalDueDiligenceReportModel.find(queryFilter)
             .select('entityId entityType entityProfile legalAnalysis reportCalculated createdAt updatedAt availableDocuments missingDocumentTypes')
-            .sort({ createdAt: -1 }); const formattedReports = reports.map(report => ({
-                reportId: report._id,
-                entityId: report.entityId,
-                entityType: report.entityType,
-                companyName: report.entityProfile?.companyName || '',
-                reportGeneratedAt: report.createdAt,
-                processingStatus: report.reportCalculated ? 'completed' : 'pending',
-                analysisResult: report.legalAnalysis,
-                availableDocuments: report.availableDocuments || [],
-                missingDocumentTypes: report.missingDocumentTypes || [],
-                summary: {
-                    overallRisk: report.legalAnalysis?.riskScore?.riskLevel || 'Not assessed',
-                    complianceRating: report.legalAnalysis?.complianceAssessment?.complianceScore || 'Not assessed'
-                },
-                createdAt: report.createdAt,
-                updatedAt: report.updatedAt
-            }));
+            .sort({ createdAt: -1 });
+
+        const formattedReports = reports.map(report => ({
+            reportId: report._id,
+            entityId: report.entityId,
+            entityType: report.entityType,
+            companyName: report.entityProfile?.companyName || '',
+            reportGeneratedAt: report.createdAt,
+            processingStatus: report.reportCalculated ? 'completed' : 'pending',
+            analysisResult: report.legalAnalysis,
+            availableDocuments: report.availableDocuments || [],
+            missingDocumentTypes: report.missingDocumentTypes || [],
+            summary: {
+                overallRisk: report.legalAnalysis?.riskScore?.riskLevel || 'Not assessed',
+                complianceRating: report.legalAnalysis?.complianceAssessment?.complianceScore || 'Not assessed'
+            },
+            createdAt: report.createdAt,
+            updatedAt: report.updatedAt
+        }));
 
         console.log(`Found ${formattedReports.length} legal DD reports`);
 
@@ -412,7 +422,8 @@ export const getLegalDueDiligenceReportById = async (req: Request, res: Response
 
         res.status(200).json({
             message: 'Legal due diligence report retrieved successfully',
-            success: true, data: {
+            success: true,
+            data: {
                 reportId: report._id,
                 entityId: report.entityId,
                 companyName: report.entityProfile?.companyName || '',
