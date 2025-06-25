@@ -1,7 +1,7 @@
 // src/services/api.ts
 import axios, { AxiosError } from 'axios';
 
-// Use environment variable or fallback to local development URL
+// Use environment variable or fallback to production URL
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'https://mvp-01.onrender.com/api';
 
 // Helper function to extract meaningful error messages from API responses
@@ -77,16 +77,14 @@ export const extractErrorMessage = (error: unknown): string => {
 // Define interfaces for auth services
 interface UserRegistrationData {
     email: string;
-    password?: string;
-    name?: string;
-    role?: string;
-    [key: string]: string | number | boolean | undefined | null | string[]; // Use more specific types instead of any
+    password: string;
+    fullName: string;
+    role: string;
 }
 
 interface UserCredentials {
     email: string;
     password: string;
-    [key: string]: string | number | boolean | undefined | null | string[]; // Use more specific types instead of any
 }
 
 // Create axios instance
@@ -148,10 +146,14 @@ api.interceptors.response.use(
 );
 
 // Auth services
-export const authService = {
-    // Register
+export const authService = {    // Register
     register: async (userData: UserRegistrationData) => {
         try {
+            // console.log('authService.register called with data:', {
+            //     ...userData,
+            //     password: '[REDACTED]'
+            // });
+
             const response = await api.post('/auth/register', userData);
             if (response.data.token) {
                 localStorage.setItem('token', response.data.token);

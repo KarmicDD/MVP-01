@@ -1,4 +1,4 @@
-import express, { Application, Request, Response } from 'express';
+import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -59,18 +59,6 @@ export const createApp = (): Application => {
     app.use(express.urlencoded({ extended: true, limit: '2mb' }));
     app.use(cookieParser());
 
-    // Session management
-    app.use(session({
-        secret: process.env.SESSION_SECRET || 'default_secret',
-        resave: false,
-        saveUninitialized: true,
-        cookie: {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production', // Set to true in production
-            maxAge: 24 * 60 * 60 * 1000 // 24 hours
-        }
-    }));
-
     // Session configuration for CSRF protection
     app.use(session({
         secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
@@ -80,17 +68,34 @@ export const createApp = (): Application => {
             secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
             httpOnly: true, // Prevent XSS attacks
             maxAge: 24 * 60 * 60 * 1000, // 24 hours
-            sameSite: 'strict' // CSRF protection
+            sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax' // CSRF protection
         },
         name: 'karmicDD.sid' // Don't use default session name
     }));
 
     // CORS Configuration
     const corsOptions = {
-        origin: ['https://karmicdd.netlify.app', 'http://localhost:5173'],
+        origin: function (origin: string | undefined, callback: Function) {
+            // Allow requests with no origin (like mobile apps or curl requests)
+            if (!origin) return callback(null, true);
+
+            const allowedOrigins = [
+                'https://karmicdd.netlify.app',
+                'http://localhost:5173',
+                'http://localhost:3000',
+                'http://127.0.0.1:5173'
+            ];
+
+            if (allowedOrigins.indexOf(origin) !== -1) {
+                callback(null, true);
+            } else {
+                console.warn(`CORS blocked origin: ${origin}`);
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
         credentials: true,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Requested-With'],
         maxAge: 86400 // 24 hours
     };
     app.use(cors(corsOptions));
@@ -98,10 +103,24 @@ export const createApp = (): Application => {
     // Handle CORS Preflight Requests
     app.options('*', cors(corsOptions)); // Ensure preflight requests also use these options
 
+    // Add request logging middleware
+    app.use((req: Request, res: Response, next: NextFunction) => {
+        console.log(`\n=== INCOMING REQUEST ===`);
+        console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
+        console.log(`Headers:`, JSON.stringify(req.headers, null, 2));
+        console.log(`Body:`, req.body ? JSON.stringify(req.body, null, 2) : 'No body');
+        console.log(`Query:`, JSON.stringify(req.query, null, 2));
+        console.log(`IP:`, req.ip);
+        console.log(`========================\n`);
+        next();
+    });
+
     // CSRF Protection (after session and before routes)
+    console.log('Applying CSRF protection middleware');
     app.use(csrfProtection);
 
     // CSRF token endpoint
+    console.log('Setting up CSRF token endpoint');
     app.get('/api/csrf-token', getCSRFToken);
 
     // Custom middlewares
@@ -112,7 +131,19 @@ export const createApp = (): Application => {
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, { explorer: true }));
 
     // Define Routes
+    console.log('Registering API routes under /api');
     app.use('/api', routes);
+
+    // Add a test endpoint to verify the server is working
+    app.get('/api/test', (req: Request, res: Response) => {
+        console.log('Test endpoint hit:', req.method, req.path);
+        res.json({
+            message: 'API is working',
+            timestamp: new Date().toISOString(),
+            path: req.path,
+            method: req.method
+        });
+    });
 
     // Statistics endpoint
     app.get('/api/stats', statsMiddleware);

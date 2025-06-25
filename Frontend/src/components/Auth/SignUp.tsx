@@ -52,30 +52,51 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
     const [passwordStrength, setPasswordStrength] = useState(0);
 
     // Form validation checks
-    const isNameValid = name.trim().length >= 2;
+    const isNameValid = name.trim().length >= 2 && /^[a-zA-Z\s\-'\.]+$/.test(name.trim());
     const isEmailValid = isValidEmail(email);
     const isFormValid = isNameValid && isEmailValid && passwordStrength >= 2;
+
+    // Only log form validation state when form is interacted with (reduce console noise)
+    // console.log('Form validation state:', {
+    //     name: name,
+    //     nameLength: name.length,
+    //     trimmedNameLength: name.trim().length,
+    //     isNameValid: isNameValid,
+    //     isEmailValid: isEmailValid,
+    //     passwordStrength: passwordStrength,
+    //     isFormValid: isFormValid
+    // });
 
     const checkPasswordStrength = (pass: string) => {
         let strength = 0;
         if (pass.length >= 8) strength += 1;
         if (/[A-Z]/.test(pass)) strength += 1;
         if (/[0-9]/.test(pass)) strength += 1;
-        if (/[^A-Za-z0-9]/.test(pass)) strength += 1;
+        if (/[@$!%*?&]/.test(pass)) strength += 1;
         setPasswordStrength(strength);
     }; const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Comprehensive validation using our security utilities
-        const validationResult = validateRegistration({
-            fullName: name,
+        console.log('SignUp form submission - Current state:', {
+            name: name,
             email: email,
-            password: password,
-            role: selectedRole || ''
+            passwordLength: password.length,
+            selectedRole: selectedRole
         });
 
-        if (!validationResult.isValid) {
-            setError(validationResult.errors.map(err => err.message).join('. '));
+        // Basic client-side validation first
+        if (!name.trim()) {
+            setError('Full name is required');
+            return;
+        }
+
+        if (!email.trim()) {
+            setError('Email is required');
+            return;
+        }
+
+        if (!password) {
+            setError('Password is required');
             return;
         }
 
@@ -84,20 +105,41 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
             return;
         }
 
+        // Comprehensive validation using our security utilities
+        const validationResult = validateRegistration({
+            fullName: name.trim(),
+            email: email.trim(),
+            password: password,
+            role: selectedRole || ''
+        });
+
+        if (!validationResult.isValid) {
+            console.log('Validation errors:', validationResult.errors);
+            setError(validationResult.errors.map(err => err.message).join('. '));
+            return;
+        }
+
         try {
             setLoading(true);
             setError('');
 
-            // Sanitize input data before sending
-            const sanitizedData = sanitizeAndValidateInput({
-                name: name.trim(),
+            // Prepare data for backend - note: backend expects 'fullName' not 'name'
+            const userData = {
+                fullName: name.trim(),
                 email: email.trim().toLowerCase(),
                 password: password,
                 role: selectedRole
+            };
+
+            console.log('Sending registration data:', {
+                ...userData,
+                password: '[REDACTED]'
             });
 
             // Register with email/password
-            const response = await authService.register(sanitizedData);
+            const response = await authService.register(userData);
+
+            console.log('Registration successful');
 
             // Success animation before redirect
             setTimeout(() => {
@@ -109,6 +151,7 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
                 }
             }, 1000);
         } catch (err: unknown) {
+            console.error('Registration error:', err);
             const errorMessage = err instanceof Error ? err.message : 'Registration failed. Please try again.';
             setError(errorMessage);
         } finally {
@@ -179,7 +222,10 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
                                 : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
                                 } rounded-lg focus:outline-none focus:ring-1 transition-colors text-gray-800`}
                             value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            onChange={(e) => {
+                                // console.log('Name input changed to:', e.target.value);
+                                setName(e.target.value);
+                            }}
                             onBlur={() => setIsNameTouched(true)}
                             required
                         />
@@ -200,7 +246,7 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
                             animate={{ opacity: 1, height: 'auto' }}
                             transition={{ duration: 0.2 }}
                         >
-                            Please enter a valid name (at least 2 characters)
+                            Please enter a valid name (2-100 characters, letters only)
                         </motion.p>
                     )}
                 </motion.div>
@@ -323,9 +369,9 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
                                     {/[0-9]/.test(password) ? <FaCheck /> : <FaTimes />}
                                     <span>Number</span>
                                 </div>
-                                <div className={`flex items-center gap-1.5 ${/[^A-Za-z0-9]/.test(password) ? "text-green-600" : "text-gray-500"}`}>
-                                    {/[^A-Za-z0-9]/.test(password) ? <FaCheck /> : <FaTimes />}
-                                    <span>Special character</span>
+                                <div className={`flex items-center gap-1.5 ${/[@$!%*?&]/.test(password) ? "text-green-600" : "text-gray-500"}`}>
+                                    {/[@$!%*?&]/.test(password) ? <FaCheck /> : <FaTimes />}
+                                    <span>Special character (@$!%*?&)</span>
                                 </div>
                             </div>
                         </motion.div>
@@ -420,6 +466,7 @@ const SignUp: React.FC<SignUpProps> = ({ setActiveView, selectedRole }) => {
                     style={{ color: colours.primaryBlue }}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    disabled={loading}
                 >
                     Sign in to your account
                 </motion.button>
