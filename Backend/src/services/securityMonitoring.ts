@@ -82,6 +82,23 @@ export class SecurityMonitoringService {
         // Check for alert conditions
         this.checkAlertConditions(fullEvent);
 
+        // Enhanced logging for security events
+        const securityEmoji = severity === 'high' ? '🚨' : severity === 'medium' ? '⚠️' : '🔍';
+        
+        // Import logger for better security logging
+        import('../utils/logger').then(({ default: logger }) => {
+            logger.warn(`${securityEmoji} Security Event: ${type}`, {
+                severity,
+                userId: (req as any).user?.userId,
+                ip: req.ip,
+                userAgent: req.get('User-Agent')?.substring(0, 100),
+                url: req.originalUrl || req.url,
+                method: req.method,
+                fingerprint,
+                details
+            }, 'SECURITY');
+        });
+
         // Log to console in development
         if (process.env.NODE_ENV === 'development') {
             console.warn('SECURITY EVENT:', JSON.stringify(fullEvent, null, 2));

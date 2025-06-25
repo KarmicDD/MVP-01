@@ -48,7 +48,7 @@ class FileLogger {
       // Write to file
       fs.writeFileSync(filePath, dataString);
       console.log(`Data logged to file: ${filePath}`);
-      
+
       return filePath;
     } catch (error) {
       console.error('Error logging data to file:', error);

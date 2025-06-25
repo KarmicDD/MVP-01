@@ -23,6 +23,7 @@ import routes from './routes';
 
 import { countRequest, statsMiddleware, trackTime } from './utils/logs';
 import { specs } from './config/swagger';
+import logger from './utils/logger';
 
 /**
  * Create and configure Express application
@@ -103,20 +104,12 @@ export const createApp = (): Application => {
     // Handle CORS Preflight Requests
     app.options('*', cors(corsOptions)); // Ensure preflight requests also use these options
 
-    // Secure request logging middleware (only in development, no sensitive data)
-    if (process.env.NODE_ENV === 'development') {
-        app.use((req: Request, res: Response, next: NextFunction) => {
-            console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
-            next();
-        });
-    }
-
     // CSRF Protection (after session and before routes)
-    console.log('Applying CSRF protection middleware');
+    logger.info('Applying CSRF protection middleware', {}, 'SECURITY');
     app.use(csrfProtection);
 
     // CSRF token endpoint
-    console.log('Setting up CSRF token endpoint');
+    logger.info('Setting up CSRF token endpoint', { endpoint: '/api/csrf-token' }, 'SECURITY');
     app.get('/api/csrf-token', getCSRFToken);
 
     // Custom middlewares
@@ -127,12 +120,17 @@ export const createApp = (): Application => {
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, { explorer: true }));
 
     // Define Routes
-    console.log('Registering API routes under /api');
+    logger.info('Registering API routes', { basePath: '/api' }, 'ROUTE_SETUP');
     app.use('/api', routes);
 
     // Add a test endpoint to verify the server is working
     app.get('/api/test', (req: Request, res: Response) => {
-        console.log('Test endpoint hit:', req.method, req.path);
+        logger.info('Test endpoint accessed', {
+            method: req.method,
+            path: req.path,
+            ip: req.ip,
+            userAgent: req.get('User-Agent')?.substring(0, 50)
+        }, 'TEST_ENDPOINT');
         res.json({
             message: 'API is working',
             timestamp: new Date().toISOString(),
