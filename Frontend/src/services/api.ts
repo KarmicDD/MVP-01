@@ -92,16 +92,67 @@ const api = axios.create({
     baseURL: API_URL,
     headers: {
         'Content-Type': 'application/json'
-    }
+    },
+    withCredentials: true // Enable cookies for session management
 });
 
-// Request interceptor for adding auth token
+// CSRF token management
+let csrfToken: string | null = null;
+
+// Function to get CSRF token
+const getCSRFToken = async (): Promise<string> => {
+    if (csrfToken) {
+        return csrfToken;
+    }
+
+    try {
+        const response = await axios.get(`${API_URL}/csrf-token`, {
+            withCredentials: true
+        });
+        csrfToken = response.data.csrfToken;
+        return csrfToken;
+    } catch (error) {
+        console.error('Failed to get CSRF token:', error);
+        throw error;
+    }
+};
+
+// Request interceptor for adding auth token and CSRF token
 api.interceptors.request.use(
-    (config) => {
+    async (config) => {
+        // Add auth token
         const token = localStorage.getItem('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+
+        // Add CSRF token for non-GET requests
+        if (config.method && !['get', 'head', 'options'].includes(config.method.toLowerCase())) {
+            // Skip CSRF for auth endpoints
+            const skipPaths = [
+                '/auth/login',
+                '/auth/register',
+                '/auth/refresh',
+                '/auth/google',
+                '/auth/linkedin',
+                '/auth/google/callback',
+                '/auth/linkedin/callback'
+            ];
+
+            const shouldSkip = skipPaths.some(path =>
+                config.url?.includes(path)
+            );
+
+            if (!shouldSkip) {
+                try {
+                    const token = await getCSRFToken();
+                    config.headers['X-CSRF-Token'] = token;
+                } catch (error) {
+                    console.error('Failed to get CSRF token for request:', error);
+                }
+            }
+        }
+
         return config;
     },
     (error) => Promise.reject(error)
@@ -110,7 +161,7 @@ api.interceptors.request.use(
 // Response interceptor for handling auth errors
 api.interceptors.response.use(
     (response) => response,
-    (error) => {
+    async (error) => {
         // Log the error for debugging
         console.error('API Error:', error);
 
@@ -126,6 +177,33 @@ api.interceptors.response.use(
 
                 // Redirect to login page
                 window.location.href = '/auth';
+            }
+        }
+
+        // Handle 403 errors (forbidden) - might be CSRF token invalid
+        if (error.response && error.response.status === 403) {
+            const errorData = error.response.data;
+
+            // If it's a CSRF error, clear the token and retry once
+            if (errorData && errorData.code === 'CSRF_INVALID') {
+                csrfToken = null; // Clear cached CSRF token
+
+                // Only retry if this is the first attempt (to avoid infinite loops)
+                if (!error.config._retry) {
+                    error.config._retry = true;
+
+                    try {
+                        // Get new CSRF token
+                        const newCSRFToken = await getCSRFToken();
+                        error.config.headers['X-CSRF-Token'] = newCSRFToken;
+
+                        // Retry the request
+                        return api.request(error.config);
+                    } catch (retryError) {
+                        console.error('Failed to retry request with new CSRF token:', retryError);
+                        return Promise.reject(error);
+                    }
+                }
             }
         }
 
@@ -993,6 +1071,38 @@ export const taskService = {
             console.error('Error verifying task completion:', error);
             throw error;
         }
+    }
+};
+
+// Messages service
+export const messagesService = {
+    // Send a message
+    send: async (recipientId: string, message: string, messageType?: string) => {
+        try {
+            const response = await api.post('/messages/send', {
+                recipientId,
+                message,
+                messageType
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error sending message:', error);
+            throw error;
+        }
+    }
+};
+
+// CSRF token utilities
+export const csrfService = {
+    // Refresh CSRF token manually
+    refreshToken: async (): Promise<string> => {
+        csrfToken = null; // Clear cached token
+        return await getCSRFToken();
+    },
+
+    // Get current CSRF token (without refresh)
+    getCurrentToken: (): string | null => {
+        return csrfToken;
     }
 };
 

@@ -5,7 +5,7 @@ import { useEntityDocuments } from '../../../hooks/useEntityDocuments';
 import DocumentList from './DocumentList';
 import { UserProfile } from '../../../types/Dashboard.types';
 import { toast } from 'react-hot-toast';
-import api from '../../../services/api';
+import api, { messagesService } from '../../../services/api';
 
 interface DocumentsSectionProps {
   userProfile: UserProfile | null;
@@ -87,25 +87,11 @@ const DocumentsSection: React.FC<DocumentsSectionProps> = ({
 
     try {
       // Call API to send document request message
-      const response = await fetch('/api/messages/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          recipientId: selectedMatchId,
-          message: requestMessage,
-          messageType: 'document_request'
-        }),
-      });
+      await messagesService.send(selectedMatchId, requestMessage, 'document_request');
 
-      if (response.ok) {
-        toast.success('Document request sent successfully');
-        setShowRequestModal(false);
-        setRequestMessage('');
-      } else {
-        toast.error('Failed to send document request');
-      }
+      toast.success('Document request sent successfully');
+      setShowRequestModal(false);
+      setRequestMessage('');
     } catch (error) {
       console.error('Error sending document request:', error);
       toast.error('Failed to send document request');
