@@ -7,8 +7,8 @@ import fs from 'fs';
 const SessionFileStore = FileStore(session);
 
 /**
- * Session configuration with file-based store for production
- * This doesn't require Redis or external databases
+ * Session configuration with file-based store for both development and production
+ * This doesn't require Redis or external databases and persists sessions across restarts
  */
 export const createSessionConfig = () => {
     // Ensure sessions directory exists with proper error handling
@@ -37,33 +37,28 @@ export const createSessionConfig = () => {
         name: 'karmicDD.sid' // Don't use default session name
     };
 
-    // Use file store in production if no database available
-    if (process.env.NODE_ENV === 'production') {
-        try {
-            sessionConfig.store = new SessionFileStore({
-                path: sessionsDir,
-                ttl: 24 * 60 * 60, // 24 hours in seconds
-                retries: 3,
-                factor: 2,
-                minTimeout: 50,
-                maxTimeout: 100,
-                reapInterval: 60 * 60, // Clean up expired sessions every hour
-                reapAsync: true,
-                logFn: (message: string) => {
-                    if (process.env.NODE_ENV !== 'production') {
-                        console.log('[SESSION-STORE]', message);
-                    }
-                }
-            });
+    // Use file store in both development and production modes
+    try {
+        sessionConfig.store = new SessionFileStore({
+            path: sessionsDir,
+            ttl: 24 * 60 * 60, // 24 hours in seconds
+            retries: 3,
+            factor: 2,
+            minTimeout: 50,
+            maxTimeout: 100,
+            reapInterval: 60 * 60, // Clean up expired sessions every hour
+            reapAsync: true,
+            logFn: (message: string) => {
+                console.log('[SESSION-STORE]', message);
+            }
+        });
 
-            console.log('✅ File-based session store configured for production');
-            console.log(`📁 Sessions stored in: ${sessionsDir}`);
-        } catch (error) {
-            console.error('❌ Failed to initialize file session store:', error);
-            console.error('⚠️  Falling back to in-memory sessions (sessions will be lost on restart)');
-        }
-    } else {
-        console.log('🔧 Development mode: Using in-memory session store');
+        const modeText = process.env.NODE_ENV === 'production' ? 'production' : 'development';
+        console.log(`✅ File-based session store configured for ${modeText} mode`);
+        console.log(`📁 Sessions stored in: ${sessionsDir}`);
+    } catch (error) {
+        console.error('❌ Failed to initialize file session store:', error);
+        console.error('⚠️  Falling back to in-memory sessions (sessions will be lost on restart)');
     }
 
     return sessionConfig;
