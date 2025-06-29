@@ -61,18 +61,34 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
 
     // Validate CSRF token
     if (!token || token !== req.session.csrfToken) {
-        logSecurityEvent('CSRF_TOKEN_INVALID', req, {
+        // Enhanced security logging with recovery tracking
+        logSecurityEvent('CSRF_TOKEN_INVALID_SESSION_CLEARED', req, {
             providedToken: token ? 'provided' : 'missing',
             sessionToken: req.session.csrfToken ? 'exists' : 'missing',
             path: req.path,
             method: req.method,
             userAgent: req.get('User-Agent'),
-            referer: req.get('Referer')
+            referer: req.get('Referer'),
+            sessionCorrupted: true,
+            recoveryAction: 'session_destroyed',
+            timestamp: new Date().toISOString()
         });
 
+        // Clear the corrupted session completely for fresh start
+        req.session.destroy((err) => {
+            if (err) {
+                console.error('Session destroy error:', err);
+            }
+        });
+
+        // User-friendly response with recovery instructions
         res.status(403).json({
-            message: 'Invalid CSRF token',
-            code: 'CSRF_INVALID'
+            message: 'Your session has expired for security reasons. Please log in again.',
+            code: 'CSRF_INVALID',
+            action: 'REDIRECT_TO_LOGIN',
+            reason: 'session_expired',
+            userFriendlyMessage: 'For your security, your session has been reset. You will be redirected to login.',
+            timestamp: new Date().toISOString()
         });
         return;
     }

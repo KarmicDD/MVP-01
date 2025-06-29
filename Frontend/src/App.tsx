@@ -18,6 +18,8 @@ import DocumentViewerPage from './pages/DocumentViewerPage';
 import { TutorialProvider } from './context/TutorialContext';
 import TutorialManager from './components/Tutorial/TutorialManager';
 import { allTutorials } from './data/tutorials';
+import SessionExpiredNotification from './components/SessionExpiredNotification';
+import { useSessionManager } from './hooks/useSessionManager';
 
 // Protected route component with profile check
 const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) => {
@@ -131,6 +133,9 @@ const DashboardRoute = () => {
 };
 
 function App() {
+  // Initialize session manager for global session expiry handling
+  const { sessionState, hideNotification } = useSessionManager();
+
   return (
     <TutorialProvider initialTutorials={allTutorials}>
       <ActiveSectionContextProvider>
@@ -201,6 +206,16 @@ function App() {
           </Routes>
           {/* Add ToastContainer for notifications */}
           <ToastContainer position="bottom-right" />
+          
+          {/* Global Session Expired Notification */}
+          <SessionExpiredNotification 
+            isVisible={sessionState.isNotificationVisible} 
+            title="Session Expired"
+            message={getSessionMessage(sessionState.reason)}
+            reason={sessionState.reason}
+            redirectPath={sessionState.redirectPath}
+            onClose={hideNotification} 
+          />
         </Router>
         {/* Tutorial Manager */}
         <TutorialManager tutorials={allTutorials} />
@@ -208,6 +223,18 @@ function App() {
     </TutorialProvider>
   );
 }
+
+// Helper function to get user-friendly messages for session expiry
+const getSessionMessage = (reason?: string): string => {
+  const messages = {
+    'csrf_invalid': 'Your session was reset for security reasons. This helps protect your account from potential threats.',
+    'token_expired': 'Your login session timed out due to inactivity. Please log in again to continue.',
+    'session_corrupted': 'There was an issue with your session data. We\'ve started a fresh session for your security.',
+    'session_expired': 'Your session has expired for security reasons. Please log in again to continue.'
+  };
+
+  return messages[reason as keyof typeof messages] || messages.session_expired;
+};
 
 
 export default App;

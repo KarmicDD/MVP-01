@@ -8,6 +8,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
 import { defaultSEO } from '../utils/seo';
 import SEOHead from '../components/SEO/SEOHead';
+import { useSessionManager } from '../hooks/useSessionManager';
 
 const pageVariants = {
     initial: { opacity: 0, y: 20 },
@@ -21,7 +22,10 @@ const AuthPage: React.FC = () => {
     const [pageTitle, setPageTitle] = useState<string>('Choose Your Role');
     const navigate = useNavigate();
     const location = useLocation();
-    const preselectedRole = location.state?.preselectedRole as 'startup' | 'investor' | undefined; useEffect(() => {
+    const preselectedRole = location.state?.preselectedRole as 'startup' | 'investor' | undefined;
+    
+    // Initialize session manager to handle any session-related notifications
+    const { sessionState } = useSessionManager(); useEffect(() => {
         // SEO is now handled by SEOHead component
     }, []);
 

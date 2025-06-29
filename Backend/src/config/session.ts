@@ -34,7 +34,7 @@ export const createSessionConfig = () => {
             maxAge: 24 * 60 * 60 * 1000, // 24 hours
             domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost'
         },
-        name: 'karmicDD.sid' // Don't use default session name
+        name: 'karmicDD.sid'
     };
 
     // Use file store in both development and production modes

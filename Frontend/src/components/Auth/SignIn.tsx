@@ -83,11 +83,24 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, selectedRole }) => {
 
             // Show success message before redirect
             setTimeout(() => {
-                // Redirect based on user role
-                if (response.user.role === 'startup') {
-                    navigate('/dashboard');
-                } else if (response.user.role === 'investor') {
-                    navigate('/dashboard');
+                // Check for pending redirect from session expiry
+                const pendingRedirect = localStorage.getItem('pendingRedirect');
+                
+                if (pendingRedirect && 
+                    pendingRedirect !== '/auth' && 
+                    pendingRedirect !== '/' && 
+                    pendingRedirect !== '/dashboard') {
+                    // Clear the pending redirect
+                    localStorage.removeItem('pendingRedirect');
+                    // Redirect to where user was trying to go
+                    navigate(pendingRedirect);
+                } else {
+                    // Default redirect based on user role
+                    if (response.user.role === 'startup') {
+                        navigate('/dashboard');
+                    } else if (response.user.role === 'investor') {
+                        navigate('/dashboard');
+                    }
                 }
             }, 800);
         } catch (err: Error | unknown) {

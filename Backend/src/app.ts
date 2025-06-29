@@ -36,6 +36,21 @@ import logger from './utils/logger';
 export const createApp = (): Application => {
     const app: Application = express();
 
+    // Trust proxy configuration - MUST be first for production deployments
+    // This tells Express to trust the first proxy (Render's load balancer)
+    if (process.env.NODE_ENV === 'production') {
+        app.set('trust proxy', 1);
+        logger.info('Trust proxy enabled for production environment', {
+            trustProxy: 1,
+            environment: 'production'
+        }, 'SECURITY');
+    } else {
+        // In development, we don't need proxy trust since we're running directly
+        logger.info('Trust proxy disabled for development environment', {
+            environment: 'development'
+        }, 'SECURITY');
+    }
+
     // Enhanced Security Headers (must be first)
     app.use(securityHeaders);
 

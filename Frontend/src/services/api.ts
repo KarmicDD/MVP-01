@@ -186,15 +186,47 @@ api.interceptors.response.use(
             }
         }
 
-        // Handle 403 errors (forbidden) - might be CSRF token invalid
+        // Handle 403 errors (forbidden) - Enhanced CSRF error handling
         if (error.response && error.response.status === 403) {
             const errorData = error.response.data;
 
-            // If it's a CSRF error, clear the token and retry once
+            // Enhanced CSRF error handling with user-friendly recovery
             if (errorData && errorData.code === 'CSRF_INVALID') {
                 csrfToken = null; // Clear cached CSRF token
 
-                // Only retry if this is the first attempt (to avoid infinite loops)
+                // Check if this is a session expired scenario requiring full reset
+                if (errorData.action === 'REDIRECT_TO_LOGIN') {
+                    // Clear all authentication state for fresh start
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    localStorage.removeItem('userId');
+                    localStorage.removeItem('userRole');
+                    
+                    // Don't redirect immediately if already on auth page
+                    if (!window.location.pathname.includes('/auth')) {
+                        // Show user-friendly notification
+                        if (typeof window !== 'undefined' && (window as any).showSessionExpiredNotification) {
+                            (window as any).showSessionExpiredNotification({
+                                title: 'Session Expired',
+                                message: errorData.userFriendlyMessage || 'Your session has expired for security reasons.',
+                                reason: errorData.reason || 'session_expired'
+                            });
+                        }
+                        
+                        // Smooth redirect with context
+                        const currentPath = window.location.pathname;
+                        const redirectUrl = `/auth?error=session_expired&reason=${errorData.reason}&redirect=${encodeURIComponent(currentPath)}`;
+                        
+                        // Delay redirect to let user read the message
+                        setTimeout(() => {
+                            window.location.href = redirectUrl;
+                        }, 2500);
+                    }
+                    
+                    return Promise.reject(new Error('Session expired - redirecting to login'));
+                }
+
+                // For other CSRF errors, try retry once (existing logic)
                 if (!error.config._retry) {
                     error.config._retry = true;
 
