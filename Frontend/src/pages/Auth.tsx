@@ -23,7 +23,7 @@ const AuthPage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const preselectedRole = location.state?.preselectedRole as 'startup' | 'investor' | undefined;
-    
+
     // Initialize session manager to handle any session-related notifications
     const { sessionState } = useSessionManager(); useEffect(() => {
         // SEO is now handled by SEOHead component

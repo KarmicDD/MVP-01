@@ -120,10 +120,10 @@ const SessionExpiredHandler: React.FC<SessionExpiredHandlerProps> = ({ onSession
           initial={{ opacity: 0, y: -50, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -50, scale: 0.95 }}
-          transition={{ 
-            type: "spring", 
-            stiffness: 300, 
-            damping: 25 
+          transition={{
+            type: "spring",
+            stiffness: 300,
+            damping: 25
           }}
           className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md w-full mx-4"
         >
@@ -151,7 +151,7 @@ const SessionExpiredHandler: React.FC<SessionExpiredHandlerProps> = ({ onSession
                 <FiX className={`w-4 h-4 ${getTextColorClass()} opacity-60`} />
               </button>
             </div>
-            
+
             {/* Security badge */}
             <div className="mt-3 pt-3 border-t border-current border-opacity-20">
               <div className={`flex items-center space-x-2 text-xs ${getTextColorClass()} opacity-75`}>
@@ -159,7 +159,7 @@ const SessionExpiredHandler: React.FC<SessionExpiredHandlerProps> = ({ onSession
                 <span>This is a security measure to protect your account</span>
               </div>
             </div>
-            
+
             {/* Progress bar for auto-dismiss */}
             <div className="mt-3 w-full bg-white bg-opacity-30 rounded-full h-1 overflow-hidden">
               <motion.div

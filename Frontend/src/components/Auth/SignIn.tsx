@@ -85,10 +85,10 @@ const SignIn: React.FC<SignInProps> = ({ setActiveView, selectedRole }) => {
             setTimeout(() => {
                 // Check for pending redirect from session expiry
                 const pendingRedirect = localStorage.getItem('pendingRedirect');
-                
-                if (pendingRedirect && 
-                    pendingRedirect !== '/auth' && 
-                    pendingRedirect !== '/' && 
+
+                if (pendingRedirect &&
+                    pendingRedirect !== '/auth' &&
+                    pendingRedirect !== '/' &&
                     pendingRedirect !== '/dashboard') {
                     // Clear the pending redirect
                     localStorage.removeItem('pendingRedirect');

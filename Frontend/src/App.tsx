@@ -206,15 +206,15 @@ function App() {
           </Routes>
           {/* Add ToastContainer for notifications */}
           <ToastContainer position="bottom-right" />
-          
+
           {/* Global Session Expired Notification */}
-          <SessionExpiredNotification 
-            isVisible={sessionState.isNotificationVisible} 
+          <SessionExpiredNotification
+            isVisible={sessionState.isNotificationVisible}
             title="Session Expired"
             message={getSessionMessage(sessionState.reason)}
             reason={sessionState.reason}
             redirectPath={sessionState.redirectPath}
-            onClose={hideNotification} 
+            onClose={hideNotification}
           />
         </Router>
         {/* Tutorial Manager */}

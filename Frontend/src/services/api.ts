@@ -201,7 +201,7 @@ api.interceptors.response.use(
                     localStorage.removeItem('user');
                     localStorage.removeItem('userId');
                     localStorage.removeItem('userRole');
-                    
+
                     // Don't redirect immediately if already on auth page
                     if (!window.location.pathname.includes('/auth')) {
                         // Show user-friendly notification
@@ -212,17 +212,17 @@ api.interceptors.response.use(
                                 reason: errorData.reason || 'session_expired'
                             });
                         }
-                        
+
                         // Smooth redirect with context
                         const currentPath = window.location.pathname;
                         const redirectUrl = `/auth?error=session_expired&reason=${errorData.reason}&redirect=${encodeURIComponent(currentPath)}`;
-                        
+
                         // Delay redirect to let user read the message
                         setTimeout(() => {
                             window.location.href = redirectUrl;
                         }, 2500);
                     }
-                    
+
                     return Promise.reject(new Error('Session expired - redirecting to login'));
                 }
 
