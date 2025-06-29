@@ -132,93 +132,102 @@ const DashboardRoute = () => {
   }
 };
 
-function App() {
+// Component that wraps the routes and uses hooks that need Router context
+const AppContent: React.FC = () => {
   // Initialize session manager for global session expiry handling
   const { sessionState, hideNotification } = useSessionManager();
 
   return (
+    <>
+      <Routes>
+        {/* Default Landing Page */}
+        <Route
+          path="/"
+          element={
+            authService.isAuthenticated() ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <Landing />
+            )
+          }
+        />
+
+        {/* Forms Route - Protected but accessible before dashboard */}
+        <Route path="/forms" element={<FormsRoute />} />
+
+        {/* Auth Routes */}
+        <Route path="/auth" element={<AuthRoute />} />
+        <Route path="/auth/callback" element={<OAuthCallback />} />
+        <Route path="/auth/select-role" element={<OAuthCallback />} />
+
+        {/* Open Routes */}
+        <Route path="/coming-soon" element={<ComingSoon />} /> {/* Anyone can access */}
+        <Route path="/loading" element={<LoadingSpinner />} /> {/* Anyone can access */}
+        <Route
+          path="/question"
+          element={
+            <ProtectedRoute>
+              <QuestionnairePage />
+            </ProtectedRoute>
+          }
+        />
+
+
+        {/* Profile Routes */}
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        } />
+
+        {/* Document Viewer Route - Protected */}
+        <Route path="/document/:documentId" element={
+          <ProtectedRoute>
+            <DocumentViewerPage />
+          </ProtectedRoute>
+        } />
+
+        {/* Profile Viewing Route */}
+        <Route path="/:identifier" element={<ViewProfilePage />} />
+
+        {/* Protected Routes */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardRoute />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Redirect all unknown routes to Landing */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      {/* Add ToastContainer for notifications */}
+      <ToastContainer position="bottom-right" />
+
+      {/* Global Session Expired Notification */}
+      <SessionExpiredNotification
+        isVisible={sessionState.isNotificationVisible}
+        title="Session Expired"
+        message={getSessionMessage(sessionState.reason)}
+        reason={sessionState.reason}
+        redirectPath={sessionState.redirectPath}
+        onClose={hideNotification}
+      />
+    </>
+  );
+};
+
+function App() {
+  return (
     <TutorialProvider initialTutorials={allTutorials}>
       <ActiveSectionContextProvider>
         <Router>
-          <Routes>
-            {/* Default Landing Page */}
-            <Route
-              path="/"
-              element={
-                authService.isAuthenticated() ? (
-                  <Navigate to="/dashboard" replace />
-                ) : (
-                  <Landing />
-                )
-              }
-            />
-
-            {/* Forms Route - Protected but accessible before dashboard */}
-            <Route path="/forms" element={<FormsRoute />} />
-
-            {/* Auth Routes */}
-            <Route path="/auth" element={<AuthRoute />} />
-            <Route path="/auth/callback" element={<OAuthCallback />} />
-            <Route path="/auth/select-role" element={<OAuthCallback />} />
-
-            {/* Open Routes */}
-            <Route path="/coming-soon" element={<ComingSoon />} /> {/* Anyone can access */}
-            <Route path="/loading" element={<LoadingSpinner />} /> {/* Anyone can access */}
-            <Route
-              path="/question"
-              element={
-                <ProtectedRoute>
-                  <QuestionnairePage />
-                </ProtectedRoute>
-              }
-            />
-
-
-            {/* Profile Routes */}
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            } />
-
-            {/* Document Viewer Route - Protected */}
-            <Route path="/document/:documentId" element={
-              <ProtectedRoute>
-                <DocumentViewerPage />
-              </ProtectedRoute>
-            } />
-
-            {/* Profile Viewing Route */}
-            <Route path="/:identifier" element={<ViewProfilePage />} />
-
-            {/* Protected Routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <DashboardRoute />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Redirect all unknown routes to Landing */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-          {/* Add ToastContainer for notifications */}
-          <ToastContainer position="bottom-right" />
-
-          {/* Global Session Expired Notification */}
-          <SessionExpiredNotification
-            isVisible={sessionState.isNotificationVisible}
-            title="Session Expired"
-            message={getSessionMessage(sessionState.reason)}
-            reason={sessionState.reason}
-            redirectPath={sessionState.redirectPath}
-            onClose={hideNotification}
-          />
+          <AppContent />
+          {/* Tutorial Manager */}
+          <TutorialManager tutorials={allTutorials} />
         </Router>
-        {/* Tutorial Manager */}
-        <TutorialManager tutorials={allTutorials} />
       </ActiveSectionContextProvider>
     </TutorialProvider>
   );
