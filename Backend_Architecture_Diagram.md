@@ -39,6 +39,25 @@
 - `services/RecommendationService.ts` - AI recommendations (485 lines)
 - And 8 more specialized services
 
+The system follows a data flow of **Routes → Controllers → Services**.
+
+| Service | Purpose | Associated Routes |
+| :--- | :--- | :--- |
+| **Authentication Service** | Handles user registration, login, OAuth (Google, LinkedIn), and role management. | `/api/auth/*` |
+| **Profile Service** | Manages CRUD operations for startup and investor profiles, including extended profile data and sharing functionality. | `/api/profile/*`, `/api/users/*` |
+| **MLMatchingService** | Performs AI-powered matching between startups and investors, calculating compatibility scores and analyzing value alignment. | `/api/matching/*` |
+| **Compatibility Service** | Provides detailed compatibility analysis, score breakdowns, and insights for potential matches. | `/api/score/*` |
+| **RecommendationService** | Generates personalized recommendations and strategic insights for users using AI. | `/api/recommendations/*` |
+| **NewFinancialDueDiligenceService** | Uses OCR and AI to process financial documents, generate reports, and perform risk assessments. | `/api/new-financial/*` |
+| **NewLegalDueDiligenceService** | Analyzes legal documents for compliance, risks, and generates legal insights. | `/api/legal-due-diligence/*` |
+| **Document Processing Services** | A collection of services that handle document upload, OCR, content extraction, and categorization. Used by various controllers like `ProfileController`. | (Used by other services, e.g., Financial/Legal DD) |
+| **Questionnaire Service** | Analyzes and processes user questionnaire submissions to enhance matching and compatibility scoring. | `/api/questionnaire/*` |
+| **Belief System Service** | Analyzes value alignment and cultural fit between entities. | `/api/analysis/*` |
+| **Search Service** | Provides advanced search and filtering capabilities across the platform. | `/api/search/*` |
+| **Email Service** | Manages sending all transactional emails, notifications, and match alerts. | `/api/email/*` |
+| **Analytics & Monitoring Services** | Includes services for tracking API usage, performance metrics, security events, and dashboard data. | `/api/stats`, `/api/analytics/*` |
+| **Task Service** | Manages background jobs, processing tasks, and status tracking. | `/api/tasks/*` |
+
 **Utilities (12 utility modules):**
 - `utils/logger.ts` - Advanced logging system (241 lines)
 - `utils/validation.ts` - Comprehensive validation (457 lines)
@@ -68,31 +87,31 @@ graph TB
     end
     
     subgraph "Express Application Entry"
-        SERVER[server.ts<br/>Main Entry Point<br/>• Environment loading<br/>• Database connections<br/>• Directory cleanup<br/>• Service testing]
-        APP[app.ts<br/>Express Configuration<br/>• 16 middleware layers<br/>• Security headers<br/>• CORS setup<br/>• CSRF protection]
-        ROUTES[routes/index.ts<br/>Route Registry<br/>• 16 route categories<br/>• Enhanced logging<br/>• Route registration]
+        SERVER[server.ts<br/>Main Entry Point<br/>Environment loading<br/>Database connections<br/>Directory cleanup<br/>Service testing]
+        APP[app.ts<br/>Express Configuration<br/>16 middleware layers<br/>Security headers<br/>CORS setup<br/>CSRF protection]
+        ROUTES[routes/index.ts<br/>Route Registry<br/>16 route categories<br/>Enhanced logging<br/>Route registration]
     end
     
     subgraph "Core Infrastructure Layers"
-        MIDDLEWARE[Middleware Layer<br/>16 Specialized Middlewares<br/>• Security stack (527 lines)<br/>• Authentication & CSRF<br/>• Rate limiting<br/>• Input sanitization<br/>• Error handling]
+        MIDDLEWARE[Middleware Layer<br/>16 Specialized Middlewares<br/>Security stack 527 lines<br/>Authentication and CSRF<br/>Rate limiting<br/>Input sanitization<br/>Error handling]
         
-        DATABASE[Database Layer<br/>Dual Database Strategy<br/>• PostgreSQL (Prisma)<br/>• MongoDB (Mongoose)<br/>• Connection retry logic<br/>• 15+ models]
+        DATABASE[Database Layer<br/>Dual Database Strategy<br/>PostgreSQL Prisma<br/>MongoDB Mongoose<br/>Connection retry logic<br/>15+ models]
         
-        SERVICES[Services Layer<br/>12 Specialized Services<br/>• AI/ML Services (4)<br/>• Document Processing (3)<br/>• Communication (2)<br/>• Analytics (3)]
+        SERVICES[Services Layer<br/>12 Specialized Services<br/>AI/ML Services 4<br/>Document Processing 3<br/>Communication 2<br/>Analytics 3]
         
-        UTILS[Utilities Layer<br/>12 Utility Modules<br/>• Advanced logging (241 lines)<br/>• Validation (457 lines)<br/>• Security helpers<br/>• File operations]
+        UTILS[Utilities Layer<br/>12 Utility Modules<br/>Advanced logging 241 lines<br/>Validation 457 lines<br/>Security helpers<br/>File operations]
         
-        CONFIG[Configuration Layer<br/>5 Config Modules<br/>• JWT & Sessions<br/>• OAuth strategies<br/>• Database setup<br/>• Swagger docs]
+        CONFIG[Configuration Layer<br/>5 Config Modules<br/>JWT and Sessions<br/>OAuth strategies<br/>Database setup<br/>Swagger docs]
     end
     
     subgraph "External Services Integration"
-        GEMINI[Google Gemini AI<br/>Multiple Models<br/>• Financial analysis<br/>• Document OCR<br/>• Matching algorithms<br/>• Recommendations]
+        GEMINI[Google Gemini AI<br/>Multiple Models<br/>Financial analysis<br/>Document OCR<br/>Matching algorithms<br/>Recommendations]
         
-        GMAIL[Email Service<br/>Resend API<br/>• Profile sharing<br/>• Notifications<br/>• Match alerts]
+        GMAIL[Email Service<br/>Resend API<br/>Profile sharing<br/>Notifications<br/>Match alerts]
         
-        STORAGE[File Storage<br/>Local System<br/>• Document uploads<br/>• OCR outputs<br/>• Session files<br/>• Log files]
+        STORAGE[File Storage<br/>Local System<br/>Document uploads<br/>OCR outputs<br/>Session files<br/>Log files]
         
-        OAUTH_SERVICES[OAuth Services<br/>• Google OAuth<br/>• LinkedIn OAuth<br/>• JWT tokens<br/>• Session management]
+        OAUTH_SERVICES[OAuth Services<br/>Google OAuth<br/>LinkedIn OAuth<br/>JWT tokens<br/>Session management]
     end
     
     FE --> SERVER
@@ -118,11 +137,6 @@ graph TB
     style GEMINI fill:#ffcc99
     style MIDDLEWARE fill:#ff99cc
 ```
-    style APP fill:#99ff99
-    style ROUTES fill:#9999ff
-    style GEMINI fill:#ffcc99
-```
-
 ## 2. Server Startup Flow (server.ts)
 
 ```mermaid
@@ -181,7 +195,7 @@ sequenceDiagram
 ```mermaid
 graph TD
     subgraph "Express App Creation Flow"
-        START[createApp()]
+        START["createApp()"]
         
         subgraph "Security Middleware (First)"
             SEC_HEADERS[securityHeaders]
@@ -192,20 +206,20 @@ graph TD
         end
         
         subgraph "Body Parsing & Session"
-            JSON_PARSER[express.json limit:10mb]
-            URL_PARSER[express.urlencoded limit:2mb]
+            JSON_PARSER["express.json limit:10mb"]
+            URL_PARSER["express.urlencoded limit:2mb"]
             COOKIE_PARSER[cookieParser]
             SESSION[session configuration]
         end
         
         subgraph "CORS Configuration"
             CORS_SETUP[Dynamic CORS origin check]
-            CORS_ORIGINS[Allowed Origins:<br/>- karmicdd.netlify.app<br/>- localhost:5173<br/>- localhost:3000<br/>- 127.0.0.1:5173]
+            CORS_ORIGINS["Allowed Origins:<br/>- karmicdd.netlify.app<br/>- localhost:5173<br/>- localhost:3000<br/>- 127.0.0.1:5173"]
         end
         
         subgraph "CSRF Protection"
             CSRF_MIDDLEWARE[csrfProtection]
-            CSRF_ENDPOINT[/api/csrf-token endpoint]
+            CSRF_ENDPOINT["/api/csrf-token endpoint"]
             CSRF_RATE_LIMIT[csrfTokenRateLimit]
         end
         
@@ -215,11 +229,11 @@ graph TD
         end
         
         subgraph "Documentation & Routes"
-            SWAGGER_SETUP[Swagger UI /api-docs]
-            API_ROUTES[API Routes /api]
-            TEST_ENDPOINT[Test endpoint /api/test]
-            STATS_ENDPOINT[Stats endpoint /api/stats]
-            ROOT_ENDPOINT[Root endpoint /]
+            SWAGGER_SETUP["Swagger UI /api-docs"]
+            API_ROUTES["API Routes /api"]
+            TEST_ENDPOINT["Test endpoint /api/test"]
+            STATS_ENDPOINT["Stats endpoint /api/stats"]
+            ROOT_ENDPOINT["Root endpoint /"]
         end
         
         ERROR_HANDLER[errorHandler middleware]
@@ -259,13 +273,13 @@ graph TB
         MONGOOSE[Mongoose Connection]
         
         subgraph "PostgreSQL Connection"
-            PG_CONNECT[testPostgressConnection()]
+            PG_CONNECT["testPostgressConnection()"]
             PG_RETRY[Retry Logic every 2s]
             PG_SUCCESS[Connection Success]
         end
         
         subgraph "MongoDB Connection"
-            MONGO_CONNECT[connectMongoDBwithRetry()]
+            MONGO_CONNECT["connectMongoDBwithRetry()"]
             MONGO_RETRY[Retry Logic every 2s]
             MONGO_SUCCESS[Connection Success]
         end
@@ -439,35 +453,35 @@ sequenceDiagram
 ```mermaid
 graph TD
     subgraph "JWT Configuration (config/jwt.ts)"
-        JWT_CONFIG[JWT Configuration<br/>• JWT_SECRET from env<br/>• JWT_EXPIRES_IN (7 days)<br/>• Fallback secret handling<br/>• Type-safe interfaces]
+        JWT_CONFIG["JWT Configuration<br/>• JWT_SECRET from env<br/>• JWT_EXPIRES_IN (7 days)<br/>• Fallback secret handling<br/>• Type-safe interfaces"]
         
-        JWT_GENERATE[generateToken Function<br/>• userId (UUID)<br/>• email (string)<br/>• role (startup/investor)<br/>• jwt.sign() with secret<br/>• No expiration set (7d default)]
+        JWT_GENERATE["generateToken Function<br/>• userId (UUID)<br/>• email (string)<br/>• role (startup/investor)<br/>• jwt.sign() with secret<br/>• No expiration set (7d default)"]
         
-        JWT_VERIFY[verifyToken Function<br/>• Token validation<br/>• jwt.verify() with secret<br/>• Error handling<br/>• Returns decoded payload]
+        JWT_VERIFY["verifyToken Function<br/>• Token validation<br/>• jwt.verify() with secret<br/>• Error handling<br/>• Returns decoded payload"]
     end
     
     subgraph "Session Configuration (config/session.ts)"
-        SESSION_STORE[File-Based Session Store<br/>• SessionFileStore implementation<br/>• /sessions directory<br/>• 24-hour TTL<br/>• Automatic cleanup]
+        SESSION_STORE["File-Based Session Store<br/>• SessionFileStore implementation<br/>• /sessions directory<br/>• 24-hour TTL<br/>• Automatic cleanup"]
         
-        SESSION_CONFIG[Session Configuration<br/>• Secret from environment<br/>• SameSite policy (none/lax)<br/>• Secure cookies (HTTPS)<br/>• HttpOnly protection<br/>• Domain settings]
+        SESSION_CONFIG["Session Configuration<br/>• Secret from environment<br/>• SameSite policy (none/lax)<br/>• Secure cookies (HTTPS)<br/>• HttpOnly protection<br/>• Domain settings"]
         
-        SESSION_OPTIONS[Session Options<br/>• resave: false<br/>• saveUninitialized: false<br/>• maxAge: 24 hours<br/>• Custom session name]
+        SESSION_OPTIONS["Session Options<br/>• resave: false<br/>• saveUninitialized: false<br/>• maxAge: 24 hours<br/>• Custom session name"]
     end
     
     subgraph "OAuth Configuration (config/passport.ts)"
-        GOOGLE_STRATEGY[Google OAuth Strategy<br/>• Client ID/Secret from env<br/>• Callback URL configuration<br/>• Profile + email scopes<br/>• User creation/lookup logic]
+        GOOGLE_STRATEGY["Google OAuth Strategy<br/>• Client ID/Secret from env<br/>• Callback URL configuration<br/>• Profile + email scopes<br/>• User creation/lookup logic"]
         
-        LINKEDIN_STRATEGY[LinkedIn OAuth Strategy<br/>• Client credentials<br/>• API URL configuration<br/>• Profile data extraction<br/>• Email verification]
+        LINKEDIN_STRATEGY["LinkedIn OAuth Strategy<br/>• Client credentials<br/>• API URL configuration<br/>• Profile data extraction<br/>• Email verification"]
         
-        PASSPORT_SERIALIZATION[Passport Serialization<br/>• serializeUser by user_id<br/>• deserializeUser from database<br/>• User interface transformation<br/>• Error handling]
+        PASSPORT_SERIALIZATION["Passport Serialization<br/>• serializeUser by user_id<br/>• deserializeUser from database<br/>• User interface transformation<br/>• Error handling"]
     end
     
     subgraph "CSRF Protection (middleware/csrf.ts)"
-        CSRF_GENERATION[CSRF Token Generation<br/>• crypto.randomBytes(32)<br/>• Hex string conversion<br/>• Session storage<br/>• Token validation]
+        CSRF_GENERATION["CSRF Token Generation<br/>• crypto.randomBytes(32)<br/>• Hex string conversion<br/>• Session storage<br/>• Token validation"]
         
-        CSRF_MIDDLEWARE[CSRF Protection Middleware<br/>• Skip GET/HEAD/OPTIONS<br/>• Skip OAuth endpoints<br/>• Header/body token check<br/>• Security event logging]
+        CSRF_MIDDLEWARE["CSRF Protection Middleware<br/>• Skip GET/HEAD/OPTIONS<br/>• Skip OAuth endpoints<br/>• Header/body token check<br/>• Security event logging"]
         
-        CSRF_ENDPOINT[CSRF Token Endpoint<br/>• /api/csrf-token<br/>• Rate limited (30/min)<br/>• Session-based generation<br/>• JSON response]
+        CSRF_ENDPOINT["CSRF Token Endpoint<br/>• /api/csrf-token<br/>• Rate limited (30/min)<br/>• Session-based generation<br/>• JSON response"]
     end
     
     JWT_CONFIG --> JWT_GENERATE
@@ -491,59 +505,59 @@ graph TD
 ## 7. Security Middleware Architecture (527 lines)
 
 ```mermaid
-graph TB
+graph TD
     subgraph "Input Security & Sanitization"
-        SANITIZE_INPUT[sanitizeInput Middleware<br/>• Body size validation (2MB)<br/>• Suspicious pattern detection<br/>• XSS prevention<br/>• Recursive object sanitization<br/>• DOMPurify integration]
+        SANITIZE_INPUT["sanitizeInput Middleware<br/>• Body size validation (2MB)<br/>• Suspicious pattern detection<br/>• XSS prevention<br/>• Recursive object sanitization<br/>• DOMPurify integration"]
         
-        MONGO_SANITIZE[mongoSanitizeMiddleware<br/>• NoSQL injection prevention<br/>• Key replacement with '_'<br/>• Security event logging<br/>• Malicious query blocking]
+        MONGO_SANITIZE["mongoSanitizeMiddleware<br/>• NoSQL injection prevention<br/>• Key replacement with '_'<br/>• Security event logging<br/>• Malicious query blocking"]
         
-        PATTERN_DETECTION[Suspicious Pattern Detection<br/>• Script tag removal<br/>• JavaScript: URL blocking<br/>• Event handler removal<br/>• Template injection prevention<br/>• CSS expression blocking]
+        PATTERN_DETECTION["Suspicious Pattern Detection<br/>• Script tag removal<br/>• JavaScript: URL blocking<br/>• Event handler removal<br/>• Template injection prevention<br/>• CSS expression blocking"]
         
-        SANITIZE_OBJECT[Object Sanitization<br/>• Recursive processing<br/>• String sanitization<br/>• Array handling<br/>• Key sanitization<br/>• Type preservation]
+        SANITIZE_OBJECT["Object Sanitization<br/>• Recursive processing<br/>• String sanitization<br/>• Array handling<br/>• Key sanitization<br/>• Type preservation"]
     end
     
     subgraph "Rate Limiting Strategy"
-        GENERAL_RATE[generalRateLimit<br/>• 100 requests/15min<br/>• IP-based limiting<br/>• Standard headers<br/>• Legacy header disable]
+        GENERAL_RATE["generalRateLimit<br/>• 100 requests/15min<br/>• IP-based limiting<br/>• Standard headers<br/>• Legacy header disable"]
         
-        AUTH_RATE[authRateLimit<br/>• 5 attempts/15min<br/>• Authentication protection<br/>• Extended timeout<br/>• Brute force prevention]
+        AUTH_RATE["authRateLimit<br/>• 5 attempts/15min<br/>• Authentication protection<br/>• Extended timeout<br/>• Brute force prevention"]
         
-        UPLOAD_RATE[uploadRateLimit<br/>• 10 uploads/hour<br/>• File upload protection<br/>• Large payload prevention<br/>• Resource abuse protection]
+        UPLOAD_RATE["uploadRateLimit<br/>• 10 uploads/hour<br/>• File upload protection<br/>• Large payload prevention<br/>• Resource abuse protection"]
         
-        CSRF_RATE[csrfTokenRateLimit<br/>• 30 requests/minute<br/>• Token endpoint protection<br/>• Rapid request prevention<br/>• API abuse mitigation]
+        CSRF_RATE["csrfTokenRateLimit<br/>• 30 requests/minute<br/>• Token endpoint protection<br/>• Rapid request prevention<br/>• API abuse mitigation"]
         
-        EMAIL_RATE[emailRateLimit<br/>• 5 emails/hour<br/>• Communication limiting<br/>• Spam prevention<br/>• Service protection]
+        EMAIL_RATE["emailRateLimit<br/>• 5 emails/hour<br/>• Communication limiting<br/>• Spam prevention<br/>• Service protection"]
         
-        CUSTOM_RATE[Custom Rate Limiting<br/>• checkRateLimit utility<br/>• Memory-based storage<br/>• Configurable windows<br/>• IP tracking]
+        CUSTOM_RATE["Custom Rate Limiting<br/>• checkRateLimit utility<br/>• Memory-based storage<br/>• Configurable windows<br/>• IP tracking"]
     end
     
     subgraph "File Upload Security"
-        FILE_VALIDATION[validateFileUpload<br/>• File type validation<br/>• Size limit enforcement<br/>• MIME type verification<br/>• Extension matching]
+        FILE_VALIDATION["validateFileUpload<br/>• File type validation<br/>• Size limit enforcement<br/>• MIME type verification<br/>• Extension matching"]
         
-        ALLOWED_TYPES[Allowed File Types<br/>• PDF documents<br/>• Office files (doc, xls, ppt)<br/>• Images (jpg, png, gif)<br/>• Text files (txt, md, csv)]
+        ALLOWED_TYPES["Allowed File Types<br/>• PDF documents<br/>• Office files (doc, xls, ppt)<br/>• Images (jpg, png, gif)<br/>• Text files (txt, md, csv)"]
         
-        SECURITY_CHECKS[Security Checks<br/>• Suspicious filename detection<br/>• Executable file blocking<br/>• Script file prevention<br/>• MIME/extension mismatch]
+        SECURITY_CHECKS["Security Checks<br/>• Suspicious filename detection<br/>• Executable file blocking<br/>• Script file prevention<br/>• MIME/extension mismatch"]
         
-        SIZE_LIMITS[Size Limitations<br/>• 10MB default maximum<br/>• Configurable per endpoint<br/>• Memory usage protection<br/>• Storage optimization]
+        SIZE_LIMITS["Size Limitations<br/>• 10MB default maximum<br/>• Configurable per endpoint<br/>• Memory usage protection<br/>• Storage optimization"]
     end
     
     subgraph "Security Headers & CSP"
-        SECURITY_HEADERS[securityHeaders Middleware<br/>• Content Security Policy<br/>• XSS Protection<br/>• Frame Options<br/>• Content Type Options]
+        SECURITY_HEADERS["securityHeaders Middleware<br/>• Content Security Policy<br/>• XSS Protection<br/>• Frame Options<br/>• Content Type Options"]
         
-        CSP_DIRECTIVES[CSP Configuration<br/>• Environment-based policies<br/>• Script source restrictions<br/>• Style source limitations<br/>• Font and image policies]
+        CSP_DIRECTIVES["CSP Configuration<br/>• Environment-based policies<br/>• Script source restrictions<br/>• Style source limitations<br/>• Font and image policies"]
         
-        PROTECTION_HEADERS[Protection Headers<br/>• X-Content-Type-Options: nosniff<br/>• X-Frame-Options: DENY<br/>• X-XSS-Protection: 1; mode=block<br/>• Referrer-Policy: strict-origin]
+        PROTECTION_HEADERS["Protection Headers<br/>• X-Content-Type-Options: nosniff<br/>• X-Frame-Options: DENY<br/>• X-XSS-Protection: 1; mode=block<br/>• Referrer-Policy: strict-origin"]
         
-        HSTS_CONFIG[HSTS Configuration<br/>• max-age: 31536000<br/>• includeSubDomains<br/>• preload directive<br/>• HTTPS enforcement]
+        HSTS_CONFIG["HSTS Configuration<br/>• max-age: 31536000<br/>• includeSubDomains<br/>• preload directive<br/>• HTTPS enforcement"]
     end
     
     subgraph "Validation Schemas"
-        USER_VALIDATION[User Validation Schemas<br/>• Registration validation<br/>• Login validation<br/>• Role update validation<br/>• Email normalization]
+        USER_VALIDATION["User Validation Schemas<br/>• Registration validation<br/>• Login validation<br/>• Role update validation<br/>• Email normalization"]
         
-        PROFILE_VALIDATION[Profile Validation<br/>• Startup profile schema<br/>• Investor profile schema<br/>• Extended profile validation<br/>• Field length limits]
+        PROFILE_VALIDATION["Profile Validation<br/>• Startup profile schema<br/>• Investor profile schema<br/>• Extended profile validation<br/>• Field length limits"]
         
-        DOCUMENT_VALIDATION[Document Validation<br/>• Metadata validation<br/>• Description limits<br/>• Type categorization<br/>• Time period formatting]
+        DOCUMENT_VALIDATION["Document Validation<br/>• Metadata validation<br/>• Description limits<br/>• Type categorization<br/>• Time period formatting"]
         
-        FIELD_VALIDATION[Field-Specific Validation<br/>• Email format validation<br/>• Password complexity<br/>• URL validation<br/>• Pattern matching]
+        FIELD_VALIDATION["Field-Specific Validation<br/>• Email format validation<br/>• Password complexity<br/>• URL validation<br/>• Pattern matching"]
     end
     
     SANITIZE_INPUT --> PATTERN_DETECTION
@@ -580,56 +594,56 @@ graph TB
 ```mermaid
 graph TD
     subgraph "Main Router Architecture (routes/index.ts)"
-        MAIN_ROUTER[Main Express Router<br/>• Route registration logging<br/>• Enhanced middleware<br/>• Category organization<br/>• Error handling]
+        MAIN_ROUTER["Main Express Router<br/>• Route registration logging<br/>• Enhanced middleware<br/>• Category organization<br/>• Error handling"]
         
         subgraph "Authentication Routes (/api/auth)"
-            AUTH_ROUTES[authRoutes.ts<br/>• passport.initialize()<br/>• Enhanced validation<br/>• Rate limiting<br/>• CSRF protection]
+            AUTH_ROUTES["authRoutes.ts<br/>• passport.initialize()<br/>• Enhanced validation<br/>• Rate limiting<br/>• CSRF protection"]
             
-            AUTH_ENDPOINTS[Authentication Endpoints<br/>• POST /register<br/>• POST /login<br/>• POST /update-role<br/>• GET /google<br/>• GET /linkedin<br/>• GET /google/callback<br/>• GET /linkedin/callback]
+            AUTH_ENDPOINTS["Authentication Endpoints<br/>• POST /register<br/>• POST /login<br/>• POST /update-role<br/>• GET /google<br/>• GET /linkedin<br/>• GET /google/callback<br/>• GET /linkedin/callback"]
             
-            AUTH_MIDDLEWARE[Auth Middleware Stack<br/>• authRateLimit<br/>• registerValidation<br/>• loginValidation<br/>• validateRequest]
+            AUTH_MIDDLEWARE["Auth Middleware Stack<br/>• authRateLimit<br/>• registerValidation<br/>• loginValidation<br/>• validateRequest"]
         end
         
         subgraph "User Management (/api/users, /api/profile)"
-            USER_ROUTES[userRoutes.ts<br/>• User management<br/>• Profile operations<br/>• Data retrieval<br/>• Account settings]
+            USER_ROUTES["userRoutes.ts<br/>• User management<br/>• Profile operations<br/>• Data retrieval<br/>• Account settings"]
             
-            PROFILE_ROUTES[profileRoutes.ts<br/>• Profile CRUD operations<br/>• Extended profiles<br/>• Share functionality<br/>• Privacy settings]
+            PROFILE_ROUTES["profileRoutes.ts<br/>• Profile CRUD operations<br/>• Extended profiles<br/>• Share functionality<br/>• Privacy settings"]
             
-            PROFILE_ENDPOINTS[Profile Endpoints<br/>• GET /user-type<br/>• POST /startup<br/>• POST /investor<br/>• GET /startup<br/>• GET /investor<br/>• POST /extended<br/>• POST /share<br/>• GET /shared/:token]
+            PROFILE_ENDPOINTS["Profile Endpoints<br/>• GET /user-type<br/>• POST /startup<br/>• POST /investor<br/>• GET /startup<br/>• GET /investor<br/>• POST /extended<br/>• POST /share<br/>• GET /shared/:token"]
         end
         
         subgraph "Matching System (/api/matching, /api/score)"
-            MATCHING_ROUTES[matchingRoutes.ts<br/>• AI-powered matching<br/>• Match algorithms<br/>• Score calculation<br/>• Match filtering]
+            MATCHING_ROUTES["matchingRoutes.ts<br/>• AI-powered matching<br/>• Match algorithms<br/>• Score calculation<br/>• Match filtering"]
             
-            COMPAT_ROUTES[compatibilityControllerRoutes.ts<br/>• Compatibility analysis<br/>• Score breakdown<br/>• Match insights<br/>• Algorithm optimization]
+            COMPAT_ROUTES["compatibilityControllerRoutes.ts<br/>• Compatibility analysis<br/>• Score breakdown<br/>• Match insights<br/>• Algorithm optimization"]
             
-            QUESTIONNAIRE_ROUTES[questionnaireRoute.ts<br/>• Questionnaire submission<br/>• Response processing<br/>• Analysis integration<br/>• Match enhancement]
+            QUESTIONNAIRE_ROUTES["questionnaireRoute.ts<br/>• Questionnaire submission<br/>• Response processing<br/>• Analysis integration<br/>• Match enhancement"]
             
-            BELIEF_ROUTES[BelifSystemRoutes.ts<br/>• Belief system analysis<br/>• Value alignment<br/>• Cultural fit assessment<br/>• Compatibility factors]
+            BELIEF_ROUTES["BelifSystemRoutes.ts<br/>• Belief system analysis<br/>• Value alignment<br/>• Cultural fit assessment<br/>• Compatibility factors"]
         end
         
         subgraph "Due Diligence System"
-            FINANCIAL_DD[Financial DD Routes<br/>• /api/financial (legacy)<br/>• /api/new-financial (enhanced)<br/>• Entity analysis<br/>• Document processing]
+            FINANCIAL_DD["Financial DD Routes<br/>• /api/financial (legacy)<br/>• /api/new-financial (enhanced)<br/>• Entity analysis<br/>• Document processing"]
             
-            LEGAL_DD[Legal DD Routes<br/>• /api/legal-due-diligence<br/>• Legal analysis<br/>• Compliance checking<br/>• Risk assessment]
+            LEGAL_DD["Legal DD Routes<br/>• /api/legal-due-diligence<br/>• Legal analysis<br/>• Compliance checking<br/>• Risk assessment"]
             
-            DD_ENDPOINTS[DD Endpoints<br/>• GET /:entityId/analyze<br/>• POST /:entityId/generate<br/>• GET /:entityId<br/>• GET /:entityId/documents<br/>• GET /:entityId/check-documents]
+            DD_ENDPOINTS["DD Endpoints<br/>• GET /:entityId/analyze<br/>• POST /:entityId/generate<br/>• GET /:entityId<br/>• GET /:entityId/documents<br/>• GET /:entityId/check-documents"]
         end
         
         subgraph "Analytics & Intelligence"
-            RECOMMENDATIONS[recommendationRoutes.ts<br/>• AI recommendations<br/>• Personalized insights<br/>• Match suggestions<br/>• Strategic advice]
+            RECOMMENDATIONS["recommendationRoutes.ts<br/>• AI recommendations<br/>• Personalized insights<br/>• Match suggestions<br/>• Strategic advice"]
             
-            ANALYTICS[analyticsRoutes.ts<br/>• Usage analytics<br/>• Performance metrics<br/>• User behavior<br/>• System statistics]
+            ANALYTICS["analyticsRoutes.ts<br/>• Usage analytics<br/>• Performance metrics<br/>• User behavior<br/>• System statistics"]
             
-            DASHBOARD[dashboardRoutes.ts<br/>• Dashboard data<br/>• Summary statistics<br/>• Real-time metrics<br/>• KPI tracking]
+            DASHBOARD["dashboardRoutes.ts<br/>• Dashboard data<br/>• Summary statistics<br/>• Real-time metrics<br/>• KPI tracking"]
         end
         
         subgraph "Utility Routes"
-            EMAIL_ROUTES[emailRoutes.ts<br/>• Email sending<br/>• Notification system<br/>• Communication tools<br/>• Template management]
+            EMAIL_ROUTES["emailRoutes.ts<br/>• Email sending<br/>• Notification system<br/>• Communication tools<br/>• Template management"]
             
-            SEARCH_ROUTES[searchRoutes.ts<br/>• Search functionality<br/>• Filter options<br/>• Query processing<br/>• Result optimization]
+            SEARCH_ROUTES["searchRoutes.ts<br/>• Search functionality<br/>• Filter options<br/>• Query processing<br/>• Result optimization"]
             
-            TASK_ROUTES[taskRoutes.ts<br/>• Task management<br/>• Background processing<br/>• Job scheduling<br/>• Status tracking]
+            TASK_ROUTES["taskRoutes.ts<br/>• Task management<br/>• Background processing<br/>• Job scheduling<br/>• Status tracking"]
         end
     end
     
@@ -668,47 +682,47 @@ graph TD
 ```mermaid
 graph TB
     subgraph "AI & Machine Learning Services"
-        ML_MATCHING[MLMatchingService.ts (645 lines)<br/>• Startup-investor matching<br/>• Score calculation algorithms<br/>• Industry compatibility<br/>• Value alignment analysis<br/>• Gemini AI integration]
+        ML_MATCHING["MLMatchingService.ts (645 lines)<br/>• Startup-investor matching<br/>• Score calculation algorithms<br/>• Industry compatibility<br/>• Value alignment analysis<br/>• Gemini AI integration"]
         
-        RECOMMENDATION[RecommendationService.ts (485 lines)<br/>• Personalized recommendations<br/>• Strategic insights generation<br/>• MongoDB connection testing<br/>• Cache management<br/>• AI-powered analysis]
+        RECOMMENDATION["RecommendationService.ts (485 lines)<br/>• Personalized recommendations<br/>• Strategic insights generation<br/>• MongoDB connection testing<br/>• Cache management<br/>• AI-powered analysis"]
         
-        AI_INSIGHTS[AIInsightsService.ts<br/>• Business insights<br/>• Market analysis<br/>• Trend identification<br/>• Performance predictions<br/>• Data-driven recommendations]
+        AI_INSIGHTS["AIInsightsService.ts<br/>• Business insights<br/>• Market analysis<br/>• Trend identification<br/>• Performance predictions<br/>• Data-driven recommendations"]
         
-        QUESTIONNAIRE_MATCHER[questionnaireMatcher.ts<br/>• Response analysis<br/>• Pattern matching<br/>• Compatibility scoring<br/>• Behavioral insights<br/>• Match enhancement]
+        QUESTIONNAIRE_MATCHER["questionnaireMatcher.ts<br/>• Response analysis<br/>• Pattern matching<br/>• Compatibility scoring<br/>• Behavioral insights<br/>• Match enhancement"]
     end
     
     subgraph "Document Processing Services"
-        OCR_SERVICE[MemoryBasedOcrPdfService.ts (558 lines)<br/>• PDF combination & splitting<br/>• Memory-based processing<br/>• Gemini OCR integration<br/>• Batch processing<br/>• Error handling & retry logic]
+        OCR_SERVICE["MemoryBasedOcrPdfService.ts (558 lines)<br/>• PDF combination & splitting<br/>• Memory-based processing<br/>• Gemini OCR integration<br/>• Batch processing<br/>• Error handling & retry logic"]
         
-        DOC_PROCESSING[DocumentProcessingService.ts<br/>• Document analysis<br/>• Content extraction<br/>• Metadata processing<br/>• Format conversion<br/>• Quality validation]
+        DOC_PROCESSING["DocumentProcessingService.ts<br/>• Document analysis<br/>• Content extraction<br/>• Metadata processing<br/>• Format conversion<br/>• Quality validation"]
         
-        ENHANCED_DOC[EnhancedDocumentProcessingService.ts<br/>• Advanced document analysis<br/>• Multi-format support<br/>• Content intelligence<br/>• Automated categorization<br/>• Processing optimization]
+        ENHANCED_DOC["EnhancedDocumentProcessingService.ts<br/>• Advanced document analysis<br/>• Multi-format support<br/>• Content intelligence<br/>• Automated categorization<br/>• Processing optimization"]
         
-        DOC_AUDIT[DocumentProcessingAuditService.ts<br/>• Processing audit trails<br/>• Quality assurance<br/>• Error tracking<br/>• Performance monitoring<br/>• Compliance checking]
+        DOC_AUDIT["DocumentProcessingAuditService.ts<br/>• Processing audit trails<br/>• Quality assurance<br/>• Error tracking<br/>• Performance monitoring<br/>• Compliance checking"]
     end
     
     subgraph "Due Diligence Services"
-        NEW_FINANCIAL_DD[NewFinancialDueDiligenceService.ts (421 lines)<br/>• Memory-based OCR processing<br/>• Gemini AI analysis<br/>• Financial report generation<br/>• Risk assessment<br/>• JSON response handling]
+        NEW_FINANCIAL_DD["NewFinancialDueDiligenceService.ts (421 lines)<br/>• Memory-based OCR processing<br/>• Gemini AI analysis<br/>• Financial report generation<br/>• Risk assessment<br/>• JSON response handling"]
         
-        NEW_LEGAL_DD[NewLegalDueDiligenceService.ts<br/>• Legal document analysis<br/>• Compliance verification<br/>• Risk identification<br/>• Regulatory assessment<br/>• Legal insight generation]
+        NEW_LEGAL_DD["NewLegalDueDiligenceService.ts<br/>• Legal document analysis<br/>• Compliance verification<br/>• Risk identification<br/>• Regulatory assessment<br/>• Legal insight generation"]
         
-        TIME_SERIES[TimeSeriesDataService.ts<br/>• Historical data analysis<br/>• Trend identification<br/>• Performance tracking<br/>• Predictive analytics<br/>• Data visualization support]
+        TIME_SERIES["TimeSeriesDataService.ts<br/>• Historical data analysis<br/>• Trend identification<br/>• Performance tracking<br/>• Predictive analytics<br/>• Data visualization support"]
     end
     
     subgraph "Communication & Monitoring"
-        EMAIL_SERVICE[emailService.ts<br/>• Email sending functionality<br/>• Template management<br/>• Notification system<br/>• Delivery tracking<br/>• Error handling]
+        EMAIL_SERVICE["emailService.ts<br/>• Email sending functionality<br/>• Template management<br/>• Notification system<br/>• Delivery tracking<br/>• Error handling"]
         
-        SECURITY_MONITORING[securityMonitoring.ts<br/>• Security event tracking<br/>• Threat detection<br/>• Anomaly identification<br/>• Alert generation<br/>• Incident response]
+        SECURITY_MONITORING["securityMonitoring.ts<br/>• Security event tracking<br/>• Threat detection<br/>• Anomaly identification<br/>• Alert generation<br/>• Incident response"]
     end
     
     subgraph "Service Dependencies & Integration"
-        GEMINI_INTEGRATION[Gemini AI Integration<br/>• Multiple model support<br/>• Financial analysis model<br/>• Document extraction model<br/>• Recommendation model<br/>• Error handling & retries]
+        GEMINI_INTEGRATION["Gemini AI Integration<br/>• Multiple model support<br/>• Financial analysis model<br/>• Document extraction model<br/>• Recommendation model<br/>• Error handling & retries"]
         
-        MONGODB_INTEGRATION[MongoDB Integration<br/>• Connection management<br/>• Model operations<br/>• Query optimization<br/>• Data validation<br/>• Error handling]
+        MONGODB_INTEGRATION["MongoDB Integration<br/>• Connection management<br/>• Model operations<br/>• Query optimization<br/>• Data validation<br/>• Error handling"]
         
-        FILE_SYSTEM[File System Integration<br/>• Upload management<br/>• Storage optimization<br/>• Directory organization<br/>• Cleanup operations<br/>• Access control]
+        FILE_SYSTEM["File System Integration<br/>• Upload management<br/>• Storage optimization<br/>• Directory organization<br/>• Cleanup operations<br/>• Access control"]
         
-        EXTERNAL_APIS[External API Integration<br/>• Email service APIs<br/>• OAuth providers<br/>• Third-party services<br/>• Rate limiting<br/>• Error recovery]
+        EXTERNAL_APIS["External API Integration<br/>• Email service APIs<br/>• OAuth providers<br/>• Third-party services<br/>• Rate limiting<br/>• Error recovery"]
     end
     
     ML_MATCHING --> GEMINI_INTEGRATION
@@ -741,51 +755,51 @@ graph TB
 ```mermaid
 graph TB
     subgraph "Profile Models"
-        STARTUP_PROFILE[StartupProfile Model<br/>• userId (indexed, unique)<br/>• companyName<br/>• industry (indexed)<br/>• fundingStage (indexed)<br/>• employeeCount<br/>• location<br/>• pitch<br/>• timestamps]
+        STARTUP_PROFILE["StartupProfile Model<br/>• userId (indexed, unique)<br/>• companyName<br/>• industry (indexed)<br/>• fundingStage (indexed)<br/>• employeeCount<br/>• location<br/>• pitch<br/>• timestamps"]
         
-        INVESTOR_PROFILE[InvestorProfile Model<br/>• userId (indexed, unique)<br/>• companyName<br/>• industriesOfInterest<br/>• preferredStages<br/>• ticketSize<br/>• investmentCriteria<br/>• pastInvestments<br/>• timestamps]
+        INVESTOR_PROFILE["InvestorProfile Model<br/>• userId (indexed, unique)<br/>• companyName<br/>• industriesOfInterest<br/>• preferredStages<br/>• ticketSize<br/>• investmentCriteria<br/>• pastInvestments<br/>• timestamps"]
         
-        EXTENDED_PROFILE[ExtendedProfile Model<br/>• userId (indexed)<br/>• avatarUrl<br/>• socialLinks<br/>• teamMembers<br/>• investmentHistory<br/>• bio<br/>• timestamps]
+        EXTENDED_PROFILE["ExtendedProfile Model<br/>• userId (indexed)<br/>• avatarUrl<br/>• socialLinks<br/>• teamMembers<br/>• investmentHistory<br/>• bio<br/>• timestamps"]
     end
     
     subgraph "Document Management"
-        DOCUMENT_MODEL[Document Model<br/>• userId (indexed)<br/>• fileName, originalName<br/>• fileType, fileSize, filePath<br/>• documentType (50+ types)<br/>• category (financial/legal/other)<br/>• timePeriod<br/>• isPublic<br/>• description<br/>• timestamps]
+        DOCUMENT_MODEL["Document Model<br/>• userId (indexed)<br/>• fileName, originalName<br/>• fileType, fileSize, filePath<br/>• documentType (50+ types)<br/>• category (financial/legal/other)<br/>• timePeriod<br/>• isPublic<br/>• description<br/>• timestamps"]
         
-        DOCUMENT_TYPES[Document Types (50+)<br/>Financial Types:<br/>• financial_balance_sheet<br/>• financial_income_statement<br/>• financial_cash_flow<br/>• financial_tax_returns<br/>Legal Types:<br/>• legal_incorporation_certificate<br/>• legal_moa_aoa<br/>• legal_board_resolutions<br/>General Types:<br/>• pitch_deck<br/>• other, miscellaneous]
+        DOCUMENT_TYPES["Document Types (50+)<br/>Financial Types:<br/>• financial_balance_sheet<br/>• financial_income_statement<br/>• financial_cash_flow<br/>• financial_tax_returns<br/>Legal Types:<br/>• legal_incorporation_certificate<br/>• legal_moa_aoa<br/>• legal_board_resolutions<br/>General Types:<br/>• pitch_deck<br/>• other, miscellaneous"]
     end
     
     subgraph "Analytics & Reports"
-        FINANCIAL_REPORT[NewFinancialDueDiligenceReport<br/>• targetEntityId (indexed)<br/>• targetEntityType<br/>• requestedById<br/>• companyName<br/>• reportDate<br/>• generatedBy<br/>• introduction<br/>• items (analysis array)<br/>• missingDocuments<br/>• riskScore<br/>• availableDocuments<br/>• status<br/>• expiresAt (30 days)]
+        FINANCIAL_REPORT["NewFinancialDueDiligenceReport<br/>• targetEntityId (indexed)<br/>• targetEntityType<br/>• requestedById<br/>• companyName<br/>• reportDate<br/>• generatedBy<br/>• introduction<br/>• items (analysis array)<br/>• missingDocuments<br/>• riskScore<br/>• availableDocuments<br/>• status<br/>• expiresAt (30 days)"]
         
-        LEGAL_REPORT[LegalDueDiligenceReport<br/>• Similar structure to Financial<br/>• Legal-specific analysis<br/>• Compliance assessments<br/>• Risk evaluations<br/>• Regulatory compliance<br/>• Legal recommendations]
+        LEGAL_REPORT["LegalDueDiligenceReport<br/>• Similar structure to Financial<br/>• Legal-specific analysis<br/>• Compliance assessments<br/>• Risk evaluations<br/>• Regulatory compliance<br/>• Legal recommendations"]
         
-        MATCH_ANALYSIS[MatchAnalysis Schema<br/>• startupId, investorId<br/>• matchScore<br/>• breakdown details<br/>• insights array<br/>• algorithmVersion<br/>• calculation metadata]
+        MATCH_ANALYSIS["MatchAnalysis Schema<br/>• startupId, investorId<br/>• matchScore<br/>• breakdown details<br/>• insights array<br/>• algorithmVersion<br/>• calculation metadata"]
     end
     
     subgraph "User Interaction Models"
-        QUESTIONNAIRE[QuestionnaireSubmission<br/>• userId (indexed)<br/>• userRole (startup/investor)<br/>• responses (Map structure)<br/>• status (draft/submitted)<br/>• submissionDate<br/>• analysisResults<br/>• completionPercentage]
+        QUESTIONNAIRE["QuestionnaireSubmission<br/>• userId (indexed)<br/>• userRole (startup/investor)<br/>• responses (Map structure)<br/>• status (draft/submitted)<br/>• submissionDate<br/>• analysisResults<br/>• completionPercentage"]
         
-        RECOMMENDATION_MODEL[Recommendation Model<br/>• startupId, investorId<br/>• perspective (startup/investor)<br/>• recommendations array<br/>• precision score<br/>• createdAt<br/>• expiresAt<br/>• category classifications]
+        RECOMMENDATION_MODEL["Recommendation Model<br/>• startupId, investorId<br/>• perspective (startup/investor)<br/>• recommendations array<br/>• precision score<br/>• createdAt<br/>• expiresAt<br/>• category classifications"]
         
-        BELIEF_SYSTEM[BeliefSystemAnalysis<br/>• userId<br/>• analysisResults<br/>• valueAlignment<br/>• culturalFit<br/>• workStylePreferences<br/>• communicationStyle]
+        BELIEF_SYSTEM["BeliefSystemAnalysis<br/>• userId<br/>• analysisResults<br/>• valueAlignment<br/>• culturalFit<br/>• workStylePreferences<br/>• communicationStyle"]
     end
     
     subgraph "System Models"
-        API_USAGE[ApiUsage Model<br/>• userId<br/>• endpoint<br/>• requestCount<br/>• responseTime<br/>• lastAccessed<br/>• errorCount<br/>• usage patterns]
+        API_USAGE["ApiUsage Model<br/>• userId<br/>• endpoint<br/>• requestCount<br/>• responseTime<br/>• lastAccessed<br/>• errorCount<br/>• usage patterns"]
         
-        TASK_MODEL[Task Model<br/>• userId<br/>• taskType<br/>• status<br/>• priority<br/>• scheduledAt<br/>• completedAt<br/>• result<br/>• error details]
+        TASK_MODEL["Task Model<br/>• userId<br/>• taskType<br/>• status<br/>• priority<br/>• scheduledAt<br/>• completedAt<br/>• result<br/>• error details"]
         
-        TASK_CACHE[TaskVerificationCache<br/>• taskId<br/>• verificationData<br/>• status<br/>• expiresAt<br/>• metadata]
+        TASK_CACHE["TaskVerificationCache<br/>• taskId<br/>• verificationData<br/>• status<br/>• expiresAt<br/>• metadata"]
         
-        AI_CACHE[AIInsightCache<br/>• queryHash<br/>• insightData<br/>• generatedAt<br/>• expiresAt<br/>• usage count]
+        AI_CACHE["AIInsightCache<br/>• queryHash<br/>• insightData<br/>• generatedAt<br/>• expiresAt<br/>• usage count"]
         
-        FORM_SUBMISSION[FormSubmission<br/>• userId<br/>• formType<br/>• formData<br/>• submissionDate<br/>• processedAt<br/>• status]
+        FORM_SUBMISSION["FormSubmission<br/>• userId<br/>• formType<br/>• formData<br/>• submissionDate<br/>• processedAt<br/>• status"]
     end
     
     subgraph "Model Relationships & Indexing"
-        INDEXES[Database Indexes<br/>• userId indexes on all models<br/>• Compound indexes for queries<br/>• Text indexes for search<br/>• TTL indexes for expiration<br/>• Performance optimization]
+        INDEXES["Database Indexes<br/>• userId indexes on all models<br/>• Compound indexes for queries<br/>• Text indexes for search<br/>• TTL indexes for expiration<br/>• Performance optimization"]
         
-        RELATIONSHIPS[Model Relationships<br/>• userId references across models<br/>• Profile ↔ Document linkage<br/>• Report ↔ Document association<br/>• Match ↔ Profile connections<br/>• Cross-collection queries]
+        RELATIONSHIPS["Model Relationships<br/>• userId references across models<br/>• Profile ↔ Document linkage<br/>• Report ↔ Document association<br/>• Match ↔ Profile connections<br/>• Cross-collection queries"]
     end
     
     STARTUP_PROFILE --> DOCUMENT_MODEL
@@ -972,55 +986,55 @@ sequenceDiagram
 ```mermaid
 graph TB
     subgraph "Global Error Handling System"
-        GLOBAL_HANDLER[Global Error Handler (middleware/errorHandler.ts)<br/>• Malformed JSON detection<br/>• Payload size validation<br/>• JWT error handling<br/>• OAuth error management<br/>• Database error categorization<br/>• Rate limiting errors<br/>• Validation error processing]
+        GLOBAL_HANDLER["Global Error Handler (middleware/errorHandler.ts)<br/>• Malformed JSON detection<br/>• Payload size validation<br/>• JWT error handling<br/>• OAuth error management<br/>• Database error categorization<br/>• Rate limiting errors<br/>• Validation error processing"]
         
-        ERROR_CATEGORIES[Error Categories<br/>• SyntaxError (JSON parsing)<br/>• PayloadTooLargeError<br/>• JsonWebTokenError<br/>• TokenExpiredError<br/>• Prisma errors (P2002, P2025)<br/>• ValidationError<br/>• MongooseError<br/>• Rate limit (429)]
+        ERROR_CATEGORIES["Error Categories<br/>• SyntaxError (JSON parsing)<br/>• PayloadTooLargeError<br/>• JsonWebTokenError<br/>• TokenExpiredError<br/>• Prisma errors (P2002, P2025)<br/>• ValidationError<br/>• MongooseError<br/>• Rate limit (429)"]
         
-        ERROR_RESPONSES[Error Response Formats<br/>• Sanitized error messages<br/>• Status code mapping<br/>• Development vs production<br/>• Security-aware responses<br/>• Redirect handling<br/>• Client-safe information]
+        ERROR_RESPONSES["Error Response Formats<br/>• Sanitized error messages<br/>• Status code mapping<br/>• Development vs production<br/>• Security-aware responses<br/>• Redirect handling<br/>• Client-safe information"]
     end
     
     subgraph "Controller-Level Error Handling"
-        CONTROLLER_ERROR[handleControllerError Function<br/>• Consistent error responses<br/>• Status code detection<br/>• Error message extraction<br/>• Development mode details<br/>• Logging integration]
+        CONTROLLER_ERROR["handleControllerError Function<br/>• Consistent error responses<br/>• Status code detection<br/>• Error message extraction<br/>• Development mode details<br/>• Logging integration"]
         
-        ASYNC_WRAPPER[asyncHandler Wrapper<br/>• Automatic try-catch<br/>• Promise rejection handling<br/>• Next() error forwarding<br/>• Stack trace preservation<br/>• Context maintenance]
+        ASYNC_WRAPPER["asyncHandler Wrapper<br/>• Automatic try-catch<br/>• Promise rejection handling<br/>• Next() error forwarding<br/>• Stack trace preservation<br/>• Context maintenance"]
         
-        TRY_CATCH[Try-Catch Blocks<br/>• Specific error handling<br/>• Resource cleanup<br/>• State restoration<br/>• Partial success handling<br/>• Rollback mechanisms]
+        TRY_CATCH["Try-Catch Blocks<br/>• Specific error handling<br/>• Resource cleanup<br/>• State restoration<br/>• Partial success handling<br/>• Rollback mechanisms"]
     end
     
     subgraph "Service-Level Error Management"
-        SERVICE_ERRORS[Service Error Handling<br/>• Business logic errors<br/>• External API failures<br/>• Database connectivity<br/>• File system issues<br/>• Processing timeouts]
+        SERVICE_ERRORS["Service Error Handling<br/>• Business logic errors<br/>• External API failures<br/>• Database connectivity<br/>• File system issues<br/>• Processing timeouts"]
         
-        GEMINI_RETRY[Gemini API Retry Logic<br/>• Dynamic retry delays<br/>• Exponential Backoff<br/>• Rate limit detection<br/>• Error type analysis<br/>• Circuit breaker pattern]
+        GEMINI_RETRY["Gemini API Retry Logic<br/>• Dynamic retry delays<br/>• Exponential Backoff<br/>• Rate limit detection<br/>• Error type analysis<br/>• Circuit breaker pattern"]
         
-        DB_ERRORS[Database Error Handling<br/>• Connection failures<br/>• Query timeouts<br/>• Constraint violations<br/>• Data validation<br/>• Transaction rollbacks]
+        DB_ERRORS["Database Error Handling<br/>• Connection failures<br/>• Query timeouts<br/>• Constraint violations<br/>• Data validation<br/>• Transaction rollbacks"]
         
-        FILE_ERRORS[File System Error Handling<br/>• Missing files<br/>• Permission issues<br/>• Storage space<br/>• Corruption detection<br/>• Recovery mechanisms]
+        FILE_ERRORS["File System Error Handling<br/>• Missing files<br/>• Permission issues<br/>• Storage space<br/>• Corruption detection<br/>• Recovery mechanisms"]
     end
     
     subgraph "Advanced Logging System (utils/logger.ts - 241 lines)"
-        LOGGER_CORE[Logger Core System<br/>• Multiple log levels<br/>• Structured logging<br/>• Context awareness<br/>• Performance tracking<br/>• Security filtering]
+        LOGGER_CORE["Logger Core System<br/>• Multiple log levels<br/>• Structured logging<br/>• Context awareness<br/>• Performance tracking<br/>• Security filtering"]
         
-        LOG_LEVELS[Log Levels<br/>• ERROR: Critical issues<br/>• WARN: Warning conditions<br/>• INFO: General information<br/>• DEBUG: Detailed debugging<br/>• SUCCESS: Operation success<br/>• HTTP: Request/response<br/>• SYSTEM: System events]
+        LOG_LEVELS["Log Levels<br/>• ERROR: Critical issues<br/>• WARN: Warning conditions<br/>• INFO: General information<br/>• DEBUG: Detailed debugging<br/>• SUCCESS: Operation success<br/>• HTTP: Request/response<br/>• SYSTEM: System events"]
         
-        LOG_FORMATTING[Log Formatting<br/>• Timestamp standardization<br/>• Color coding (development)<br/>• Compact data representation<br/>• Sensitive data filtering<br/>• JSON structure<br/>• Context injection]
+        LOG_FORMATTING["Log Formatting<br/>• Timestamp standardization<br/>• Color coding (development)<br/>• Compact data representation<br/>• Sensitive data filtering<br/>• JSON structure<br/>• Context injection"]
         
-        LOG_DESTINATIONS[Log Destinations<br/>• Console output (colored)<br/>• File system (/logs)<br/>• Error-specific files<br/>• JSON log files<br/>• Performance logs<br/>• Security event logs]
+        LOG_DESTINATIONS["Log Destinations<br/>• Console output (colored)<br/>• File system (/logs)<br/>• Error-specific files<br/>• JSON log files<br/>• Performance logs<br/>• Security event logs"]
     end
     
     subgraph "File Logging System (utils/fileLogger.ts)"
-        FILE_LOGGER[File Logger<br/>• Timestamped files<br/>• Automatic naming<br/>• Directory management<br/>• JSON object logging<br/>• Text content logging<br/>• Error tracking]
+        FILE_LOGGER["File Logger<br/>• Timestamped files<br/>• Automatic naming<br/>• Directory management<br/>• JSON object logging<br/>• Text content logging<br/>• Error tracking"]
         
-        LOG_ORGANIZATION[Log Organization<br/>• Date-based naming<br/>• Category separation<br/>• Size management<br/>• Rotation policies<br/>• Cleanup procedures<br/>• Archive strategies]
+        LOG_ORGANIZATION["Log Organization<br/>• Date-based naming<br/>• Category separation<br/>• Size management<br/>• Rotation policies<br/>• Cleanup procedures<br/>• Archive strategies"]
         
-        SPECIALIZED_LOGS[Specialized Logging<br/>• OCR processing logs<br/>• Financial analysis logs<br/>• API response logs<br/>• Error detail logs<br/>• Performance metrics<br/>• Security events]
+        SPECIALIZED_LOGS["Specialized Logging<br/>• OCR processing logs<br/>• Financial analysis logs<br/>• API response logs<br/>• Error detail logs<br/>• Performance metrics<br/>• Security events"]
     end
     
     subgraph "Security Event Logging"
-        SECURITY_EVENTS[Security Event Types<br/>• Authentication failures<br/>• Rate limit violations<br/>• CSRF token issues<br/>• Suspicious input detected<br/>• File upload violations<br/>• SQL injection attempts<br/>• XSS prevention triggers]
+        SECURITY_EVENTS["Security Event Types<br/>• Authentication failures<br/>• Rate limit violations<br/>• CSRF token issues<br/>• Suspicious input detected<br/>• File upload violations<br/>• SQL injection attempts<br/>• XSS prevention triggers"]
         
-        SECURITY_MONITORING[Security Monitoring<br/>• Real-time alerting<br/>• Pattern detection<br/>• Anomaly identification<br/>• Threat analysis<br/>• Incident tracking<br/>• Response automation]
+        SECURITY_MONITORING["Security Monitoring<br/>• Real-time alerting<br/>• Pattern detection<br/>• Anomaly identification<br/>• Threat analysis<br/>• Incident tracking<br/>• Response automation"]
         
-        AUDIT_TRAILS[Audit Trails<br/>• User actions<br/>• System changes<br/>• Data modifications<br/>• Access patterns<br/>• Permission changes<br/>• Configuration updates]
+        AUDIT_TRAILS["Audit Trails<br/>• User actions<br/>• System changes<br/>• Data modifications<br/>• Access patterns<br/>• Permission changes<br/>• Configuration updates"]
     end
     
     GLOBAL_HANDLER --> ERROR_CATEGORIES
@@ -1058,35 +1072,35 @@ graph TB
 ```mermaid
 graph TD
     subgraph "Request Performance Monitoring"
-        TRACK_TIME[trackTime Middleware<br/>- Response time measurement<br/>- Performance metrics<br/>- Slow query detection<br/>- Optimization data<br/>- Bottleneck identification]
+        TRACK_TIME["trackTime Middleware<br/>- Response time measurement<br/>- Performance metrics<br/>- Slow query detection<br/>- Optimization data<br/>- Bottleneck identification"]
         
-        COUNT_REQ[countRequest Middleware<br/>- Request counting<br/>- Endpoint usage tracking<br/>- Traffic analysis<br/>- Load monitoring<br/>- Capacity planning]
+        COUNT_REQ["countRequest Middleware<br/>- Request counting<br/>- Endpoint usage tracking<br/>- Traffic analysis<br/>- Load monitoring<br/>- Capacity planning"]
         
-        STATS_ENDPOINT[Statistics Endpoint<br/>- /api/stats<br/>- Real-time metrics<br/>- Performance summaries<br/>- Usage analytics<br/>- System health indicators]
+        STATS_ENDPOINT["Statistics Endpoint<br/>- /api/stats<br/>- Real-time metrics<br/>- Performance summaries<br/>- Usage analytics<br/>- System health indicators"]
     end
     
     subgraph "Database Optimization"
-        MONGO_INDEXES[MongoDB Indexing Strategy<br/>• userId indexes on all collections<br/>• Compound indexes for queries<br/>• Text indexes for search<br/>• TTL indexes for auto-cleanup<br/>• Performance monitoring]
+        MONGO_INDEXES["MongoDB Indexing Strategy<br/>• userId indexes on all collections<br/>• Compound indexes for queries<br/>• Text indexes for search<br/>• TTL indexes for auto-cleanup<br/>• Performance monitoring"]
         
-        QUERY_OPTIMIZATION[Query Optimization<br/>• Efficient query patterns<br/>• Aggregation pipelines<br/>• Projection optimization<br/>• Limit and pagination<br/>• Connection pooling]
+        QUERY_OPTIMIZATION["Query Optimization<br/>• Efficient query patterns<br/>• Aggregation pipelines<br/>• Projection optimization<br/>• Limit and pagination<br/>• Connection pooling"]
         
-        CACHE_STRATEGY[Caching Strategy<br/>• Financial DD reports (30 days)<br/>• Recommendation caching<br/>• Match analysis caching<br/>• API response caching<br/>• Session-based caching]
+        CACHE_STRATEGY["Caching Strategy<br/>• Financial DD reports (30 days)<br/>• Recommendation caching<br/>• Match analysis caching<br/>• API response caching<br/>• Session-based caching"]
     end
     
     subgraph "Memory Management"
-        MEMORY_OCR[Memory-Based OCR<br/>• In-memory PDF processing<br/>• Buffer management<br/>• Garbage collection<br/>• Memory leak prevention<br/>• Resource optimization]
+        MEMORY_OCR["Memory-Based OCR<br/>• In-memory PDF processing<br/>• Buffer management<br/>• Garbage collection<br/>• Memory leak prevention<br/>• Resource optimization"]
         
-        BATCH_PROCESSING[Batch Processing<br/>• Chunk-based OCR<br/>• Parallel processing<br/>• Resource limiting<br/>• Queue management<br/>• Throughput optimization]
+        BATCH_PROCESSING["Batch Processing<br/>• Chunk-based OCR<br/>• Parallel processing<br/>• Resource limiting<br/>• Queue management<br/>• Throughput optimization"]
         
-        CLEANUP_OPERATIONS[Cleanup Operations<br/>• Directory cleanup on startup<br/>• Temporary file removal<br/>• Memory deallocation<br/>• Cache invalidation<br/>• Resource recycling]
+        CLEANUP_OPERATIONS["Cleanup Operations<br/>• Directory cleanup on startup<br/>• Temporary file removal<br/>• Memory deallocation<br/>• Cache invalidation<br/>• Resource recycling"]
     end
     
     subgraph "API Performance"
-        RATE_LIMITING[Rate Limiting Strategy<br/>• Per-endpoint limits<br/>• IP-based restrictions<br/>• User-based quotas<br/>• Burst handling<br/>• Fair usage policies]
+        RATE_LIMITING["Rate Limiting Strategy<br/>• Per-endpoint limits<br/>• IP-based restrictions<br/>• User-based quotas<br/>• Burst handling<br/>• Fair usage policies"]
         
-        RESPONSE_OPTIMIZATION[Response Optimization<br/>• JSON compression<br/>• Selective field returns<br/>• Pagination support<br/>• Streaming responses<br/>• Cache headers]
+        RESPONSE_OPTIMIZATION["Response Optimization<br/>• JSON compression<br/>• Selective field returns<br/>• Pagination support<br/>• Streaming responses<br/>• Cache headers"]
         
-        ASYNC_PROCESSING[Asynchronous Processing<br/>• Background tasks<br/>• Queue systems<br/>• Non-blocking operations<br/>• Promise handling<br/>• Event-driven architecture]
+        ASYNC_PROCESSING["Asynchronous Processing<br/>• Background tasks<br/>• Queue systems<br/>• Non-blocking operations<br/>• Promise handling<br/>• Event-driven architecture"]
     end
     
     TRACK_TIME --> COUNT_REQ
@@ -1110,57 +1124,137 @@ graph TD
 ## 14. API Response Standards & Status Codes
 
 ```mermaid
-graph TD
+graph TB
     subgraph "Success Response Patterns"
-        SUCCESS_200[200 OK - Successful Operation<br/>• Data retrieval<br/>• Profile updates<br/>• Analysis results<br/>• Match findings]
+        SUCCESS_200["200 OK - Successful Operation
+        • Data retrieval
+        • Profile updates
+        • Analysis results
+        • Match findings"]
         
-        SUCCESS_201[201 Created - Resource Created<br/>• User registration<br/>• Profile creation<br/>• Document upload<br/>• Report generation]
+        SUCCESS_201["201 Created - Resource Created
+        • User registration
+        • Profile creation
+        • Document upload
+        • Report generation"]
         
-        SUCCESS_204[204 No Content<br/>• Successful deletion<br/>• Profile updates<br/>• Settings changes<br/>• Cache clearing]
+        SUCCESS_204["204 No Content
+        • Successful deletion
+        • Profile updates
+        • Settings changes
+        • Cache clearing"]
     end
     
     subgraph "Client Error Responses"
-        ERROR_400[400 Bad Request<br/>• Invalid input data<br/>• Malformed JSON<br/>• Validation failures<br/>• Parameter errors]
+        ERROR_400["400 Bad Request
+        • Invalid input data
+        • Malformed JSON
+        • Validation failures
+        • Parameter errors"]
         
-        ERROR_401[401 Unauthorized<br/>• Missing authentication<br/>• Invalid JWT token<br/>• Expired credentials<br/>• OAuth failures]
+        ERROR_401["401 Unauthorized
+        • Missing authentication
+        • Invalid JWT token
+        • Expired credentials
+        • OAuth failures"]
         
-        ERROR_403[403 Forbidden<br/>• Insufficient permissions<br/>• CSRF token invalid<br/>• Role restrictions<br/>• Resource access denied]
+        ERROR_403["403 Forbidden
+        • Insufficient permissions
+        • CSRF token invalid
+        • Role restrictions
+        • Resource access denied"]
         
-        ERROR_404[404 Not Found<br/>• Profile not found<br/>• Document missing<br/>• Report unavailable<br/>• Endpoint not exists]
+        ERROR_404["404 Not Found
+        • Profile not found
+        • Document missing
+        • Report unavailable
+        • Endpoint not exists"]
         
-        ERROR_409[409 Conflict<br/>• User already exists<br/>• Duplicate resources<br/>• Constraint violations<br/>• State conflicts]
+        ERROR_409["409 Conflict
+        • User already exists
+        • Duplicate resources
+        • Constraint violations
+        • State conflicts"]
         
-        ERROR_422[422 Unprocessable Entity<br/>• Semantic validation errors<br/>• Business rule violations<br/>• Data consistency issues<br/>• Relationship constraints]
+        ERROR_422["422 Unprocessable Entity
+        • Semantic validation errors
+        • Business rule violations
+        • Data consistency issues
+        • Relationship constraints"]
         
-        ERROR_429[429 Too Many Requests<br/>• Rate limit exceeded<br/>• API quota reached<br/>• Abuse detection<br/>• Temporary restrictions]
+        ERROR_429["429 Too Many Requests
+        • Rate limit exceeded
+        • API quota reached
+        • Abuse detection
+        • Temporary restrictions"]
     end
     
     subgraph "Server Error Responses"
-        ERROR_500[500 Internal Server Error<br/>• Unexpected exceptions<br/>• Database connectivity<br/>• Service failures<br/>• Processing errors]
+        ERROR_500["500 Internal Server Error
+        • Unexpected exceptions
+        • Database connectivity
+        • Service failures
+        • Processing errors"]
         
-        ERROR_502[502 Bad Gateway<br/>• External service failures<br/>• Gemini API issues<br/>• Email service problems<br/>• Third-party integration]
+        ERROR_502["502 Bad Gateway
+        • External service failures
+        • Gemini API issues
+        • Email service problems
+        • Third-party integration"]
         
-        ERROR_503[503 Service Unavailable<br/>• Temporary outages<br/>• Maintenance mode<br/>• Resource exhaustion<br/>• Overload conditions]
+        ERROR_503["503 Service Unavailable
+        • Temporary outages
+        • Maintenance mode
+        • Resource exhaustion
+        • Overload conditions"]
     end
     
     subgraph "Response Structure Standards"
-        STANDARD_SUCCESS[Standard Success Format<br/>{<br/>  "message": "Operation successful",<br/>  "data": {...},<br/>  "metadata": {...}<br/>}]
+        STANDARD_SUCCESS["Standard Success Format
+        message: Operation successful
+        data: response data
+        metadata: additional info"]
         
-        STANDARD_ERROR[Standard Error Format<br/>{<br/>  "message": "Error description",<br/>  "error": "Error details",<br/>  "statusCode": 400,<br/>  "timestamp": "ISO string"<br/>}]
+        STANDARD_ERROR["Standard Error Format
+        message: Error description
+        error: Error details
+        statusCode: HTTP status
+        timestamp: ISO string"]
         
-        PAGINATION_RESPONSE[Paginated Response<br/>{<br/>  "data": [...],<br/>  "pagination": {<br/>    "page": 1,<br/>    "limit": 10,<br/>    "total": 100<br/>  }<br/>}]
+        PAGINATION_RESPONSE["Paginated Response
+        data: array of items
+        pagination: page info
+        total: total count"]
         
-        VALIDATION_ERROR[Validation Error Format<br/>{<br/>  "message": "Validation failed",<br/>  "errors": [<br/>    {<br/>      "field": "email",<br/>      "message": "Invalid format",<br/>      "value": "invalid@"<br/>    }<br/>  ]<br/>}]
+        VALIDATION_ERROR["Validation Error Format
+        message: Validation failed
+        errors: field-specific errors
+        field details included"]
     end
     
     subgraph "Domain-Specific Responses"
-        AUTH_SUCCESS[Authentication Success<br/>{<br/>  "message": "Login successful",<br/>  "token": "jwt_token_here",<br/>  "user": {<br/>    "userId": "uuid",<br/>    "email": "user@example.com",<br/>    "role": "startup"<br/>  }<br/>}]
+        AUTH_SUCCESS["Authentication Success
+        message: Login successful
+        token: JWT token
+        user: user details
+        role information"]
         
-        FINANCIAL_DD_SUCCESS[Financial DD Response<br/>{<br/>  "companyName": "Startup Inc",<br/>  "introduction": "Analysis summary",<br/>  "items": [...],<br/>  "missingDocuments": {...},<br/>  "riskScore": {<br/>    "score": "Medium",<br/>    "justification": "..."<br/>  }<br/>}]
+        FINANCIAL_DD_SUCCESS["Financial DD Response
+        companyName: Company name
+        introduction: Analysis summary
+        items: DD items
+        riskScore: assessment"]
         
-        MATCH_RESPONSE[Matching Response<br/>{<br/>  "matches": [<br/>    {<br/>      "investorId": "uuid",<br/>      "matchScore": 85,<br/>      "companyName": "VC Firm",<br/>      "insights": [...]<br/>    }<br/>  ],<br/>  "usedEnhancedMatching": true<br/>}]
+        MATCH_RESPONSE["Matching Response
+        matches: investor matches
+        matchScore: compatibility
+        insights: match details
+        enhanced matching flag"]
         
-        UPLOAD_SUCCESS[Upload Success<br/>{<br/>  "message": "Files uploaded",<br/>  "documents": [<br/>    {<br/>      "id": "doc_id",<br/>      "originalName": "file.pdf",<br/>      "documentType": "financial_balance_sheet"<br/>    }<br/>  ]<br/>}]
+        UPLOAD_SUCCESS["Upload Success
+        message: Files uploaded
+        documents: file details
+        documentType: classification"]
     end
     
     SUCCESS_200 --> STANDARD_SUCCESS
@@ -1178,10 +1272,15 @@ graph TD
     
     PAGINATION_RESPONSE --> MATCH_RESPONSE
     
-    style SUCCESS_200 fill:#99ff99
-    style ERROR_401 fill:#ff9999
-    style ERROR_500 fill:#ffcc99
-    style STANDARD_SUCCESS fill:#9999ff
+    classDef successStyle fill:#99ff99,stroke:#333,stroke-width:2px
+    classDef errorStyle fill:#ff9999,stroke:#333,stroke-width:2px
+    classDef serverErrorStyle fill:#ffcc99,stroke:#333,stroke-width:2px
+    classDef standardStyle fill:#9999ff,stroke:#333,stroke-width:2px
+    
+    class SUCCESS_200,SUCCESS_201,SUCCESS_204 successStyle
+    class ERROR_400,ERROR_401,ERROR_403,ERROR_404,ERROR_409,ERROR_422,ERROR_429 errorStyle
+    class ERROR_500,ERROR_502,ERROR_503 serverErrorStyle
+    class STANDARD_SUCCESS,STANDARD_ERROR,PAGINATION_RESPONSE,VALIDATION_ERROR standardStyle
 ```
 
 ## 15. Enhanced Monitoring and Security Tracking
@@ -1238,37 +1337,82 @@ graph TB
 ## 16. Type System and Interface Architecture
 
 ```mermaid
-graph TB
+graph TD
     subgraph "Express Type Extensions"
-        EXPRESS_USER[Express.User Interface<br/>- userId: string<br/>- role?: string]
-        EXPRESS_REQ[Express.Request Interface<br/>- user?: User<br/>- requestStartTime?: number<br/>- requestId?: string]
+        EXPRESS_USER["Express.User Interface
+        • userId: string
+        • role?: string"]
+        
+        EXPRESS_REQ["Express.Request Interface
+        • user?: User
+        • requestStartTime?: number
+        • requestId?: string"]
     end
     
     subgraph "Questionnaire Type System"
-        QUESTION_OPTION[QuestionOption Interface<br/>- value: string | number<br/>- label: string<br/>- description?: string]
+        QUESTION_OPTION["QuestionOption Interface
+        • value: string | number
+        • label: string
+        • description?: string"]
         
-        QUESTION[Question Interface<br/>- id: string<br/>- text: string<br/>- type: 'radio' | 'select' | 'multi-select' | 'slider' | 'text'<br/>- category: string<br/>- required: boolean<br/>- options?: QuestionOption[]<br/>- placeholder?: string<br/>- helpText?: string<br/>- description?: string]
+        QUESTION["Question Interface
+        • id: string
+        • text: string
+        • type: 'radio' | 'select' | 'multi-select' | 'slider' | 'text'
+        • category: string
+        • required: boolean
+        • options?: QuestionOption[]
+        • placeholder?: string
+        • helpText?: string
+        • description?: string"]
         
-        QUESTIONNAIRE_SUB[QuestionnaireSubmission Interface<br/>- userId: string<br/>- userRole: 'startup' | 'investor'<br/>- responses: Record<string, any><br/>- status: 'draft' | 'submitted'<br/>- createdAt: Date<br/>- updatedAt: Date]
+        QUESTIONNAIRE_SUB["QuestionnaireSubmission Interface
+        • userId: string
+        • userRole: 'startup' | 'investor'
+        • responses: Record string, any
+        • status: 'draft' | 'submitted'
+        • createdAt: Date
+        • updatedAt: Date"]
     end
     
     subgraph "Security Event Types"
-        SECURITY_EVENT[SecurityEvent Interface<br/>- timestamp: string<br/>- type: string<br/>- severity: 'low' | 'medium' | 'high' | 'critical'<br/>- ip: string<br/>- userAgent: string<br/>- url: string<br/>- method: string<br/>- userId?: string<br/>- details: any<br/>- fingerprint: string]
+        SECURITY_EVENT["SecurityEvent Interface
+        • timestamp: string
+        • type: string
+        • severity: 'low' | 'medium' | 'high' | 'critical'
+        • ip: string
+        • userAgent: string
+        • url: string
+        • method: string
+        • userId?: string
+        • details: any
+        • fingerprint: string"]
     end
     
     subgraph "Async Handler Types"
-        ASYNC_HANDLER[AsyncRequestHandler Type<br/>Function signature:<br/>(req: Request, res: Response, next: NextFunction)<br/>=> Promise<any>]
+        ASYNC_HANDLER["AsyncRequestHandler Type
+        Function signature:
+        (req: Request, res: Response, next: NextFunction)
+        => Promise of any"]
         
-        WRAPPED_HANDLER[Wrapped Handler<br/>Promise.resolve(fn(req, res, next))<br/>.catch(next)]
+        WRAPPED_HANDLER["Wrapped Handler
+        Promise.resolve(fn(req, res, next))
+        .catch(next)"]
     end
     
     QUESTION_OPTION --> QUESTION
     QUESTION --> QUESTIONNAIRE_SUB
     EXPRESS_USER --> EXPRESS_REQ
     
-    style EXPRESS_USER fill:#99ff99
-    style SECURITY_EVENT fill:#ff9999
-    style ASYNC_HANDLER fill:#9999ff
+    classDef expressStyle fill:#99ff99,stroke:#333,stroke-width:2px
+    classDef questionnaireStyle fill:#e1f5fe,stroke:#333,stroke-width:2px
+    classDef securityStyle fill:#ff9999,stroke:#333,stroke-width:2px
+    classDef handlerStyle fill:#9999ff,stroke:#333,stroke-width:2px
+    
+    class EXPRESS_USER,EXPRESS_REQ expressStyle
+    class QUESTION_OPTION,QUESTION,QUESTIONNAIRE_SUB questionnaireStyle
+    class SECURITY_EVENT securityStyle
+    class ASYNC_HANDLER,WRAPPED_HANDLER handlerStyle
 ```
 
 ## 17. Password Security and Authentication Flow
