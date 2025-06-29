@@ -19,6 +19,7 @@ import { TutorialProvider } from './context/TutorialContext';
 import TutorialManager from './components/Tutorial/TutorialManager';
 import { allTutorials } from './data/tutorials';
 import SessionExpiredNotification from './components/SessionExpiredNotification';
+
 import { useSessionManager } from './hooks/useSessionManager';
 
 // Protected route component with profile check
@@ -221,15 +222,15 @@ const AppContent: React.FC = () => {
 
 function App() {
   return (
-    <TutorialProvider initialTutorials={allTutorials}>
-      <ActiveSectionContextProvider>
-        <Router>
+    <Router>
+      <TutorialProvider initialTutorials={allTutorials}>
+        <ActiveSectionContextProvider>
           <AppContent />
           {/* Tutorial Manager */}
           <TutorialManager tutorials={allTutorials} />
-        </Router>
-      </ActiveSectionContextProvider>
-    </TutorialProvider>
+        </ActiveSectionContextProvider>
+      </TutorialProvider>
+    </Router>
   );
 }
 
